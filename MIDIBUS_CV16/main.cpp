@@ -7,12 +7,62 @@
 
 
 #include "sam.h"
+#include "LEDMatrix.h"
 
+void RTC_Init();
 
 int main(void)
 {
+	system_init();
+	RTC_Init();
+	LM_Init();
+	
+	PORT->Group[0].DIRSET.reg = 1 << 3;
+	port_pin_set_output_level(3, 1);
+	PORT->Group[0].DIRSET.reg = 1 << 6;
+	port_pin_set_output_level(6, 0);
+	PORT->Group[0].DIRSET.reg = 1 << 5;
+	port_pin_set_output_level(5, 1);
+	
+	PORT->Group[0].DIRSET.reg = 3;
+	port_pin_set_output_level(0, 1);
+	port_pin_set_output_level(1, 0);
+	
     /* Replace with your application code */
     while (1) 
     {
+		static uint32_t animateTime = 0;
+		if (animateTime <= RTC->MODE0.COUNT.reg){
+			static uint8_t animationStage;
+			animateTime += 800;
+			
+			if (animationStage >= 31) {
+				animationStage = 0;
+			} else {
+				animationStage++;
+			}
+			
+			uint32_t temp = 7 << animationStage;
+			
+			for (uint8_t i = 0; i < 5; i++)	{
+				LM_WriteRow(i, temp >> (12+i));
+			}
+		}
+		
+		LM_Service();
     }
+}
+
+void RTC_Init(){
+	// Enable clock
+	PM->APBAMASK.bit.RTC_ = 1;
+	
+	GCLK->CLKCTRL.reg = GCLK_CLKCTRL_CLKEN | GCLK_CLKCTRL_GEN_GCLK1 | GCLK_CLKCTRL_ID_RTC;
+	
+	RTC->MODE0.READREQ.bit.RCONT = 1;
+	
+	RTC->MODE0.CTRL.bit.MODE = RTC_MODE0_CTRL_MODE_COUNT32_Val;
+	RTC->MODE0.CTRL.bit.PRESCALER = RTC_MODE0_CTRL_PRESCALER_DIV4_Val;
+	
+	RTC->MODE0.CTRL.bit.ENABLE = 1;
 }
