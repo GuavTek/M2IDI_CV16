@@ -1,8 +1,16 @@
+# Debug folder
+MIDIBUS_CV16/Debug/
+
 # Prerequisites
 *.d
 
 # Compiled Object files
 *.slo
+*.hex
+*.lss
+*.eep
+*.bin
+*.srec
 *.lo
 *.o
 *.obj
