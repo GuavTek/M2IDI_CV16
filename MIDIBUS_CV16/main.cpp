@@ -9,6 +9,7 @@
 #include "sam.h"
 #include "asf.h"
 #include "LEDMatrix.h"
+#include "PWM.h"
 
 void RTC_Init();
 
@@ -17,17 +18,16 @@ int main(void)
 	system_init();
 	RTC_Init();
 	LM_Init();
+	PWM_Init();
 	
-	PORT->Group[0].DIRSET.reg = 1 << 3;
-	port_pin_set_output_level(3, 1);
-	PORT->Group[0].DIRSET.reg = 1 << 6;
-	port_pin_set_output_level(6, 0);
-	PORT->Group[0].DIRSET.reg = 1 << 5;
-	port_pin_set_output_level(5, 1);
-	
-	PORT->Group[0].DIRSET.reg = 3;
-	port_pin_set_output_level(0, 1);
-	port_pin_set_output_level(1, 0);
+	PWM_Set(0,0, 0xffff);
+	PWM_Set(1,1, 0xffff);
+	PWM_Set(2,2, 0xffff);
+	PWM_Set(3,3, 0xffff);
+	PWM_Set(0,3, 0x4000);
+	PWM_Set(1,2, 0x4000);
+	PWM_Set(2,1, 0x4000);
+	PWM_Set(3,0, 0x4000);
 	
     /* Replace with your application code */
     while (1) 
@@ -44,13 +44,13 @@ int main(void)
 			}
 			
 			uint32_t temp = 7 << animationStage;
-			
 			for (uint8_t i = 0; i < 5; i++)	{
 				LM_WriteRow(i, temp >> (12+i));
 			}
 		}
 		
 		LM_Service();
+		PWM_Service();
     }
 }
 
