@@ -11,6 +11,7 @@
 #include "LEDMatrix.h"
 #include "menu.h"
 #include "PWM.h"
+#include "GenericOutput.h"
 
 void RTC_Init();
 
@@ -21,6 +22,7 @@ int main(void)
 	LM_Init();
 	PWM_Init();
 	Menu_Init();
+	GO_Init();
 	
 	PWM_Set(0,0, 0xffff);
 	PWM_Set(1,1, 0xffff);
@@ -34,6 +36,7 @@ int main(void)
     /* Replace with your application code */
     while (1) 
     {
+		GO_Service();
 		Menu_Service();
 		LM_Service();
 		PWM_Service();
