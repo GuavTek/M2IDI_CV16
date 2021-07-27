@@ -9,6 +9,7 @@
 #include "sam.h"
 #include "asf.h"
 #include "LEDMatrix.h"
+#include "menu.h"
 #include "PWM.h"
 
 void RTC_Init();
@@ -19,6 +20,7 @@ int main(void)
 	RTC_Init();
 	LM_Init();
 	PWM_Init();
+	Menu_Init();
 	
 	PWM_Set(0,0, 0xffff);
 	PWM_Set(1,1, 0xffff);
@@ -32,23 +34,7 @@ int main(void)
     /* Replace with your application code */
     while (1) 
     {
-		static uint32_t animateTime = 0;
-		if (animateTime <= RTC->MODE0.COUNT.reg){
-			static uint8_t animationStage;
-			animateTime += 800;
-			
-			if (animationStage >= 31) {
-				animationStage = 0;
-			} else {
-				animationStage++;
-			}
-			
-			uint32_t temp = 7 << animationStage;
-			for (uint8_t i = 0; i < 5; i++)	{
-				LM_WriteRow(i, temp >> (12+i));
-			}
-		}
-		
+		Menu_Service();
 		LM_Service();
 		PWM_Service();
     }
