@@ -81,10 +81,10 @@ void PWM_Service(){
 				break;
 			case 2:
 				port_pin_set_output_level(0, 0); 
-				port_pin_set_output_level(1, 0); // 0
+				port_pin_set_output_level(1, 0);
 				break;
 			case 3:
-				port_pin_set_output_level(0, 0); // 0
+				port_pin_set_output_level(0, 0);
 				port_pin_set_output_level(1, 1);
 				break;
 		}

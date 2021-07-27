@@ -24,14 +24,22 @@ int main(void)
 	Menu_Init();
 	GO_Init();
 	
-	PWM_Set(0,0, 0xffff);
-	PWM_Set(1,1, 0xffff);
-	PWM_Set(2,2, 0xffff);
-	PWM_Set(3,3, 0xffff);
-	PWM_Set(0,3, 0x4000);
-	PWM_Set(1,2, 0x4000);
-	PWM_Set(2,1, 0x4000);
-	PWM_Set(3,0, 0x4000);
+	PWM_Set(0,0, 0x3ff0);
+	PWM_Set(0,1, 0x3ff0);
+	PWM_Set(0,2, 0x3ff0);
+	PWM_Set(0,3, 0x3ff0);
+	PWM_Set(1,0, 0x3ff0);
+	PWM_Set(1,1, 0x3ff0);
+	PWM_Set(1,2, 0x3ff0);
+	PWM_Set(1,3, 0x3ff0);
+	PWM_Set(2,0, 0x3ff0);
+	PWM_Set(2,1, 0x3ff0);
+	PWM_Set(2,2, 0x3ff0);
+	PWM_Set(2,3, 0x3ff0);
+	PWM_Set(3,0, 0x3ff0);
+	PWM_Set(3,1, 0x3ff0);
+	PWM_Set(3,2, 0x3ff0);
+	PWM_Set(3,3, 0x3ff0);
 	
     /* Replace with your application code */
     while (1) 
