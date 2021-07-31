@@ -29,10 +29,6 @@ MIDIBUS_CV16/Debug/
 *.smod
 
 # Compiled Static libraries
-*.lai
-*.la
-*.a
-*.lib
 
 # Executables
 *.exe
