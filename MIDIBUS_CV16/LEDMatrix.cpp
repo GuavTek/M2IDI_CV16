@@ -64,7 +64,7 @@ void LM_Service(){
 			currentCol++;
 		}
 		// Enable column
-		port_pin_set_output_level(LEDC[currentCol], lmData[currentRow] & (1 << currentCol));
+		port_pin_set_output_level(LEDC[currentCol], !(lmData[currentRow] & (1 << (7 - currentCol))));
 	}
 }
 
