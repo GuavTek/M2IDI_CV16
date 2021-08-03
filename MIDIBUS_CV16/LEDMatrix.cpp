@@ -10,7 +10,7 @@
 #include "LEDMatrix.h"
 
 uint32_t LMTime = 0;
-const uint32_t LMInterval = 2; // ms / 8
+const uint32_t LMInterval = 1; // ms / 8
 
 uint8_t currentRow = 0;
 uint8_t currentCol = 0;
