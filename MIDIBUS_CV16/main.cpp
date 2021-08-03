@@ -24,6 +24,7 @@ int main(void)
 	Menu_Init();
 	GO_Init();
 	
+	system_interrupt_enable_global();
 	
     /* Replace with your application code */
     while (1) 
