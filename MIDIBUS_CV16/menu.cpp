@@ -81,7 +81,7 @@ void Menu_Init(){
 	menuStatus = Navigate;
 	
 	// Enable EIC clock
-	GCLK->CLKCTRL.reg = GCLK_CLKCTRL_CLKEN | GCLK_CLKCTRL_GEN_GCLK1 | GCLK_CLKCTRL_ID_EIC;
+	GCLK->CLKCTRL.reg = GCLK_CLKCTRL_CLKEN | GCLK_CLKCTRL_GEN_GCLK2 | GCLK_CLKCTRL_ID_EIC;
 	
 	// Initialize buttons PA27(exint 15), PB22 (exint 6), PB23 (exint 7)
 	PORT->Group[0].PINCFG[27].reg = PORT_PINCFG_PULLEN | PORT_PINCFG_PMUXEN;
