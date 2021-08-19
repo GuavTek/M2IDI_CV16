@@ -163,7 +163,159 @@ void GO_ENV(GenOut_t* go){
 			break;
 		default:
 			break;
+	}
+}
+
+void GO_MIDI(MIDI2_voice_t* msg){
+	if(msg->group != group){
+		return;
+	}
+	
+	enum ctrlType_t msgType;
+	uint16_t controlNum;
+	switch(msg->status){
+		case MIDI2_VOICE_E::AssControl:
+			controlNum = msg->bankCtrl << 8;
+		case MIDI2_VOICE_E::CControl:
+			controlNum |= msg->index;
+			msgType = ctrlType_t::CC;
+			break;
+		case MIDI2_VOICE_E::Aftertouch:
+		case MIDI2_VOICE_E::ChanPressure:
+		case MIDI2_VOICE_E::NoteOff:
+		case MIDI2_VOICE_E::NoteOn:
+		case MIDI2_VOICE_E::Pitchbend:
+			msgType = ctrlType_t::Key;
+			break;
+		default:
+			return;
+	};
+	
+	// Search outputs
+	if (msgType == ctrlType_t::CC){
+		for (uint8_t x = 0; x < 4; x++){
+			for (uint8_t y = 0; y < 4; y++){
+				// Skip if no CC is mapped
+				if (!hasCC[x][y]){
+					continue;
+				}
+				
+				if (outMatrix[x][y].type == GOType_t::DC){
+					// CV generation
+					if (outMatrix[x][y].dc_source.channel == msg->channel){
+						if (outMatrix[x][y].dc_source.sourceNum == controlNum){
+							uint32_t span = (outMatrix[x][y].max_range - outMatrix[x][y].min_range) + 1;
+							uint32_t scaled = (msg->data >> 16) * span;
+							outMatrix[x][y].currentOut = (scaled >> 16) + outMatrix[x][y].min_range;
+						}
+					}
+				} else if (outMatrix[x][y].type == GOType_t::Envelope){
+					// Envelope
+					if (outMatrix[x][y].att_source.sourceType == ctrlType_t::CC){
+						if (outMatrix[x][y].att_source.channel == msg->channel){
+							if (outMatrix[x][y].att_source.sourceNum == controlNum){
+								if (outMatrix[x][y].att_max > outMatrix[x][y].att_min){
+									uint32_t span = ((outMatrix[x][y].att_max - outMatrix[x][y].att_min) << 8) + 0x10000;
+									uint32_t scaled = (msg->data >> 16) * span;
+									outMatrix[x][y].att_current = (scaled >> 16) + outMatrix[x][y].att_min;
+								} else {
+									uint32_t span = ((outMatrix[x][y].att_min - outMatrix[x][y].att_max) << 8) + 0x10000;
+									uint32_t scaled = (msg->data >> 16) * span;
+									outMatrix[x][y].att_current = outMatrix[x][y].att_max - (scaled >> 16);
+								}
+							}
+						}	
+					}
+					if (outMatrix[x][y].dec_source.sourceType == ctrlType_t::CC){
+						if (outMatrix[x][y].dec_source.channel == msg->channel){
+							if (outMatrix[x][y].dec_source.sourceNum == controlNum){
+								if (outMatrix[x][y].dec_max > outMatrix[x][y].dec_min){
+									uint32_t span = ((outMatrix[x][y].dec_max - outMatrix[x][y].dec_min) << 8) + 0x10000;
+									uint32_t scaled = (msg->data >> 16) * span;
+									outMatrix[x][y].dec_current = (scaled >> 16) + outMatrix[x][y].dec_min;
+								} else {
+									uint32_t span = ((outMatrix[x][y].dec_min - outMatrix[x][y].dec_max) << 8) + 0x10000;
+									uint32_t scaled = (msg->data >> 16) * span;
+									outMatrix[x][y].dec_current = outMatrix[x][y].dec_max - (scaled >> 16);
+								}
+							}
+						}
+					}
+					if (outMatrix[x][y].sus_source.sourceType == ctrlType_t::CC){
+						if (outMatrix[x][y].sus_source.channel == msg->channel){
+							if (outMatrix[x][y].sus_source.sourceNum == controlNum){
+								if (outMatrix[x][y].sus_max > outMatrix[x][y].sus_min){
+									uint32_t span = ((outMatrix[x][y].sus_max - outMatrix[x][y].sus_min) << 8) + 0x10000;
+									uint32_t scaled = (msg->data >> 16) * span;
+									outMatrix[x][y].sus_current = (scaled >> 16) + outMatrix[x][y].sus_min;
+								} else {
+									uint32_t span = ((outMatrix[x][y].sus_min - outMatrix[x][y].sus_max) << 8) + 0x10000;
+									uint32_t scaled = (msg->data >> 16) * span;
+									outMatrix[x][y].sus_current = outMatrix[x][y].sus_max - (scaled >> 16);
+								}
+							}
+						}
+					}
+					if (outMatrix[x][y].rel_source.sourceType == ctrlType_t::CC){
+						if (outMatrix[x][y].rel_source.channel == msg->channel){
+							if (outMatrix[x][y].rel_source.sourceNum == controlNum){
+								if (outMatrix[x][y].rel_max > outMatrix[x][y].rel_min){
+									uint32_t span = ((outMatrix[x][y].rel_max - outMatrix[x][y].rel_min) << 8) + 0x10000;
+									uint32_t scaled = (msg->data >> 16) * span;
+									outMatrix[x][y].rel_current = (scaled >> 16) + outMatrix[x][y].rel_min;
+								} else {
+									uint32_t span = ((outMatrix[x][y].rel_min - outMatrix[x][y].rel_max) << 8) + 0x10000;
+									uint32_t scaled = (msg->data >> 16) * span;
+									outMatrix[x][y].rel_current = outMatrix[x][y].rel_max - (scaled >> 16);
+								}
+							}
+						}
+					}
+				} else if (outMatrix[x][y].type == GOType_t::LFO){
+					// Wave generation
+					if (outMatrix[x][y].freq_source.channel == msg->channel){
+						if (outMatrix[x][y].freq_source.sourceNum == controlNum){
+							uint64_t span = outMatrix[x][y].freq_max - outMatrix[x][y].freq_min + 1;
+							uint64_t scaled = msg->data * span;
+							outMatrix[x][y].freq_current = (scaled >> 32) + outMatrix[x][y].freq_min;
+						}
+					}
+				}	
+			}
+		}	
+	} else {
+		if (msg->channel == 9){
+			// Drum channel
+			
+		} else if(keyChannel == msg->channel) {
+			
+		}		
+		
+				
+		
+	}
+}
+
+void GO_MIDI(MIDI2_util_t* msg){
+	
+}
+
 void GO_Service(){
+	for (uint8_t x = 0; x < 4; x++){
+		for (uint8_t y = 0; y < 4; y++){
+			switch(outMatrix[x][y].type){
+				case GOType_t::LFO:
+					GO_LFO(&outMatrix[x][y]);
+					PWM_Set(x,y,outMatrix[x][y].currentOut);
+					break;
+				case GOType_t::Envelope:
+					GO_ENV(&outMatrix[x][y]);
+					PWM_Set(x,y,outMatrix[x][y].currentOut);
+					break;
+				default:
+					break;
+			}
+		}
 	}
 }
 
