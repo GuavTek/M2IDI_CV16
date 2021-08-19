@@ -10,27 +10,103 @@
 #define GENERICOUTPUT_H_
 
 #include "samd21.h"
+#include "MIDI_Driver.h"
 
 enum class GOType_t {
-	DCKey,
-	DCCC,
+	DC,
 	LFO,
-	Envelope
+	Envelope,
+	CLK,
+	Pressure,
+	Velocity,
+	Gate
 };
 
-struct GenOut_s {
-	enum GOType_t type;
-	uint32_t freq;
-	uint32_t attack;
-	uint32_t decay;
-	uint32_t release;
-	uint16_t sustain;
+enum class ctrlType_t {
+	None,
+	Key,
+	CC
 };
+
+struct ctrlSource_t {
+	enum ctrlType_t sourceType;
+	uint8_t channel;
+	uint16_t sourceNum;
+};
+
+enum class WavShape_t {
+	Square,
+	Triangle,
+	Sawtooth,
+	Sine
+};
+
+// The data to store in NVM
+struct GenOut_base {
+	enum GOType_t type;
+	uint16_t max_range;
+	uint16_t min_range;
+	union {
+		// DC (CC, pressure, velocity, gate, and keys)
+		struct {
+			struct ctrlSource_t dc_source;
+		};
+		
+		// LFO (and clk)
+		struct {
+			enum WavShape_t shape;
+			uint32_t freq_max;
+			uint32_t freq_min;
+			struct ctrlSource_t freq_source;
+		};
+		
+		// Envelope
+		struct {
+			uint8_t env_channel;
+			uint8_t att_max;
+			uint8_t att_min;
+			struct ctrlSource_t att_source;
+			uint8_t dec_max;
+			uint8_t dec_min;
+			struct ctrlSource_t dec_source;
+			uint16_t sus_max;
+			uint16_t sus_min;
+			struct ctrlSource_t sus_source;
+			uint8_t rel_max;
+			uint8_t rel_min;
+			struct ctrlSource_t rel_source;
+		};
+		
+	};
+	
+};
+
+// The data to store in RAM
+struct GenOut_t : GenOut_base {
+	uint16_t currentOut;
+	union {
+		struct {
+			uint32_t freq_current;
+			uint32_t freq_count;
+			int8_t direction;
+		};
+		
+		struct {
+			uint8_t envelope_stage;
+			uint16_t att_current;
+			uint16_t dec_current;
+			uint16_t sus_current;
+			uint16_t rel_current;
+		};
+	};
+};
+
+
 
 void GO_Init();
 
 void GO_Service();
 
-
+uint16_t TriSine(uint16_t in);
 
 #endif /* GENERICOUTPUT_H_ */
