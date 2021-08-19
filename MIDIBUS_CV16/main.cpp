@@ -29,10 +29,14 @@ int main(void)
     /* Replace with your application code */
     while (1) 
     {
-		GO_Service();
-		Menu_Service();
-		LM_Service();
-		PWM_Service();
+		static uint32_t periodic_timer = 0;
+		if (periodic_timer < RTC->MODE0.COUNT.reg)	{
+			periodic_timer = RTC->MODE0.COUNT.reg;
+			GO_Service();
+			Menu_Service();
+			LM_Service();
+			PWM_Service();
+		}
     }
 }
 

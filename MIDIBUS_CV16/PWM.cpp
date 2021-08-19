@@ -60,43 +60,39 @@ void PWM_Set(uint8_t row, uint8_t col, uint16_t data){
 }
 
 void PWM_Service(){
-	static uint32_t timer = 0;
-	if (timer <= RTC->MODE0.COUNT.reg){
-		timer += 4; // ms / 8
-		// Inhibit MUX
-		port_pin_set_output_level(6, 1);
+	// Inhibit MUX
+	port_pin_set_output_level(6, 1);
 		
-		static uint8_t cycle;
-		cycle++;
-		cycle &= 0b11;
+	static uint8_t cycle;
+	cycle++;
+	cycle &= 0b11;
 		
-		switch(cycle){
-			case 0:
-				port_pin_set_output_level(0, 1);
-				port_pin_set_output_level(1, 1);
-				break;
-			case 1:
-				port_pin_set_output_level(0, 1);
-				port_pin_set_output_level(1, 0);
-				break;
-			case 2:
-				port_pin_set_output_level(0, 0); 
-				port_pin_set_output_level(1, 0);
-				break;
-			case 3:
-				port_pin_set_output_level(0, 0);
-				port_pin_set_output_level(1, 1);
-				break;
-		}
-		
-		for (uint8_t i = 0; i < 4; i++)	{
-			TCC3->CCB[i].bit.CCB = outLevel[cycle][i];
-		}
-		
-		// Retrigger TCC
-		TCC3->CTRLBSET.bit.CMD = TCC_CTRLBSET_CMD_RETRIGGER_Val;
-		
-		// Enable MUX
-		port_pin_set_output_level(6, 0);
+	switch(cycle){
+		case 0:
+			port_pin_set_output_level(0, 1);
+			port_pin_set_output_level(1, 1);
+			break;
+		case 1:
+			port_pin_set_output_level(0, 1);
+			port_pin_set_output_level(1, 0);
+			break;
+		case 2:
+			port_pin_set_output_level(0, 0); 
+			port_pin_set_output_level(1, 0);
+			break;
+		case 3:
+			port_pin_set_output_level(0, 0);
+			port_pin_set_output_level(1, 1);
+			break;
 	}
+		
+	for (uint8_t i = 0; i < 4; i++)	{
+		TCC3->CCB[i].bit.CCB = outLevel[cycle][i];
+	}
+		
+	// Retrigger TCC
+	TCC3->CTRLBSET.bit.CMD = TCC_CTRLBSET_CMD_RETRIGGER_Val;
+		
+	// Enable MUX
+	port_pin_set_output_level(6, 0);
 }
