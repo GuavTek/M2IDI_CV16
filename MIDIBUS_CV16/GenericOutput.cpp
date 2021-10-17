@@ -156,7 +156,7 @@ void GO_Init(){
 	outMatrix[0][1].shape = WavShape_t::Square;
 	outMatrix[0][1].max_range = 0xffff;
 	outMatrix[0][1].min_range = 0;
-	outMatrix[0][1].direction = -1;
+	outMatrix[0][1].direction = 1;
 	outMatrix[0][1].freq_current = 0x0040 << 16;
 	
 	outMatrix[0][2].type = GOType_t::LFO;
