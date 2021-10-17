@@ -97,7 +97,7 @@ void Menu_Init(){
 	EIC->CONFIG[1].reg |= EIC_CONFIG_FILTEN7 | EIC_CONFIG_SENSE7_FALL;
 	EIC->CTRL.bit.ENABLE = 1;
 	
-	system_interrupt_enable(system_interrupt_vector::SYSTEM_INTERRUPT_MODULE_EIC);
+	NVIC_EnableIRQ(EIC_IRQn);
 }
 
 uint8_t Menu_Service(){
@@ -185,9 +185,27 @@ uint8_t Menu_Service(){
 		return 0;
 	}
 }
-
+/*
 // Butt1 right, Butt2 up, Butt3 down
 void EIC_Handler(){
+	if (EIC->INTFLAG.reg & EIC_INTFLAG_EXTINT6)	{
+		EIC->INTFLAG.reg = EIC_INTFLAG_EXTINT6;
+		buttRight = true;
+	}
+	
+	if (EIC->INTFLAG.reg & EIC_INTFLAG_EXTINT7)	{
+		EIC->INTFLAG.reg = EIC_INTFLAG_EXTINT7;
+		buttUp = true;
+	}
+	
+	if (EIC->INTFLAG.reg & EIC_INTFLAG_EXTINT15)	{
+		EIC->INTFLAG.reg = EIC_INTFLAG_EXTINT15;
+		buttDown = true;
+	}
+} */
+
+// EIC Interrupt leads to WDT handler???!?
+void WDT_Handler(){
 	if (EIC->INTFLAG.reg & EIC_INTFLAG_EXTINT6)	{
 		EIC->INTFLAG.reg = EIC_INTFLAG_EXTINT6;
 		buttRight = true;
