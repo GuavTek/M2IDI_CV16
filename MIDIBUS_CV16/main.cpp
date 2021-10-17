@@ -18,6 +18,12 @@
 
 void RTC_Init();
 
+MCP2517_C CAN(SERCOM2);
+
+MIDI_C MIDI(2);
+
+void CAN_Receive(CAN_Rx_msg_t* msgIn);
+
 int main(void)
 {
 	system_init();
@@ -26,6 +32,10 @@ int main(void)
 	PWM_Init();
 	Menu_Init();
 	GO_Init();
+	CAN.Init(CAN_CONF, SPI_CONF);
+	CAN.Set_Rx_Callback(CAN_Receive);
+	MIDI.Set_handler(GO_MIDI_Voice);
+	MIDI.Set_handler(GO_MIDI_Realtime);
 	
 	system_interrupt_enable_global();
 	
@@ -40,6 +50,7 @@ int main(void)
 			LM_Service();
 			PWM_Service();
 		}
+		CAN.State_Machine();
     }
 }
 
@@ -57,4 +68,13 @@ void RTC_Init(){
 	RTC->MODE0.CTRL.bit.PRESCALER = RTC_MODE0_CTRL_PRESCALER_DIV1_Val;
 	
 	RTC->MODE0.CTRL.bit.ENABLE = 1;
+}
+
+void CAN_Receive(CAN_Rx_msg_t* msgIn){
+	uint8_t length = CAN.Get_Data_Length(msgIn->dataLengthCode);
+	MIDI.Decode(msgIn->payload, length);
+}
+
+void SERCOM2_Handler(){
+	CAN.Handler();
 }
