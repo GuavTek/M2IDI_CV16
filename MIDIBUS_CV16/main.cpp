@@ -6,15 +6,15 @@
  */ 
 
 
-#include "sam.h"
+#include "samd21g17d.h"
 #include "asf.h"
 #include "LEDMatrix.h"
 #include "menu.h"
 #include "PWM.h"
 #include "GenericOutput.h"
+#include "MIDI_Config.h"
 #include "MIDI_Driver.h"
 #include "MCP2517.h"
-#include "MIDI_Config.h"
 
 void RTC_Init();
 
@@ -41,8 +41,7 @@ int main(void)
 	system_interrupt_enable_global();
 	
     /* Replace with your application code */
-    while (1) 
-    {
+    while (1){
 		static uint32_t periodic_timer = 0;
 		if (periodic_timer < RTC->MODE0.COUNT.reg)	{
 			periodic_timer = RTC->MODE0.COUNT.reg;

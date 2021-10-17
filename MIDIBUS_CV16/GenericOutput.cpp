@@ -75,16 +75,16 @@ inline void Start_Note(uint8_t lane, uint8_t note, uint16_t velocity){
 					outMatrix[lane][y].currentOut = Note_To_Output(note);
 				}
 			}
-			} else if (outMatrix[lane][y].type == GOType_t::Gate){
+		} else if (outMatrix[lane][y].type == GOType_t::Gate){
 			if (keyChannel == outMatrix[lane][y].dc_source.channel){
 				outMatrix[lane][y].dc_source.sourceNum = note;
 				outMatrix[lane][y].currentOut = outMatrix[lane][y].max_range;
 			}
-			} else if (outMatrix[lane][y].type == GOType_t::Velocity){
+		} else if (outMatrix[lane][y].type == GOType_t::Velocity){
 			if (keyChannel == outMatrix[lane][y].dc_source.channel){
 				outMatrix[lane][y].currentOut = Rescale_16bit(velocity, outMatrix[lane][y].min_range, outMatrix[lane][y].max_range);
 			}
-			} else if (outMatrix[lane][y].type == GOType_t::Envelope){
+		} else if (outMatrix[lane][y].type == GOType_t::Envelope){
 			if (keyChannel == outMatrix[lane][y].env_source.channel){
 				outMatrix[lane][y].currentOut = outMatrix[lane][y].min_range;
 				outMatrix[lane][y].envelope_stage = 1;

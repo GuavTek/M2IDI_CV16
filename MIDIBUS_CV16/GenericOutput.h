@@ -43,7 +43,7 @@ enum class WavShape_t {
 
 // The data to store in NVM
 struct GenOut_base {
-	enum GOType_t type;
+	enum GOType_t type = GOType_t::DC;
 	uint16_t max_range;
 	uint16_t min_range;
 	union {
