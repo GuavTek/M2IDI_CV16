@@ -18,8 +18,8 @@ struct keyLanes{
 		KeyIdle,
 		KeyPlaying} state;
 } keyLanes[4];
-uint8_t currentKeyLane;
-uint8_t keyChannel;
+uint8_t currentKeyLane = 0;
+uint8_t keyChannel = 1;
 
 uint16_t currentBend;
 
@@ -31,7 +31,7 @@ struct {
 
 bool hasCC[4][4];
 
-uint8_t group;
+uint8_t group = 1;
 
 inline uint16_t Note_To_Output(uint8_t note){
 	// C4 is middle note -> 60 = 0V
@@ -98,22 +98,22 @@ inline void Stop_Note(uint8_t lane){
 
 void GO_Init(){
 	// Set default values
-	PWM_Set(0,0, 0x3ff0);
-	PWM_Set(0,1, 0x3ff0);
-	PWM_Set(0,2, 0x3ff0);
-	PWM_Set(0,3, 0x3ff0);
-	PWM_Set(1,0, 0x3ff0);
-	PWM_Set(1,1, 0x3ff0);
-	PWM_Set(1,2, 0x3ff0);
-	PWM_Set(1,3, 0x3ff0);
-	PWM_Set(2,0, 0x3ff0);
-	PWM_Set(2,1, 0x3ff0);
-	PWM_Set(2,2, 0x3ff0);
-	PWM_Set(2,3, 0x3ff0);
-	PWM_Set(3,0, 0x3ff0);
-	PWM_Set(3,1, 0x3ff0);
-	PWM_Set(3,2, 0x3ff0);
-	PWM_Set(3,3, 0x3ff0);
+	PWM_Set(0,0, 0x3fff);
+	PWM_Set(0,1, 0x3fff);
+	PWM_Set(0,2, 0x3fff);
+	PWM_Set(0,3, 0x3fff);
+	PWM_Set(1,0, 0x3fff);
+	PWM_Set(1,1, 0x3fff);
+	PWM_Set(1,2, 0x3fff);
+	PWM_Set(1,3, 0x3fff);
+	PWM_Set(2,0, 0x3fff);
+	PWM_Set(2,1, 0x3fff);
+	PWM_Set(2,2, 0x3fff);
+	PWM_Set(2,3, 0x3fff);
+	PWM_Set(3,0, 0x3fff);
+	PWM_Set(3,1, 0x3fff);
+	PWM_Set(3,2, 0x3fff);
+	PWM_Set(3,3, 0x3fff);
 	
 	outMatrix[2][2].type = GOType_t::LFO;
 	outMatrix[2][2].shape = WavShape_t::Sawtooth;
@@ -149,6 +149,22 @@ void GO_Init(){
 	outMatrix[0][2].min_range = 0;
 	outMatrix[0][2].direction = -1;
 	outMatrix[0][2].freq_current = 0x0020 << 16;
+	
+	keyChannel = 1;
+	keyLanes[0].state = keyLanes::KeyNone;
+	keyLanes[1].state = keyLanes::KeyNone;
+	keyLanes[2].state = keyLanes::KeyNone;
+	keyLanes[3].state = keyLanes::KeyIdle;
+	outMatrix[3][0].type = GOType_t::DC;
+	outMatrix[3][0].dc_source.sourceType = ctrlType_t::Key;
+	outMatrix[3][0].dc_source.channel = 1;
+	outMatrix[3][0].max_range = 0xffff;
+	outMatrix[3][0].min_range = 0;
+	outMatrix[3][1].type = GOType_t::Gate;
+	outMatrix[3][1].dc_source.sourceType = ctrlType_t::Key;
+	outMatrix[3][1].dc_source.channel = 1;
+	outMatrix[3][1].max_range = 0xffff;
+	outMatrix[3][1].min_range = 0;
 	
 	// Load setup from NVM
 	
@@ -428,6 +444,12 @@ void GO_MIDI_Voice(MIDI2_voice_t* msg){
 						tempLane = lane;
 					}
 				}
+				
+				if (tempLane == 250){
+					// No keys
+					return;
+				}
+				
 				currentKeyLane = (tempLane + 1) & 0b11;
 				
 				if (keyLanes[tempLane].state == keyLanes::KeyPlaying){
@@ -505,6 +527,7 @@ void GO_MIDI_Voice(MIDI2_voice_t* msg){
 		}		
 		
 	}
+	return;
 }
 
 void GO_MIDI_Realtime(MIDI2_com_t* msg){
