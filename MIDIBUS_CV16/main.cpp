@@ -43,16 +43,19 @@ int main(void)
     /* Replace with your application code */
     while (1){
 		static uint32_t periodic_timer = 0;
+		static uint32_t smiley_timer = 0;
 		if (periodic_timer < RTC->MODE0.COUNT.reg)	{
 			periodic_timer = RTC->MODE0.COUNT.reg;
 			GO_Service();
-			Menu_Service();
+			if (Menu_Service())	{
+				// Inactivity timeout
+				smiley_timer = RTC->MODE0.COUNT.reg + 200000;
+			}
 			LM_Service();
 			PWM_Service();
 		}
-		static uint32_t smiley_timer = 0;
 		if (smiley_timer < RTC->MODE0.COUNT.reg) {
-			smiley_timer = RTC->MODE0.COUNT.reg + 1024;
+			smiley_timer = RTC->MODE0.COUNT.reg + 10240;
 			LM_WriteRow(0, 0b00100100);
 			LM_WriteRow(1, 0b00100100);
 			LM_WriteRow(2, 0b00000000);

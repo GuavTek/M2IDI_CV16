@@ -100,7 +100,7 @@ void Menu_Init(){
 	system_interrupt_enable(system_interrupt_vector::SYSTEM_INTERRUPT_MODULE_EIC);
 }
 
-void Menu_Service(){
+uint8_t Menu_Service(){
 	bool screenChange = false;
 	switch(menuStatus){
 		case Navigate:
@@ -180,6 +180,9 @@ void Menu_Service(){
 				LM_WriteRow(i, currentNode->graphic[i]);
 			}
 		}
+		return 1;
+	} else {
+		return 0;
 	}
 }
 

@@ -18,7 +18,7 @@ struct menuNode {
 };
 
 void Menu_Init();
-void Menu_Service();
+uint8_t Menu_Service();
 
 
 
