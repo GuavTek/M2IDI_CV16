@@ -62,7 +62,7 @@ struct GenOut_base {
 		
 		// Envelope
 		struct {
-			uint8_t env_channel;
+			struct ctrlSource_t env_source;
 			uint8_t att_max;
 			uint8_t att_min;
 			struct ctrlSource_t att_source;
@@ -106,6 +106,10 @@ struct GenOut_t : GenOut_base {
 void GO_Init();
 
 void GO_Service();
+
+void GO_MIDI_Voice(MIDI2_voice_t* msg);
+
+void GO_MIDI_Realtime(MIDI2_com_t* msg);
 
 uint16_t TriSine(uint16_t in);
 

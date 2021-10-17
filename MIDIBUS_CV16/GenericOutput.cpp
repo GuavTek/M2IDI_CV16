@@ -11,18 +11,90 @@
 
 GenOut_t outMatrix[4][4];
 
-bool keyVertical;
-enum {
-	KeyNone,
-	KeyIdle,
-	KeyPlaying
+struct keyLanes{
+	uint8_t note;
+	enum {
+		KeyNone,
+		KeyIdle,
+		KeyPlaying} state;
 } keyLanes[4];
 uint8_t currentKeyLane;
 uint8_t keyChannel;
 
+uint16_t currentBend;
+
+uint8_t queueIndex;
+struct {
+	uint8_t note;
+	
+} noteQueue[32];
+
 bool hasCC[4][4];
 
 uint8_t group;
+
+inline uint16_t Note_To_Output(uint8_t note){
+	// C4 is middle note -> 60 = 0V
+	int32_t tempOut = note * 0xffff;
+	tempOut >> 7;
+	tempOut += 0x7fff + 0x0400;
+	// Clamp results? Or clamp notes?
+	return (uint16_t) tempOut;
+}
+
+// Scales a value
+inline uint16_t Rescale_16bit(uint16_t val, uint16_t minOut, uint16_t maxOut){
+	uint32_t tempResult = (maxOut-minOut+1) * val;
+	tempResult >>= 16; // Divide by input range
+	tempResult += minOut;
+	return (uint16_t) tempResult;
+}
+
+inline void Start_Note(uint8_t lane, uint8_t note, uint16_t velocity){
+	for (uint8_t y = 0; y < 4; y++){
+		if (outMatrix[lane][y].type == GOType_t::DC){
+			if (outMatrix[lane][y].dc_source.sourceType == ctrlType_t::Key){
+				if (keyChannel == outMatrix[lane][y].dc_source.channel){
+					outMatrix[lane][y].dc_source.sourceNum = note;
+					outMatrix[lane][y].currentOut = Note_To_Output(note);
+				}
+			}
+			} else if (outMatrix[lane][y].type == GOType_t::Gate){
+			if (keyChannel == outMatrix[lane][y].dc_source.channel){
+				outMatrix[lane][y].dc_source.sourceNum = note;
+				outMatrix[lane][y].currentOut = outMatrix[lane][y].max_range;
+			}
+			} else if (outMatrix[lane][y].type == GOType_t::Velocity){
+			if (keyChannel == outMatrix[lane][y].dc_source.channel){
+				outMatrix[lane][y].currentOut = Rescale_16bit(velocity, outMatrix[lane][y].min_range, outMatrix[lane][y].max_range);
+			}
+			} else if (outMatrix[lane][y].type == GOType_t::Envelope){
+			if (keyChannel == outMatrix[lane][y].env_source.channel){
+				outMatrix[lane][y].currentOut = outMatrix[lane][y].min_range;
+				outMatrix[lane][y].envelope_stage = 1;
+			}
+		}
+	}
+	
+	keyLanes[lane].state = keyLanes::KeyPlaying;
+	keyLanes[lane].note = note;
+}
+
+inline void Stop_Note(uint8_t lane){
+	for (uint8_t y = 0; y < 4; y++){
+		if (outMatrix[lane][y].type == GOType_t::Gate){
+			if (keyChannel == outMatrix[lane][y].dc_source.channel){
+				outMatrix[lane][y].currentOut = outMatrix[lane][y].min_range;
+			}
+		} else if (outMatrix[lane][y].type == GOType_t::Envelope){
+			if (keyChannel == outMatrix[lane][y].env_source.channel){
+				outMatrix[lane][y].envelope_stage = 4;
+			}
+		}
+	}
+	
+	keyLanes[lane].state = keyLanes::KeyIdle;
+}
 
 void GO_Init(){
 	// Set default values
@@ -166,13 +238,13 @@ void GO_ENV(GenOut_t* go){
 	}
 }
 
-void GO_MIDI(MIDI2_voice_t* msg){
+void GO_MIDI_Voice(MIDI2_voice_t* msg){
 	if(msg->group != group){
 		return;
 	}
 	
 	enum ctrlType_t msgType;
-	uint16_t controlNum;
+	uint16_t controlNum = 0;
 	switch(msg->status){
 		case MIDI2_VOICE_E::AssControl:
 			controlNum = msg->bankCtrl << 8;
@@ -286,18 +358,169 @@ void GO_MIDI(MIDI2_voice_t* msg){
 	} else {
 		if (msg->channel == 9){
 			// Drum channel
-			
+			if (msg->status == MIDI2_VOICE_E::NoteOn){
+				bool foundLane = false;
+				for (uint8_t x = 0; x < 4; x++){
+					for (uint8_t y = 0; y < 4; y++){
+						if (outMatrix[x][y].type == GOType_t::Envelope){
+							if (outMatrix[x][y].env_source.channel == msg->channel){
+								if (outMatrix[x][y].env_source.sourceNum == msg->note){
+									foundLane = true;
+									outMatrix[x][y].envelope_stage = 1;
+									outMatrix[x][y].currentOut = outMatrix[x][y].min_range;
+								}
+							}
+						} else {
+							if (outMatrix[x][y].dc_source.channel == msg->channel){
+								if (outMatrix[x][y].dc_source.sourceNum == msg->note){
+									if (outMatrix[x][y].type == GOType_t::Gate){
+										foundLane = true;
+										outMatrix[x][y].currentOut = outMatrix[x][y].max_range;
+									} else if (outMatrix[x][y].type == GOType_t::Velocity){
+										foundLane = true;
+										outMatrix[x][y].currentOut = Rescale_16bit(msg->velocity, outMatrix[x][y].min_range, outMatrix[x][y].max_range);
+									}
+								}
+							}
+						}
+					}
+					if (foundLane){
+						// Assume all controls are on single lane
+						break;
+					}
+				}
+			} else if (msg->status == MIDI2_VOICE_E::NoteOff){
+				bool foundLane = false;
+				for (uint8_t x = 0; x < 4; x++){
+					for (uint8_t y = 0; y < 4; y++){
+						if (outMatrix[x][y].type == GOType_t::Envelope){
+							if (outMatrix[x][y].env_source.channel == msg->channel){
+								if (outMatrix[x][y].env_source.sourceNum == msg->note){
+									foundLane = true;
+									outMatrix[x][y].envelope_stage = 4;
+								}
+							}
+						} else if (outMatrix[x][y].type == GOType_t::Gate) {
+							if (outMatrix[x][y].dc_source.channel == msg->channel){
+								if (outMatrix[x][y].dc_source.sourceNum == msg->note){
+									foundLane = true;
+									outMatrix[x][y].currentOut = outMatrix[x][y].min_range;
+								}
+							}
+						}
+					}
+					if (foundLane){
+						// Assume all controls are on single lane
+						break;
+					}
+				}
+			}
 		} else if(keyChannel == msg->channel) {
+			if (msg->status == MIDI2_VOICE_E::NoteOn){
+				uint8_t tempLane = 250;
+				for (uint8_t x = 0; x < 4; x++){
+					uint8_t lane = (currentKeyLane + x) & 0b11;
+					if (keyLanes[lane].state == keyLanes::KeyIdle){
+						// Found a unused lane
+						tempLane = lane;
+						break;
+					} else if ((tempLane == 250)&&(keyLanes[lane].state == keyLanes::KeyPlaying)){
+						tempLane = lane;
+					}
+				}
+				currentKeyLane = (tempLane + 1) & 0b11;
+				
+				if (keyLanes[tempLane].state == keyLanes::KeyPlaying){
+					// Note already playing. Push to queue
+					noteQueue[queueIndex++].note = keyLanes[tempLane].note;
+				}
+				
+				Start_Note(tempLane, msg->note, msg->velocity);
+				
+			} else if (msg->status == MIDI2_VOICE_E::NoteOff){
+				// Find the used lane
+				uint8_t tempLane = 250;
+				for (uint8_t x = 0; x < 4; x++){
+					if (keyLanes[x].state == keyLanes::KeyPlaying){
+						if (keyLanes[x].note == msg->note){
+							tempLane = x;
+							break;
+						}
+					}
+				}
+				if (tempLane == 250){
+					// Look for note in queue
+					uint8_t i;
+					for (i = 0; i < queueIndex; i++){
+						if (noteQueue[i].note == msg->note){
+							queueIndex--;
+							break;
+						}
+					}
+					// Overwrite that note
+					for (; i < queueIndex; i++){
+						noteQueue[i] = noteQueue[i+1];
+					}
+				} else {
+					if (queueIndex > 0){
+						// Start last note which was put in queue
+						uint8_t tempNote = noteQueue[--queueIndex].note;
+						Start_Note(tempLane, tempNote, msg->velocity);
+					} else {
+						// Stop note
+						Stop_Note(tempLane);
+					}
+				}
+			} else if (msg->status == MIDI2_VOICE_E::Pitchbend){
+				currentBend = msg->data >> 16;
+				// update outputs
+				for (uint8_t x = 0; x < 4; x++){
+					if (keyLanes[x].state != keyLanes::KeyPlaying){
+						continue;
+					}
+					for (uint8_t y = 0; y < 4; y++){
+						if (outMatrix[x][y].type == GOType_t::DC){
+							if (outMatrix[x][y].dc_source.channel == keyChannel){
+								if (outMatrix[x][y].dc_source.sourceType == ctrlType_t::Key){
+									outMatrix[x][y].currentOut = Note_To_Output(keyLanes[x].note);
+									break;
+								}
+							}
+						}
+					}
+				}
+			} else if (msg->status == MIDI2_VOICE_E::ChanPressure){
+				for (uint8_t x = 0; x < 4; x++){
+					for (uint8_t y = 0; y < 4; y++){
+						if (outMatrix[x][y].type == GOType_t::Pressure){
+							outMatrix[x][y].currentOut = Rescale_16bit(msg->data >> 16, outMatrix[x][y].min_range, outMatrix[x][y].max_range);
+							return;
+						}
+					}
+				}
+			} else if (msg->status == MIDI2_VOICE_E::Aftertouch){
+				
+			}
 			
 		}		
-		
-				
 		
 	}
 }
 
-void GO_MIDI(MIDI2_util_t* msg){
-	
+void GO_MIDI_Realtime(MIDI2_com_t* msg){
+	if(msg->status == MIDI2_COM_E::TimingClock){
+		for (uint8_t x = 0; x < 4; x++){
+			for (uint8_t y = 0; y < 4; y++){
+				if (outMatrix[x][y].type == GOType_t::CLK){
+					outMatrix[x][y].freq_count++;
+					if (outMatrix[x][y].freq_count > outMatrix[x][y].freq_current){
+						outMatrix[x][y].freq_count = 0;
+						outMatrix[x][y].currentOut = (outMatrix[x][y].currentOut == 0xffff) ? 0x3fff : 0xffff;
+					}
+				}
+			}
+		}
+	}
 }
 
 void GO_Service(){
@@ -306,19 +529,19 @@ void GO_Service(){
 			switch(outMatrix[x][y].type){
 				case GOType_t::LFO:
 					GO_LFO(&outMatrix[x][y]);
-					PWM_Set(x,y,outMatrix[x][y].currentOut);
 					break;
 				case GOType_t::Envelope:
 					GO_ENV(&outMatrix[x][y]);
-					PWM_Set(x,y,outMatrix[x][y].currentOut);
 					break;
 				default:
 					break;
 			}
+			PWM_Set(x,y,outMatrix[x][y].currentOut);
 		}
 	}
 }
 
+// Return sine output from linear input
 uint16_t TriSine(uint16_t in){
 	// Temporary
 	return in;
