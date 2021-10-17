@@ -21,7 +21,9 @@ struct keyLanes{
 uint8_t currentKeyLane = 0;
 uint8_t keyChannel = 1;
 
-uint16_t currentBend;
+int16_t currentBend;
+uint16_t maxBend = 0x7fff + 3277;
+uint16_t minBend = 0x7fff - 3277;
 
 uint8_t queueIndex;
 struct {
@@ -33,12 +35,26 @@ bool hasCC[4][4];
 
 uint8_t group = 1;
 
+#define INT_PER_VOLT 6553.6
+#define INT_PER_NOTE INT_PER_VOLT/12
+#define FIXED_POINT_POS 14
+#define FIXED_INT_PER_NOTE ((uint32_t) INT_PER_NOTE * (1 << FIXED_POINT_POS))
+
 inline uint16_t Note_To_Output(uint8_t note){
-	// C4 is middle note -> 60 = 0V
-	int32_t tempOut = note * 0xffff;
-	tempOut >> 7;
-	tempOut += 0x7fff + 0x0400;
-	// Clamp results? Or clamp notes?
+	int32_t tempOut = note * FIXED_INT_PER_NOTE;// * 546.133 fixed point multiplication
+	tempOut += 1 << (FIXED_POINT_POS - 1);	// + 0.5 to round intead of floor
+	tempOut >>= FIXED_POINT_POS;	// Round to int
+	tempOut += 0x7fff - (uint16_t) (60 * INT_PER_NOTE);	// C4 is middle note -> 60 = 0V
+	
+	// Add bend
+	tempOut += currentBend;
+	
+	if (tempOut < 0){
+		tempOut = 0;
+	} else if (tempOut > 0xffff){
+		tempOut = 0xffff;
+	}
+	
 	return (uint16_t) tempOut;
 }
 
@@ -494,7 +510,11 @@ void GO_MIDI_Voice(MIDI2_voice_t* msg){
 					}
 				}
 			} else if (msg->status == MIDI2_VOICE_E::Pitchbend){
-				currentBend = msg->data >> 16;
+				uint16_t  tempBend = Rescale_16bit(msg->data >> 16, minBend, maxBend);
+				currentBend = tempBend - 0x7fff;
+				
+				
+				
 				// update outputs
 				for (uint8_t x = 0; x < 4; x++){
 					if (keyLanes[x].state != keyLanes::KeyPlaying){
