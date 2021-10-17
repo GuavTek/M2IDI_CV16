@@ -66,14 +66,14 @@ CAN_FIFO_t CAN_FIFO2 = {
 
 
 const spi_config_t SPI_CONF = {
-	.sercomNum = 2,
+	.sercomNum = 4,
 	.dipoVal = 0x0,
 	.dopoVal = 0x1,
 	.speed = 8000000,
 	.pin_cs = PIN_PA13,
-	.pinmux_mosi = PINMUX_PA14C_SERCOM2_PAD2,
-	.pinmux_miso = PINMUX_PA12C_SERCOM2_PAD0,
-	.pinmux_sck = PINMUX_PA15C_SERCOM2_PAD3
+	.pinmux_mosi = PINMUX_PA14D_SERCOM4_PAD2,
+	.pinmux_miso = PINMUX_PA12D_SERCOM4_PAD0,
+	.pinmux_sck = PINMUX_PA15D_SERCOM4_PAD3
 };
 
 const CAN_Config_t CAN_CONF = {

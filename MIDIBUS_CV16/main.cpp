@@ -18,7 +18,7 @@
 
 void RTC_Init();
 
-MCP2517_C CAN(SERCOM2);
+MCP2517_C CAN(SERCOM4);
 
 MIDI_C MIDI(2);
 
@@ -37,6 +37,7 @@ int main(void)
 	MIDI.Set_handler(GO_MIDI_Voice);
 	MIDI.Set_handler(GO_MIDI_Realtime);
 	
+	NVIC_EnableIRQ(SERCOM4_IRQn);
 	system_interrupt_enable_global();
 	
     /* Replace with your application code */
@@ -75,6 +76,8 @@ void CAN_Receive(CAN_Rx_msg_t* msgIn){
 	MIDI.Decode(msgIn->payload, length);
 }
 
+// Sercom4 interrupt leads to sercom2 handler
+// For some reason
 void SERCOM2_Handler(){
 	CAN.Handler();
 }
