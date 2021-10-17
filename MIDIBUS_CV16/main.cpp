@@ -12,6 +12,9 @@
 #include "menu.h"
 #include "PWM.h"
 #include "GenericOutput.h"
+#include "MIDI_Driver.h"
+#include "MCP2517.h"
+#include "MIDI_Config.h"
 
 void RTC_Init();
 
