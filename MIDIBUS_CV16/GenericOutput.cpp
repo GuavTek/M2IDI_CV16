@@ -112,6 +112,36 @@ inline void Stop_Note(uint8_t lane){
 	keyLanes[lane].state = keyLanes::KeyIdle;
 }
 
+inline void Stop_All_Notes(){
+	queueIndex = 0;
+	for(uint8_t x = 0; x < 4; x++){
+		if (keyLanes[x].state == keyLanes::KeyPlaying){
+			keyLanes[x].state = keyLanes::KeyIdle;
+		}
+		for (uint8_t y = 0; y < 4; y++){
+			if (outMatrix[x][y].type == GOType_t::Envelope){
+				outMatrix[x][y].currentOut = outMatrix[x][y].min_range;
+				outMatrix[x][y].envelope_stage = 0;
+			} else if (outMatrix[x][y].type == GOType_t::Gate){
+				outMatrix[x][y].currentOut = outMatrix[x][y].min_range;
+			}
+		}
+	}
+}
+
+inline void Reset_All_Controllers(){
+	for(uint8_t x = 0; x < 4; x++){
+		for (uint8_t y = 0; y < 4; y++){
+			if (outMatrix[x][y].type == GOType_t::DC){
+				if (outMatrix[x][y].dc_source.sourceType == ctrlType_t::CC){
+					outMatrix[x][y].currentOut = outMatrix[x][y].min_range;
+				}
+				
+			}
+		}
+	}
+}
+
 void GO_Init(){
 	// Set default values
 	PWM_Set(0,0, 0x3fff);
@@ -297,6 +327,17 @@ void GO_MIDI_Voice(MIDI2_voice_t* msg){
 	
 	// Search outputs
 	if (msgType == ctrlType_t::CC){
+		if (msg->status == MIDI2_VOICE_E::CControl){
+			if ((msg->controller == 120)||(msg->controller == 123)){
+				Stop_All_Notes();
+				return;
+			} else if (msg->controller == 121){
+				Reset_All_Controllers();
+				return;
+			}
+		}
+		
+		
 		for (uint8_t x = 0; x < 4; x++){
 			for (uint8_t y = 0; y < 4; y++){
 				// Skip if no CC is mapped
