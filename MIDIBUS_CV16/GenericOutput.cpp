@@ -617,7 +617,7 @@ void GO_MIDI_Realtime(MIDI2_com_t* msg){
 					outMatrix[x][y].freq_count++;
 					if (outMatrix[x][y].freq_count > outMatrix[x][y].freq_current){
 						outMatrix[x][y].freq_count = 0;
-						outMatrix[x][y].currentOut = (outMatrix[x][y].currentOut == 0xffff) ? 0x3fff : 0xffff;
+						outMatrix[x][y].currentOut = (outMatrix[x][y].currentOut == outMatrix[x][y].max_range) ? outMatrix[x][y].min_range : outMatrix[x][y].max_range;
 					}
 				}
 			}
