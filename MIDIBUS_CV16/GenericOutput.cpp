@@ -144,29 +144,22 @@ inline void Reset_All_Controllers(){
 
 void GO_Init(){
 	// Set default values
-	PWM_Set(0,0, 0x3fff);
-	PWM_Set(0,1, 0x3fff);
-	PWM_Set(0,2, 0x3fff);
-	PWM_Set(0,3, 0x3fff);
-	PWM_Set(1,0, 0x3fff);
-	PWM_Set(1,1, 0x3fff);
-	PWM_Set(1,2, 0x3fff);
-	PWM_Set(1,3, 0x3fff);
-	PWM_Set(2,0, 0x3fff);
-	PWM_Set(2,1, 0x3fff);
-	PWM_Set(2,2, 0x3fff);
-	PWM_Set(2,3, 0x3fff);
-	PWM_Set(3,0, 0x3fff);
-	PWM_Set(3,1, 0x3fff);
-	PWM_Set(3,2, 0x3fff);
-	PWM_Set(3,3, 0x3fff);
-	
-	outMatrix[2][2].type = GOType_t::LFO;
-	outMatrix[2][2].shape = WavShape_t::Sawtooth;
-	outMatrix[2][2].max_range = 0xffff;
-	outMatrix[2][2].min_range = 0;
-	outMatrix[2][2].direction = -1;
-	outMatrix[2][2].freq_current = 0x0010 << 16;
+	outMatrix[0][0].currentOut = 0x7000;
+	outMatrix[0][1].currentOut = 0x7000;
+	outMatrix[0][2].currentOut = 0x7000;
+	outMatrix[0][3].currentOut = 0x7000;
+	outMatrix[1][0].currentOut = 0x7000;
+	outMatrix[1][1].currentOut = 0x7000;
+	outMatrix[1][2].currentOut = 0x7000;
+	outMatrix[1][3].currentOut = 0x7000;
+	outMatrix[2][0].currentOut = 0x7000;
+	outMatrix[2][1].currentOut = 0x7000;
+	outMatrix[2][2].currentOut = 0x7000;
+	outMatrix[2][3].currentOut = 0x7000;
+	outMatrix[3][0].currentOut = 0x7000;
+	outMatrix[3][1].currentOut = 0x7000;
+	outMatrix[3][2].currentOut = 0x7000;
+	outMatrix[3][3].currentOut = 0x7000;
 	
 	outMatrix[1][3].type = GOType_t::LFO;
 	outMatrix[1][3].shape = WavShape_t::Sawtooth;
@@ -181,6 +174,12 @@ void GO_Init(){
 	outMatrix[1][2].min_range = 0x3fff;
 	outMatrix[1][2].direction = -1;
 	outMatrix[1][2].freq_current = 0x0010 << 16;
+	outMatrix[1][2].freq_max = 0x01000000;
+	outMatrix[1][2].freq_min = 0x00001000;
+	outMatrix[1][2].freq_source.channel = 1;
+	outMatrix[1][2].freq_source.sourceNum = 10;
+	outMatrix[1][2].freq_source.sourceType = ctrlType_t::CC;
+	hasCC[1][2] = 1;
 	
 	outMatrix[0][1].type = GOType_t::LFO;
 	outMatrix[0][1].shape = WavShape_t::Square;
@@ -201,16 +200,35 @@ void GO_Init(){
 	keyLanes[1].state = keyLanes::KeyNone;
 	keyLanes[2].state = keyLanes::KeyNone;
 	keyLanes[3].state = keyLanes::KeyIdle;
+	
 	outMatrix[3][0].type = GOType_t::DC;
 	outMatrix[3][0].dc_source.sourceType = ctrlType_t::Key;
 	outMatrix[3][0].dc_source.channel = 1;
 	outMatrix[3][0].max_range = 0xffff;
 	outMatrix[3][0].min_range = 0;
+	
 	outMatrix[3][1].type = GOType_t::Gate;
 	outMatrix[3][1].dc_source.sourceType = ctrlType_t::Key;
 	outMatrix[3][1].dc_source.channel = 1;
 	outMatrix[3][1].max_range = 0xffff;
 	outMatrix[3][1].min_range = 0;
+	
+	outMatrix[3][2].type = GOType_t::Envelope;
+	outMatrix[3][2].env_source.sourceType = ctrlType_t::Key;
+	outMatrix[3][2].env_source.channel = 1;
+	outMatrix[3][2].max_range = 0xffff;
+	outMatrix[3][2].min_range = 0;
+	outMatrix[3][2].envelope_stage = 0;
+	outMatrix[3][2].att_current = 50;
+	outMatrix[3][2].att_max = 1;
+	outMatrix[3][2].att_min = 255;
+	outMatrix[3][2].att_source.sourceType = ctrlType_t::CC;
+	outMatrix[3][2].att_source.channel = 1;
+	outMatrix[3][2].att_source.sourceNum = 66;
+	outMatrix[3][2].dec_current = 30;
+	outMatrix[3][2].sus_current = 0xA000;
+	outMatrix[3][2].rel_current = 100;
+	hasCC[3][2] = 1;
 	
 	// Load setup from NVM
 	
