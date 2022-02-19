@@ -6,6 +6,7 @@
  */ 
 
 #include "GenericOutput.h"
+#include "LEDMatrix.h"
 #include "PWM.h"
 #include "MIDI_Driver.h"
 
@@ -34,6 +35,8 @@ struct {
 bool hasCC[4][4];
 
 uint8_t group = 1;
+
+#define ENV_MANTISSA 7
 
 #define INT_PER_VOLT 6553.6
 #define INT_PER_NOTE INT_PER_VOLT/12
@@ -86,7 +89,7 @@ inline void Start_Note(uint8_t lane, uint8_t note, uint16_t velocity){
 			}
 		} else if (outMatrix[lane][y].type == GOType_t::Envelope){
 			if (keyChannel == outMatrix[lane][y].env_source.channel){
-				outMatrix[lane][y].currentOut = outMatrix[lane][y].min_range;
+				outMatrix[lane][y].outCount = outMatrix[lane][y].min_range << 16;
 				outMatrix[lane][y].envelope_stage = 1;
 			}
 		}
@@ -219,35 +222,43 @@ void GO_Init(){
 	outMatrix[3][2].max_range = 0xffff;
 	outMatrix[3][2].min_range = 0;
 	outMatrix[3][2].envelope_stage = 0;
-	outMatrix[3][2].att_current = 50;
+	outMatrix[3][2].att_current = 400;
 	outMatrix[3][2].att_max = 1;
 	outMatrix[3][2].att_min = 255;
 	outMatrix[3][2].att_source.sourceType = ctrlType_t::CC;
 	outMatrix[3][2].att_source.channel = 1;
 	outMatrix[3][2].att_source.sourceNum = 66;
-	outMatrix[3][2].dec_current = 30;
+	outMatrix[3][2].dec_current = 600;
 	outMatrix[3][2].sus_current = 0xA000;
-	outMatrix[3][2].rel_current = 100;
+	outMatrix[3][2].rel_current = 0xffff;
 	hasCC[3][2] = 1;
 	
 	// Load setup from NVM
 	
+	
+	// Fill out utility variables
+	for (uint8_t x = 0; x < 4; x++){
+		for (uint8_t y = 0; y < 4; y++){
+			
+		}
+	}
+	
 }
 
 void GO_LFO(GenOut_t* go){
-	go->freq_count += go->direction * go->freq_current;
-	uint16_t tempOut = go->freq_count >> 16;
+	go->outCount += go->direction * go->freq_current;
+	uint16_t tempOut = go->outCount >> 16;
 	if (go->shape == WavShape_t::Sawtooth){
-		uint32_t remain = go->freq_count - (go->min_range << 16);
+		uint32_t remain = go->outCount - (go->min_range << 16);
 		if (remain < go->freq_current){
 			uint32_t diff = go->freq_current - remain;
-			go->freq_count = go->max_range - diff;
+			go->outCount = go->max_range - diff;
 		}
-		go->currentOut = go->freq_count >> 16;
+		go->currentOut = go->outCount >> 16;
 	} else if (go->shape == WavShape_t::Square){
-			uint32_t remain = 0xffffffff - go->freq_count;
+			uint32_t remain = 0xffffffff - go->outCount;
 			if (remain < go->freq_current){
-				go->freq_count = go->freq_current - remain;
+				go->outCount = go->freq_current - remain;
 				if (go->currentOut == go->min_range){
 					go->currentOut = go->max_range;
 				} else {
@@ -256,66 +267,68 @@ void GO_LFO(GenOut_t* go){
 			}
 	} else {
 		if (go->direction == 1){
-			uint32_t remain = (go->max_range << 16) - go->freq_count;
+			uint32_t remain = (go->max_range << 16) - go->outCount;
 			if (remain < go->freq_current){
 				// change direction
 				go->direction = -1;
 				uint32_t diff = go->freq_current - remain;
-				go->freq_count = go->max_range - diff;
+				go->outCount = go->max_range - diff;
 			}
 		} else {
-			uint32_t remain = go->freq_count - (go->min_range << 16);
+			uint32_t remain = go->outCount - (go->min_range << 16);
 			if (remain < go->freq_current){
 				go->direction = 1;
 				uint32_t diff = go->freq_current - remain;
-				go->freq_count = go->min_range + diff;
+				go->outCount = go->min_range + diff;
 			}
 		}
 		
 		if (go->shape == WavShape_t::Sine){
-			go->currentOut = TriSine(go->freq_count >> 16);
+			go->currentOut = TriSine(go->outCount >> 16);
 		} else {
-			go->currentOut = go->freq_count >> 16;
+			go->currentOut = go->outCount >> 16;
 		}
 	}
 }
 
 void GO_ENV(GenOut_t* go){
 	switch(go->envelope_stage){
-		uint16_t remain;
+		uint32_t remain;
 		case 1:
 			// attack
-			remain = go->max_range - go->currentOut;
+			remain = (go->max_range - go->currentOut) << ENV_MANTISSA;
 			if (remain < go->att_current){
 				go->envelope_stage++;
-				go->currentOut = go->max_range;
+				go->outCount = go->max_range << 16;
 			} else {
-				go->currentOut += go->att_current;
+				go->outCount += go->att_current << (16 - ENV_MANTISSA);
 			}
 			break;
 		case 2:
 			// decay
-			remain = go->currentOut - go->sus_current;
+			remain = (go->currentOut - go->sus_current) << ENV_MANTISSA;
 			if (remain < go->dec_current){
 				go->envelope_stage++;
-				go->currentOut = go->sus_current;
+				go->outCount = go->sus_current << 16;
 			} else {
-				go->currentOut -= go->dec_current;
+				go->outCount -= go->dec_current << (16 - ENV_MANTISSA);
 			}
 			break;
 		case 4:
 			// release
-			remain = go->currentOut - go->min_range;
+			remain = (go->currentOut - go->min_range) << ENV_MANTISSA;
 			if (remain < go->rel_current){
 				go->envelope_stage = 0;
-				go->currentOut = go->min_range;
+				go->outCount = go->min_range << 16;
 			} else {
-				go->currentOut -= go->rel_current;
+				go->outCount -= go->rel_current << (16 - ENV_MANTISSA);
 			}
 			break;
 		default:
 			break;
 	}
+	// Set new value
+	go->currentOut = go->outCount >> 16;
 }
 
 void GO_MIDI_Voice(MIDI2_voice_t* msg){
@@ -378,13 +391,15 @@ void GO_MIDI_Voice(MIDI2_voice_t* msg){
 						if (outMatrix[x][y].att_source.channel == msg->channel){
 							if (outMatrix[x][y].att_source.sourceNum == controlNum){
 								if (outMatrix[x][y].att_max > outMatrix[x][y].att_min){
-									uint32_t span = ((outMatrix[x][y].att_max - outMatrix[x][y].att_min) << 8) + 0x10000;
+									uint32_t diff = outMatrix[x][y].att_max - outMatrix[x][y].att_min;
+									uint32_t span = diff * 0x0101 + 1;
 									uint32_t scaled = (msg->data >> 16) * span;
-									outMatrix[x][y].att_current = (scaled >> 16) + outMatrix[x][y].att_min;
+									outMatrix[x][y].att_current = 0x0101 * outMatrix[x][y].att_min + (scaled >> 16);
 								} else {
-									uint32_t span = ((outMatrix[x][y].att_min - outMatrix[x][y].att_max) << 8) + 0x10000;
+									uint32_t diff = outMatrix[x][y].att_min - outMatrix[x][y].att_max;
+									uint32_t span = diff * 0x0101 + 1;
 									uint32_t scaled = (msg->data >> 16) * span;
-									outMatrix[x][y].att_current = outMatrix[x][y].att_max - (scaled >> 16);
+									outMatrix[x][y].att_current = 0x0101 * outMatrix[x][y].att_min - (scaled >> 16);
 								}
 							}
 						}	
@@ -393,13 +408,15 @@ void GO_MIDI_Voice(MIDI2_voice_t* msg){
 						if (outMatrix[x][y].dec_source.channel == msg->channel){
 							if (outMatrix[x][y].dec_source.sourceNum == controlNum){
 								if (outMatrix[x][y].dec_max > outMatrix[x][y].dec_min){
-									uint32_t span = ((outMatrix[x][y].dec_max - outMatrix[x][y].dec_min) << 8) + 0x10000;
+									uint32_t diff = outMatrix[x][y].dec_max - outMatrix[x][y].dec_min;
+									uint32_t span = diff * 0x0101 + 1;
 									uint32_t scaled = (msg->data >> 16) * span;
-									outMatrix[x][y].dec_current = (scaled >> 16) + outMatrix[x][y].dec_min;
+									outMatrix[x][y].dec_current = 0x0101 * outMatrix[x][y].dec_min + (scaled >> 16);
 								} else {
-									uint32_t span = ((outMatrix[x][y].dec_min - outMatrix[x][y].dec_max) << 8) + 0x10000;
+									uint32_t diff = outMatrix[x][y].dec_min - outMatrix[x][y].dec_max;
+									uint32_t span = diff * 0x0101 + 1;
 									uint32_t scaled = (msg->data >> 16) * span;
-									outMatrix[x][y].dec_current = outMatrix[x][y].dec_max - (scaled >> 16);
+									outMatrix[x][y].dec_current = 0x0101 * outMatrix[x][y].dec_min - (scaled >> 16);
 								}
 							}
 						}
@@ -408,13 +425,15 @@ void GO_MIDI_Voice(MIDI2_voice_t* msg){
 						if (outMatrix[x][y].sus_source.channel == msg->channel){
 							if (outMatrix[x][y].sus_source.sourceNum == controlNum){
 								if (outMatrix[x][y].sus_max > outMatrix[x][y].sus_min){
-									uint32_t span = ((outMatrix[x][y].sus_max - outMatrix[x][y].sus_min) << 8) + 0x10000;
+									uint32_t diff = outMatrix[x][y].sus_max - outMatrix[x][y].sus_min;
+									uint32_t span = diff * 0x0101 + 1;
 									uint32_t scaled = (msg->data >> 16) * span;
-									outMatrix[x][y].sus_current = (scaled >> 16) + outMatrix[x][y].sus_min;
+									outMatrix[x][y].sus_current = 0x0101 * outMatrix[x][y].sus_min + (scaled >> 16);
 								} else {
-									uint32_t span = ((outMatrix[x][y].sus_min - outMatrix[x][y].sus_max) << 8) + 0x10000;
+									uint32_t diff = outMatrix[x][y].sus_min - outMatrix[x][y].sus_max;
+									uint32_t span = diff * 0x0101 + 1;
 									uint32_t scaled = (msg->data >> 16) * span;
-									outMatrix[x][y].sus_current = outMatrix[x][y].sus_max - (scaled >> 16);
+									outMatrix[x][y].sus_current = 0x0101 * outMatrix[x][y].sus_min - (scaled >> 16);
 								}
 							}
 						}
@@ -423,13 +442,15 @@ void GO_MIDI_Voice(MIDI2_voice_t* msg){
 						if (outMatrix[x][y].rel_source.channel == msg->channel){
 							if (outMatrix[x][y].rel_source.sourceNum == controlNum){
 								if (outMatrix[x][y].rel_max > outMatrix[x][y].rel_min){
-									uint32_t span = ((outMatrix[x][y].rel_max - outMatrix[x][y].rel_min) << 8) + 0x10000;
+									uint32_t diff = outMatrix[x][y].rel_max - outMatrix[x][y].rel_min;
+									uint32_t span = diff * 0x0101 + 1;
 									uint32_t scaled = (msg->data >> 16) * span;
-									outMatrix[x][y].rel_current = (scaled >> 16) + outMatrix[x][y].rel_min;
+									outMatrix[x][y].rel_current = 0x0101 * outMatrix[x][y].rel_min + (scaled >> 16);
 								} else {
-									uint32_t span = ((outMatrix[x][y].rel_min - outMatrix[x][y].rel_max) << 8) + 0x10000;
+									uint32_t diff = outMatrix[x][y].rel_min - outMatrix[x][y].rel_max;
+									uint32_t span = diff * 0x0101 + 1;
 									uint32_t scaled = (msg->data >> 16) * span;
-									outMatrix[x][y].rel_current = outMatrix[x][y].rel_max - (scaled >> 16);
+									outMatrix[x][y].rel_current = 0x0101 * outMatrix[x][y].rel_min - (scaled >> 16);
 								}
 							}
 						}
@@ -614,9 +635,9 @@ void GO_MIDI_Realtime(MIDI2_com_t* msg){
 		for (uint8_t x = 0; x < 4; x++){
 			for (uint8_t y = 0; y < 4; y++){
 				if (outMatrix[x][y].type == GOType_t::CLK){
-					outMatrix[x][y].freq_count++;
-					if (outMatrix[x][y].freq_count > outMatrix[x][y].freq_current){
-						outMatrix[x][y].freq_count = 0;
+					outMatrix[x][y].outCount++;
+					if (outMatrix[x][y].outCount > outMatrix[x][y].freq_current){
+						outMatrix[x][y].outCount = 0;
 						outMatrix[x][y].currentOut = (outMatrix[x][y].currentOut == outMatrix[x][y].max_range) ? outMatrix[x][y].min_range : outMatrix[x][y].max_range;
 					}
 				}

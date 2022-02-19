@@ -84,10 +84,10 @@ struct GenOut_base {
 // The data to store in RAM
 struct GenOut_t : GenOut_base {
 	uint16_t currentOut;
+	uint32_t outCount;
 	union {
 		struct {
 			uint32_t freq_current;
-			uint32_t freq_count;
 			int8_t direction;
 		};
 		
