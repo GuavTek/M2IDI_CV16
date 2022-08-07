@@ -62,19 +62,9 @@ struct GenOut_base {
 		
 		// Envelope
 		struct {
+			uint8_t env_num;
 			struct ctrlSource_t env_source;
-			uint8_t att_max;
-			uint8_t att_min;
-			struct ctrlSource_t att_source;
-			uint8_t dec_max;
-			uint8_t dec_min;
-			struct ctrlSource_t dec_source;
-			uint16_t sus_max;
-			uint16_t sus_min;
-			struct ctrlSource_t sus_source;
-			uint8_t rel_max;
-			uint8_t rel_min;
-			struct ctrlSource_t rel_source;
+			
 		};
 		
 	};
@@ -93,12 +83,32 @@ struct GenOut_t : GenOut_base {
 		
 		struct {
 			uint8_t envelope_stage;
-			uint16_t att_current;
-			uint16_t dec_current;
-			uint16_t sus_current;
-			uint16_t rel_current;
 		};
 	};
+};
+
+// Envelope data saved in NVM
+struct Env_base {
+	uint8_t att_max;
+	uint8_t att_min;
+	struct ctrlSource_t att_source;
+	uint8_t dec_max;
+	uint8_t dec_min;
+	struct ctrlSource_t dec_source;
+	uint8_t sus_max;
+	uint8_t sus_min;
+	struct ctrlSource_t sus_source;
+	uint8_t rel_max;
+	uint8_t rel_min;
+	struct ctrlSource_t rel_source;
+};
+
+// Envelope data to store in RAM
+struct Env_t : Env_base {
+	uint16_t att_current;
+	uint16_t dec_current;
+	uint16_t sus_current;
+	uint16_t rel_current;
 };
 
 

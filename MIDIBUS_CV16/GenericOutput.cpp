@@ -11,8 +11,9 @@
 #include "MIDI_Driver.h"
 
 GenOut_t outMatrix[4][4];
+Env_t envelopes[4];
 
-struct keyLanes{
+struct keyLanes_t {
 	uint8_t note;
 	enum {
 		KeyNone,
@@ -32,7 +33,8 @@ struct {
 	
 } noteQueue[32];
 
-bool hasCC[4][4];
+// hasCC[4] is for envelopes
+bool hasCC[5][4];
 
 uint8_t group = 1;
 
@@ -95,7 +97,7 @@ inline void Start_Note(uint8_t lane, uint8_t note, uint16_t velocity){
 		}
 	}
 	
-	keyLanes[lane].state = keyLanes::KeyPlaying;
+	keyLanes[lane].state = keyLanes_t::KeyPlaying;
 	keyLanes[lane].note = note;
 }
 
@@ -112,14 +114,14 @@ inline void Stop_Note(uint8_t lane){
 		}
 	}
 	
-	keyLanes[lane].state = keyLanes::KeyIdle;
+	keyLanes[lane].state = keyLanes_t::KeyIdle;
 }
 
 inline void Stop_All_Notes(){
 	queueIndex = 0;
 	for(uint8_t x = 0; x < 4; x++){
-		if (keyLanes[x].state == keyLanes::KeyPlaying){
-			keyLanes[x].state = keyLanes::KeyIdle;
+		if (keyLanes[x].state == keyLanes_t::KeyPlaying){
+			keyLanes[x].state = keyLanes_t::KeyIdle;
 		}
 		for (uint8_t y = 0; y < 4; y++){
 			if (outMatrix[x][y].type == GOType_t::Envelope){
@@ -199,10 +201,10 @@ void GO_Init(){
 	outMatrix[0][2].freq_current = 0x0020 << 16;
 	
 	keyChannel = 1;
-	keyLanes[0].state = keyLanes::KeyNone;
-	keyLanes[1].state = keyLanes::KeyNone;
-	keyLanes[2].state = keyLanes::KeyNone;
-	keyLanes[3].state = keyLanes::KeyIdle;
+	keyLanes[0].state = keyLanes_t::KeyNone;
+	keyLanes[1].state = keyLanes_t::KeyNone;
+	keyLanes[2].state = keyLanes_t::KeyNone;
+	keyLanes[3].state = keyLanes_t::KeyIdle;
 	
 	outMatrix[3][0].type = GOType_t::DC;
 	outMatrix[3][0].dc_source.sourceType = ctrlType_t::Key;
@@ -217,21 +219,23 @@ void GO_Init(){
 	outMatrix[3][1].min_range = 0;
 	
 	outMatrix[3][2].type = GOType_t::Envelope;
-	outMatrix[3][2].env_source.sourceType = ctrlType_t::Key;
-	outMatrix[3][2].env_source.channel = 1;
+	outMatrix[3][2].env_num = 0;
 	outMatrix[3][2].max_range = 0xffff;
 	outMatrix[3][2].min_range = 0;
 	outMatrix[3][2].envelope_stage = 0;
-	outMatrix[3][2].att_current = 400;
-	outMatrix[3][2].att_max = 1;
-	outMatrix[3][2].att_min = 255;
-	outMatrix[3][2].att_source.sourceType = ctrlType_t::CC;
-	outMatrix[3][2].att_source.channel = 1;
-	outMatrix[3][2].att_source.sourceNum = 66;
-	outMatrix[3][2].dec_current = 600;
-	outMatrix[3][2].sus_current = 0xA000;
-	outMatrix[3][2].rel_current = 0xffff;
-	hasCC[3][2] = 1;
+	outMatrix[3][2].env_source.sourceType = ctrlType_t::Key;
+	outMatrix[3][2].env_source.channel = 1;
+	
+	envelopes[0].att_current = 400;
+	envelopes[0].att_max = 1;
+	envelopes[0].att_min = 255;
+	envelopes[0].att_source.sourceType = ctrlType_t::CC;
+	envelopes[0].att_source.channel = 1;
+	envelopes[0].att_source.sourceNum = 66;
+	envelopes[0].dec_current = 600;
+	envelopes[0].sus_current = 0xA000;
+	envelopes[0].rel_current = 0xffff;
+	hasCC[4][0] = 1;
 	
 	// Load setup from NVM
 	
@@ -292,36 +296,37 @@ void GO_LFO(GenOut_t* go){
 }
 
 void GO_ENV(GenOut_t* go){
+	Env_t* tempEnv = &envelopes[go->env_num];
 	switch(go->envelope_stage){
 		uint32_t remain;
 		case 1:
 			// attack
 			remain = (go->max_range - go->currentOut) << ENV_MANTISSA;
-			if (remain < go->att_current){
+			if (remain < tempEnv->att_current){
 				go->envelope_stage++;
 				go->outCount = go->max_range << 16;
 			} else {
-				go->outCount += go->att_current << (16 - ENV_MANTISSA);
+				go->outCount += tempEnv->att_current << (16 - ENV_MANTISSA);
 			}
 			break;
 		case 2:
 			// decay
-			remain = (go->currentOut - go->sus_current) << ENV_MANTISSA;
-			if (remain < go->dec_current){
+			remain = (go->currentOut - tempEnv->sus_current) << ENV_MANTISSA;
+			if (remain < tempEnv->dec_current){
 				go->envelope_stage++;
-				go->outCount = go->sus_current << 16;
+				go->outCount = tempEnv->sus_current << 16;
 			} else {
-				go->outCount -= go->dec_current << (16 - ENV_MANTISSA);
+				go->outCount -= tempEnv->dec_current << (16 - ENV_MANTISSA);
 			}
 			break;
 		case 4:
 			// release
 			remain = (go->currentOut - go->min_range) << ENV_MANTISSA;
-			if (remain < go->rel_current){
+			if (remain < tempEnv->rel_current){
 				go->envelope_stage = 0;
 				go->outCount = go->min_range << 16;
 			} else {
-				go->outCount -= go->rel_current << (16 - ENV_MANTISSA);
+				go->outCount -= tempEnv->rel_current << (16 - ENV_MANTISSA);
 			}
 			break;
 		default:
@@ -385,76 +390,6 @@ void GO_MIDI_Voice(MIDI2_voice_t* msg){
 							outMatrix[x][y].currentOut = (scaled >> 16) + outMatrix[x][y].min_range;
 						}
 					}
-				} else if (outMatrix[x][y].type == GOType_t::Envelope){
-					// Envelope
-					if (outMatrix[x][y].att_source.sourceType == ctrlType_t::CC){
-						if (outMatrix[x][y].att_source.channel == msg->channel){
-							if (outMatrix[x][y].att_source.sourceNum == controlNum){
-								if (outMatrix[x][y].att_max > outMatrix[x][y].att_min){
-									uint32_t diff = outMatrix[x][y].att_max - outMatrix[x][y].att_min;
-									uint32_t span = diff * 0x0101 + 1;
-									uint32_t scaled = (msg->data >> 16) * span;
-									outMatrix[x][y].att_current = 0x0101 * outMatrix[x][y].att_min + (scaled >> 16);
-								} else {
-									uint32_t diff = outMatrix[x][y].att_min - outMatrix[x][y].att_max;
-									uint32_t span = diff * 0x0101 + 1;
-									uint32_t scaled = (msg->data >> 16) * span;
-									outMatrix[x][y].att_current = 0x0101 * outMatrix[x][y].att_min - (scaled >> 16);
-								}
-							}
-						}	
-					}
-					if (outMatrix[x][y].dec_source.sourceType == ctrlType_t::CC){
-						if (outMatrix[x][y].dec_source.channel == msg->channel){
-							if (outMatrix[x][y].dec_source.sourceNum == controlNum){
-								if (outMatrix[x][y].dec_max > outMatrix[x][y].dec_min){
-									uint32_t diff = outMatrix[x][y].dec_max - outMatrix[x][y].dec_min;
-									uint32_t span = diff * 0x0101 + 1;
-									uint32_t scaled = (msg->data >> 16) * span;
-									outMatrix[x][y].dec_current = 0x0101 * outMatrix[x][y].dec_min + (scaled >> 16);
-								} else {
-									uint32_t diff = outMatrix[x][y].dec_min - outMatrix[x][y].dec_max;
-									uint32_t span = diff * 0x0101 + 1;
-									uint32_t scaled = (msg->data >> 16) * span;
-									outMatrix[x][y].dec_current = 0x0101 * outMatrix[x][y].dec_min - (scaled >> 16);
-								}
-							}
-						}
-					}
-					if (outMatrix[x][y].sus_source.sourceType == ctrlType_t::CC){
-						if (outMatrix[x][y].sus_source.channel == msg->channel){
-							if (outMatrix[x][y].sus_source.sourceNum == controlNum){
-								if (outMatrix[x][y].sus_max > outMatrix[x][y].sus_min){
-									uint32_t diff = outMatrix[x][y].sus_max - outMatrix[x][y].sus_min;
-									uint32_t span = diff * 0x0101 + 1;
-									uint32_t scaled = (msg->data >> 16) * span;
-									outMatrix[x][y].sus_current = 0x0101 * outMatrix[x][y].sus_min + (scaled >> 16);
-								} else {
-									uint32_t diff = outMatrix[x][y].sus_min - outMatrix[x][y].sus_max;
-									uint32_t span = diff * 0x0101 + 1;
-									uint32_t scaled = (msg->data >> 16) * span;
-									outMatrix[x][y].sus_current = 0x0101 * outMatrix[x][y].sus_min - (scaled >> 16);
-								}
-							}
-						}
-					}
-					if (outMatrix[x][y].rel_source.sourceType == ctrlType_t::CC){
-						if (outMatrix[x][y].rel_source.channel == msg->channel){
-							if (outMatrix[x][y].rel_source.sourceNum == controlNum){
-								if (outMatrix[x][y].rel_max > outMatrix[x][y].rel_min){
-									uint32_t diff = outMatrix[x][y].rel_max - outMatrix[x][y].rel_min;
-									uint32_t span = diff * 0x0101 + 1;
-									uint32_t scaled = (msg->data >> 16) * span;
-									outMatrix[x][y].rel_current = 0x0101 * outMatrix[x][y].rel_min + (scaled >> 16);
-								} else {
-									uint32_t diff = outMatrix[x][y].rel_min - outMatrix[x][y].rel_max;
-									uint32_t span = diff * 0x0101 + 1;
-									uint32_t scaled = (msg->data >> 16) * span;
-									outMatrix[x][y].rel_current = 0x0101 * outMatrix[x][y].rel_min - (scaled >> 16);
-								}
-							}
-						}
-					}
 				} else if (outMatrix[x][y].type == GOType_t::LFO){
 					// Wave generation
 					if (outMatrix[x][y].freq_source.channel == msg->channel){
@@ -466,7 +401,82 @@ void GO_MIDI_Voice(MIDI2_voice_t* msg){
 					}
 				}	
 			}
-		}	
+		}
+		
+		for (uint8_t i = 0; i < 4; i++){
+			if (!hasCC[4][i]){
+				continue;
+			}
+			
+			if (envelopes[i].att_source.sourceType == ctrlType_t::CC){
+				if (envelopes[i].att_source.channel == msg->channel){
+					if (envelopes[i].att_source.sourceNum == controlNum){
+						if (envelopes[i].att_max > envelopes[i].att_min){
+							uint32_t diff = envelopes[i].att_max - envelopes[i].att_min;
+							uint32_t span = diff * 0x0101 + 1;
+							uint32_t scaled = (msg->data >> 16) * span;
+							envelopes[i].att_current = 0x0101 * envelopes[i].att_min + (scaled >> 16);
+						} else {
+							uint32_t diff = envelopes[i].att_min - envelopes[i].att_max;
+							uint32_t span = diff * 0x0101 + 1;
+							uint32_t scaled = (msg->data >> 16) * span;
+							envelopes[i].att_current = 0x0101 * envelopes[i].att_min - (scaled >> 16);
+						}
+					}
+				}
+			}
+			if (envelopes[i].dec_source.sourceType == ctrlType_t::CC){
+				if (envelopes[i].dec_source.channel == msg->channel){
+					if (envelopes[i].dec_source.sourceNum == controlNum){
+						if (envelopes[i].dec_max > envelopes[i].dec_min){
+							uint32_t diff = envelopes[i].dec_max - envelopes[i].dec_min;
+							uint32_t span = diff * 0x0101 + 1;
+							uint32_t scaled = (msg->data >> 16) * span;
+							envelopes[i].dec_current = 0x0101 * envelopes[i].dec_min + (scaled >> 16);
+						} else {
+							uint32_t diff = envelopes[i].dec_min - envelopes[i].dec_max;
+							uint32_t span = diff * 0x0101 + 1;
+							uint32_t scaled = (msg->data >> 16) * span;
+							envelopes[i].dec_current = 0x0101 * envelopes[i].dec_min - (scaled >> 16);
+						}
+					}
+				}
+			}
+			if (envelopes[i].sus_source.sourceType == ctrlType_t::CC){
+				if (envelopes[i].sus_source.channel == msg->channel){
+					if (envelopes[i].sus_source.sourceNum == controlNum){
+						if (envelopes[i].sus_max > envelopes[i].sus_min){
+							uint32_t diff = envelopes[i].sus_max - envelopes[i].sus_min;
+							uint32_t span = diff * 0x0101 + 1;
+							uint32_t scaled = (msg->data >> 16) * span;
+							envelopes[i].sus_current = 0x0101 * envelopes[i].sus_min + (scaled >> 16);
+						} else {
+							uint32_t diff = envelopes[i].sus_min - envelopes[i].sus_max;
+							uint32_t span = diff * 0x0101 + 1;
+							uint32_t scaled = (msg->data >> 16) * span;
+							envelopes[i].sus_current = 0x0101 * envelopes[i].sus_min - (scaled >> 16);
+						}
+					}
+				}
+			}
+			if (envelopes[i].rel_source.sourceType == ctrlType_t::CC){
+				if (envelopes[i].rel_source.channel == msg->channel){
+					if (envelopes[i].rel_source.sourceNum == controlNum){
+						if (envelopes[i].rel_max > envelopes[i].rel_min){
+							uint32_t diff = envelopes[i].rel_max - envelopes[i].rel_min;
+							uint32_t span = diff * 0x0101 + 1;
+							uint32_t scaled = (msg->data >> 16) * span;
+							envelopes[i].rel_current = 0x0101 * envelopes[i].rel_min + (scaled >> 16);
+						} else {
+							uint32_t diff = envelopes[i].rel_min - envelopes[i].rel_max;
+							uint32_t span = diff * 0x0101 + 1;
+							uint32_t scaled = (msg->data >> 16) * span;
+							envelopes[i].rel_current = 0x0101 * envelopes[i].rel_min - (scaled >> 16);
+						}
+					}
+				}
+			}
+		}
 	} else {
 		if (msg->channel == 9){
 			// Drum channel
@@ -532,11 +542,11 @@ void GO_MIDI_Voice(MIDI2_voice_t* msg){
 				uint8_t tempLane = 250;
 				for (uint8_t x = 0; x < 4; x++){
 					uint8_t lane = (currentKeyLane + x) & 0b11;
-					if (keyLanes[lane].state == keyLanes::KeyIdle){
+					if (keyLanes[lane].state == keyLanes_t::KeyIdle){
 						// Found a unused lane
 						tempLane = lane;
 						break;
-					} else if ((tempLane == 250)&&(keyLanes[lane].state == keyLanes::KeyPlaying)){
+					} else if ((tempLane == 250)&&(keyLanes[lane].state == keyLanes_t::KeyPlaying)){
 						tempLane = lane;
 					}
 				}
@@ -548,7 +558,7 @@ void GO_MIDI_Voice(MIDI2_voice_t* msg){
 				
 				currentKeyLane = (tempLane + 1) & 0b11;
 				
-				if (keyLanes[tempLane].state == keyLanes::KeyPlaying){
+				if (keyLanes[tempLane].state == keyLanes_t::KeyPlaying){
 					// Note already playing. Push to queue
 					noteQueue[queueIndex++].note = keyLanes[tempLane].note;
 				}
@@ -559,7 +569,7 @@ void GO_MIDI_Voice(MIDI2_voice_t* msg){
 				// Find the used lane
 				uint8_t tempLane = 250;
 				for (uint8_t x = 0; x < 4; x++){
-					if (keyLanes[x].state == keyLanes::KeyPlaying){
+					if (keyLanes[x].state == keyLanes_t::KeyPlaying){
 						if (keyLanes[x].note == msg->note){
 							tempLane = x;
 							break;
@@ -597,7 +607,7 @@ void GO_MIDI_Voice(MIDI2_voice_t* msg){
 				
 				// update outputs
 				for (uint8_t x = 0; x < 4; x++){
-					if (keyLanes[x].state != keyLanes::KeyPlaying){
+					if (keyLanes[x].state != keyLanes_t::KeyPlaying){
 						continue;
 					}
 					for (uint8_t y = 0; y < 4; y++){
