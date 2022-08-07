@@ -679,7 +679,7 @@ uint16_t TriSine(uint16_t in){
 	// Smoothstep approximation
 	// In**1	
 	uint32_t tempIn = in;
-	uint32_t tempOut = 0;
+	int32_t tempOut = 0;
 	// In**2
 	tempIn *= in;
 	tempIn >>= 16;
