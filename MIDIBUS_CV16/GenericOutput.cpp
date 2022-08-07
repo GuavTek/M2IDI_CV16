@@ -676,7 +676,26 @@ void GO_Service(){
 
 // Return sine output from linear input
 uint16_t TriSine(uint16_t in){
-	// Temporary
-	return in;
+	// Smoothstep approximation
+	// In**1	
+	uint32_t tempIn = in;
+	uint32_t tempOut = 0;
+	// In**2
+	tempIn *= in;
+	tempIn >>= 16;
+	// In**3
+	tempIn *= in;
+	tempIn >>= 16;
+	tempOut += 10*tempIn;
+	// In**4
+	tempIn *= in;
+	tempIn >>= 16;
+	tempOut -= 15*tempIn;
+	// In**5
+	tempIn *= in;
+	tempIn >>= 16;
+	tempOut += 6*tempIn;
+	
+	return tempOut;
 }
 
