@@ -12,7 +12,7 @@
 #include "samd21.h"
 #include "MIDI_Driver.h"
 
-enum class GOType_t {
+enum class GOType_t : uint8_t {
 	DC,
 	LFO,
 	Envelope,
@@ -22,7 +22,7 @@ enum class GOType_t {
 	Gate
 };
 
-enum class ctrlType_t {
+enum class ctrlType_t : uint8_t {
 	None,
 	Key,
 	CC
@@ -34,7 +34,7 @@ struct ctrlSource_t {
 	uint16_t sourceNum;
 };
 
-enum class WavShape_t {
+enum class WavShape_t : uint8_t {
 	Square,
 	Triangle,
 	Sawtooth,
@@ -46,10 +46,11 @@ struct GenOut_base {
 	enum GOType_t type = GOType_t::DC;
 	uint16_t max_range;
 	uint16_t min_range;
+	struct ctrlSource_t gen_source;
 	union {
 		// DC (CC, pressure, velocity, gate, and keys)
 		struct {
-			struct ctrlSource_t dc_source;
+			
 		};
 		
 		// LFO (and clk)
@@ -57,13 +58,11 @@ struct GenOut_base {
 			enum WavShape_t shape;
 			uint32_t freq_max;
 			uint32_t freq_min;
-			struct ctrlSource_t freq_source;
 		};
 		
 		// Envelope
 		struct {
 			uint8_t env_num;
-			struct ctrlSource_t env_source;
 			
 		};
 		

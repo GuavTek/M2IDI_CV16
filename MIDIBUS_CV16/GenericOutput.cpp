@@ -73,27 +73,34 @@ inline uint16_t Rescale_16bit(uint16_t val, uint16_t minOut, uint16_t maxOut){
 
 inline void Start_Note(uint8_t lane, uint8_t note, uint16_t velocity){
 	for (uint8_t y = 0; y < 4; y++){
-		if (outMatrix[lane][y].type == GOType_t::DC){
-			if (outMatrix[lane][y].dc_source.sourceType == ctrlType_t::Key){
-				if (keyChannel == outMatrix[lane][y].dc_source.channel){
-					outMatrix[lane][y].dc_source.sourceNum = note;
-					outMatrix[lane][y].currentOut = Note_To_Output(note);
-				}
-			}
-		} else if (outMatrix[lane][y].type == GOType_t::Gate){
-			if (keyChannel == outMatrix[lane][y].dc_source.channel){
-				outMatrix[lane][y].dc_source.sourceNum = note;
-				outMatrix[lane][y].currentOut = outMatrix[lane][y].max_range;
-			}
-		} else if (outMatrix[lane][y].type == GOType_t::Velocity){
-			if (keyChannel == outMatrix[lane][y].dc_source.channel){
-				outMatrix[lane][y].currentOut = Rescale_16bit(velocity, outMatrix[lane][y].min_range, outMatrix[lane][y].max_range);
-			}
-		} else if (outMatrix[lane][y].type == GOType_t::Envelope){
-			if (keyChannel == outMatrix[lane][y].env_source.channel){
-				outMatrix[lane][y].envelope_stage = 1;
-			}
+		uint32_t src_current = ( uint8_t(outMatrix[lane][y].type) << 0 ) | ( uint8_t(outMatrix[lane][y].gen_source.sourceType) << 8 ) | ( outMatrix[lane][y].gen_source.channel << 16 );
+		uint32_t criteria = ( uint8_t(GOType_t::DC) << 0 ) | ( uint8_t(ctrlType_t::Key) << 8 ) | ( keyChannel << 16 );
+		if ( src_current == criteria ){
+			outMatrix[lane][y].gen_source.sourceNum = note;
+			outMatrix[lane][y].currentOut = Note_To_Output(note);
+			continue;
+		}
+		
+		criteria = ( uint8_t(GOType_t::Gate) << 0 ) | ( uint8_t(ctrlType_t::Key) << 8 ) | ( keyChannel << 16 );
+		if ( src_current == criteria ){
+			outMatrix[lane][y].gen_source.sourceNum = note;
+			outMatrix[lane][y].currentOut = outMatrix[lane][y].max_range;
+			continue;
+		}
+		
+		criteria = ( uint8_t(GOType_t::Velocity) << 0 ) | ( uint8_t(ctrlType_t::Key) << 8 ) | ( keyChannel << 16 );
+		if ( src_current == criteria ){
+			outMatrix[lane][y].gen_source.sourceNum = note;
+			outMatrix[lane][y].currentOut = Rescale_16bit(velocity, outMatrix[lane][y].min_range, outMatrix[lane][y].max_range);
+			continue;
+		}
+		
+		criteria = ( uint8_t(GOType_t::Envelope) << 0 ) | ( uint8_t(ctrlType_t::Key) << 8 ) | ( keyChannel << 16 );
+		if ( src_current == criteria ){
+			outMatrix[lane][y].gen_source.sourceNum = note;
 			//outMatrix[lane][y].outCount = outMatrix[lane][y].min_range << 16;
+			outMatrix[lane][y].envelope_stage = 1;
+			continue;
 		}
 	}
 	
@@ -103,14 +110,15 @@ inline void Start_Note(uint8_t lane, uint8_t note, uint16_t velocity){
 
 inline void Stop_Note(uint8_t lane){
 	for (uint8_t y = 0; y < 4; y++){
-		if (outMatrix[lane][y].type == GOType_t::Gate){
-			if (keyChannel == outMatrix[lane][y].dc_source.channel){
-				outMatrix[lane][y].currentOut = outMatrix[lane][y].min_range;
-			}
-		} else if (outMatrix[lane][y].type == GOType_t::Envelope){
-			if (keyChannel == outMatrix[lane][y].env_source.channel){
-				outMatrix[lane][y].envelope_stage = 4;
-			}
+		uint32_t src_current = ( uint8_t(outMatrix[lane][y].type) << 0 ) | ( outMatrix[lane][y].gen_source.channel << 8 );
+		if ( src_current == (uint8_t(GOType_t::Gate) | ( keyChannel << 8 )) ){
+			outMatrix[lane][y].currentOut = outMatrix[lane][y].min_range;
+			continue;
+		} 
+		
+		if ( src_current == (uint8_t(GOType_t::Envelope) | (keyChannel << 8 )) ){
+			outMatrix[lane][y].envelope_stage = 4;
+			continue;
 		}
 	}
 	
@@ -137,11 +145,10 @@ inline void Stop_All_Notes(){
 inline void Reset_All_Controllers(){
 	for(uint8_t x = 0; x < 4; x++){
 		for (uint8_t y = 0; y < 4; y++){
-			if (outMatrix[x][y].type == GOType_t::DC){
-				if (outMatrix[x][y].dc_source.sourceType == ctrlType_t::CC){
-					outMatrix[x][y].currentOut = outMatrix[x][y].min_range;
-				}
-				
+			uint32_t src_current = ( uint8_t(outMatrix[x][y].type) << 0 ) | ( uint8_t(outMatrix[x][y].gen_source.sourceType) << 8 );
+			uint32_t criteria = ( uint8_t(GOType_t::DC) << 0 ) | ( uint8_t(ctrlType_t::CC) << 8 );
+			if ( src_current == criteria ){
+				outMatrix[x][y].currentOut = outMatrix[x][y].min_range;
 			}
 		}
 	}
@@ -181,9 +188,9 @@ void GO_Init(){
 	outMatrix[1][2].freq_current = 0x0010 << 16;
 	outMatrix[1][2].freq_max = 0x01000000;
 	outMatrix[1][2].freq_min = 0x00001000;
-	outMatrix[1][2].freq_source.channel = 1;
-	outMatrix[1][2].freq_source.sourceNum = 10;
-	outMatrix[1][2].freq_source.sourceType = ctrlType_t::CC;
+	outMatrix[1][2].gen_source.channel = 1;
+	outMatrix[1][2].gen_source.sourceNum = 10;
+	outMatrix[1][2].gen_source.sourceType = ctrlType_t::CC;
 	hasCC[1][2] = 1;
 	
 	outMatrix[0][1].type = GOType_t::LFO;
@@ -207,14 +214,14 @@ void GO_Init(){
 	keyLanes[3].state = keyLanes_t::KeyIdle;
 	
 	outMatrix[3][0].type = GOType_t::DC;
-	outMatrix[3][0].dc_source.sourceType = ctrlType_t::Key;
-	outMatrix[3][0].dc_source.channel = 1;
+	outMatrix[3][0].gen_source.sourceType = ctrlType_t::Key;
+	outMatrix[3][0].gen_source.channel = 1;
 	outMatrix[3][0].max_range = 0xffff;
 	outMatrix[3][0].min_range = 0;
 	
 	outMatrix[3][1].type = GOType_t::Gate;
-	outMatrix[3][1].dc_source.sourceType = ctrlType_t::Key;
-	outMatrix[3][1].dc_source.channel = 1;
+	outMatrix[3][1].gen_source.sourceType = ctrlType_t::Key;
+	outMatrix[3][1].gen_source.channel = 1;
 	outMatrix[3][1].max_range = 0xffff;
 	outMatrix[3][1].min_range = 0;
 	
@@ -223,8 +230,8 @@ void GO_Init(){
 	outMatrix[3][2].max_range = 0xffff;
 	outMatrix[3][2].min_range = 0;
 	outMatrix[3][2].envelope_stage = 0;
-	outMatrix[3][2].env_source.sourceType = ctrlType_t::Key;
-	outMatrix[3][2].env_source.channel = 1;
+	outMatrix[3][2].gen_source.sourceType = ctrlType_t::Key;
+	outMatrix[3][2].gen_source.channel = 1;
 	
 	envelopes[0].att_current = 400;
 	envelopes[0].att_max = 1;
@@ -361,7 +368,6 @@ void GO_MIDI_Voice(MIDI2_voice_t* msg){
 			return;
 	};
 	
-	// Search outputs
 	if (msgType == ctrlType_t::CC){
 		if (msg->status == MIDI2_VOICE_E::CControl){
 			if ((msg->controller == 120)||(msg->controller == 123)){
@@ -373,7 +379,7 @@ void GO_MIDI_Voice(MIDI2_voice_t* msg){
 			}
 		}
 		
-		
+		// Search outputs
 		for (uint8_t x = 0; x < 4; x++){
 			for (uint8_t y = 0; y < 4; y++){
 				// Skip if no CC is mapped
@@ -381,129 +387,137 @@ void GO_MIDI_Voice(MIDI2_voice_t* msg){
 					continue;
 				}
 				
-				if (outMatrix[x][y].type == GOType_t::DC){
+				uint32_t src_current = ( uint8_t(outMatrix[x][y].type) << 0 ) | ( outMatrix[x][y].gen_source.channel << 8 ) | ( outMatrix[x][y].gen_source.sourceNum << 16 );
+				uint32_t criteria = ( uint8_t(GOType_t::DC) << 0 ) | ( msg->channel << 8 ) | ( controlNum << 16 );
+				if ( src_current == criteria ){
 					// CV generation
-					if (outMatrix[x][y].dc_source.channel == msg->channel){
-						if (outMatrix[x][y].dc_source.sourceNum == controlNum){
-							uint32_t span = (outMatrix[x][y].max_range - outMatrix[x][y].min_range) + 1;
-							uint32_t scaled = (msg->data >> 16) * span;
-							outMatrix[x][y].currentOut = (scaled >> 16) + outMatrix[x][y].min_range;
-						}
-					}
-				} else if (outMatrix[x][y].type == GOType_t::LFO){
+					uint32_t span = (outMatrix[x][y].max_range - outMatrix[x][y].min_range) + 1;
+					uint32_t scaled = (msg->data >> 16) * span;
+					outMatrix[x][y].currentOut = (scaled >> 16) + outMatrix[x][y].min_range;
+					continue;
+				}
+				
+				criteria = ( uint8_t(GOType_t::LFO) << 0 ) | ( msg->channel << 8 ) | ( controlNum << 16 );
+				if ( src_current == criteria ){
 					// Wave generation
-					if (outMatrix[x][y].freq_source.channel == msg->channel){
-						if (outMatrix[x][y].freq_source.sourceNum == controlNum){
-							uint64_t span = outMatrix[x][y].freq_max - outMatrix[x][y].freq_min + 1;
-							uint64_t scaled = msg->data * span;
-							outMatrix[x][y].freq_current = (scaled >> 32) + outMatrix[x][y].freq_min;
-						}
-					}
+					uint64_t span = outMatrix[x][y].freq_max - outMatrix[x][y].freq_min + 1;
+					uint64_t scaled = msg->data * span;
+					outMatrix[x][y].freq_current = (scaled >> 32) + outMatrix[x][y].freq_min;
+					continue;					
 				}	
 			}
 		}
 		
+		// Search envelopes
+		uint32_t criteria = ( uint8_t(ctrlType_t::CC) << 0 ) | ( msg->channel << 8 ) | ( controlNum << 16 );
 		for (uint8_t i = 0; i < 4; i++){
 			if (!hasCC[4][i]){
 				continue;
 			}
 			
-			if (envelopes[i].att_source.sourceType == ctrlType_t::CC){
-				if (envelopes[i].att_source.channel == msg->channel){
-					if (envelopes[i].att_source.sourceNum == controlNum){
-						if (envelopes[i].att_max > envelopes[i].att_min){
-							uint32_t diff = envelopes[i].att_max - envelopes[i].att_min;
-							uint32_t span = diff * 0x0101 + 1;
-							uint32_t scaled = (msg->data >> 16) * span;
-							envelopes[i].att_current = 0x0101 * envelopes[i].att_min + (scaled >> 16);
-						} else {
-							uint32_t diff = envelopes[i].att_min - envelopes[i].att_max;
-							uint32_t span = diff * 0x0101 + 1;
-							uint32_t scaled = (msg->data >> 16) * span;
-							envelopes[i].att_current = 0x0101 * envelopes[i].att_min - (scaled >> 16);
-						}
-					}
+			// Attack
+			uint32_t src_current = 
+				( uint8_t(envelopes[i].att_source.sourceType) << 0 ) | 
+				( envelopes[i].att_source.channel << 8 ) | 
+				( envelopes[i].att_source.sourceNum << 16 );
+			if (src_current == criteria){
+				if (envelopes[i].att_max > envelopes[i].att_min){
+					uint32_t diff = envelopes[i].att_max - envelopes[i].att_min;
+					uint32_t span = diff * 0x0101 + 1;
+					uint32_t scaled = (msg->data >> 16) * span;
+					envelopes[i].att_current = 0x0101 * envelopes[i].att_min + (scaled >> 16);
+				} else {
+					uint32_t diff = envelopes[i].att_min - envelopes[i].att_max;
+					uint32_t span = diff * 0x0101 + 1;
+					uint32_t scaled = (msg->data >> 16) * span;
+					envelopes[i].att_current = 0x0101 * envelopes[i].att_min - (scaled >> 16);
 				}
 			}
-			if (envelopes[i].dec_source.sourceType == ctrlType_t::CC){
-				if (envelopes[i].dec_source.channel == msg->channel){
-					if (envelopes[i].dec_source.sourceNum == controlNum){
-						if (envelopes[i].dec_max > envelopes[i].dec_min){
-							uint32_t diff = envelopes[i].dec_max - envelopes[i].dec_min;
-							uint32_t span = diff * 0x0101 + 1;
-							uint32_t scaled = (msg->data >> 16) * span;
-							envelopes[i].dec_current = 0x0101 * envelopes[i].dec_min + (scaled >> 16);
-						} else {
-							uint32_t diff = envelopes[i].dec_min - envelopes[i].dec_max;
-							uint32_t span = diff * 0x0101 + 1;
-							uint32_t scaled = (msg->data >> 16) * span;
-							envelopes[i].dec_current = 0x0101 * envelopes[i].dec_min - (scaled >> 16);
-						}
-					}
+			
+			// Decay
+			src_current =
+				( uint8_t(envelopes[i].dec_source.sourceType) << 0 ) |
+				( envelopes[i].dec_source.channel << 8 ) |
+				( envelopes[i].dec_source.sourceNum << 16 );
+			if ( src_current == criteria ){
+				if (envelopes[i].dec_max > envelopes[i].dec_min){
+					uint32_t diff = envelopes[i].dec_max - envelopes[i].dec_min;
+					uint32_t span = diff * 0x0101 + 1;
+					uint32_t scaled = (msg->data >> 16) * span;
+					envelopes[i].dec_current = 0x0101 * envelopes[i].dec_min + (scaled >> 16);
+				} else {
+					uint32_t diff = envelopes[i].dec_min - envelopes[i].dec_max;
+					uint32_t span = diff * 0x0101 + 1;
+					uint32_t scaled = (msg->data >> 16) * span;
+					envelopes[i].dec_current = 0x0101 * envelopes[i].dec_min - (scaled >> 16);
+				}	
+			}
+			
+			// Sustain
+			src_current =
+				( uint8_t(envelopes[i].sus_source.sourceType) << 0 ) |
+				( envelopes[i].sus_source.channel << 8 ) |
+				( envelopes[i].sus_source.sourceNum << 16 );
+			if ( src_current == criteria ){
+				if (envelopes[i].sus_max > envelopes[i].sus_min){
+					uint32_t diff = envelopes[i].sus_max - envelopes[i].sus_min;
+					uint32_t span = diff * 0x0101 + 1;
+					uint32_t scaled = (msg->data >> 16) * span;
+					envelopes[i].sus_current = 0x0101 * envelopes[i].sus_min + (scaled >> 16);
+				} else {
+					uint32_t diff = envelopes[i].sus_min - envelopes[i].sus_max;
+					uint32_t span = diff * 0x0101 + 1;
+					uint32_t scaled = (msg->data >> 16) * span;
+					envelopes[i].sus_current = 0x0101 * envelopes[i].sus_min - (scaled >> 16);
 				}
 			}
-			if (envelopes[i].sus_source.sourceType == ctrlType_t::CC){
-				if (envelopes[i].sus_source.channel == msg->channel){
-					if (envelopes[i].sus_source.sourceNum == controlNum){
-						if (envelopes[i].sus_max > envelopes[i].sus_min){
-							uint32_t diff = envelopes[i].sus_max - envelopes[i].sus_min;
-							uint32_t span = diff * 0x0101 + 1;
-							uint32_t scaled = (msg->data >> 16) * span;
-							envelopes[i].sus_current = 0x0101 * envelopes[i].sus_min + (scaled >> 16);
-						} else {
-							uint32_t diff = envelopes[i].sus_min - envelopes[i].sus_max;
-							uint32_t span = diff * 0x0101 + 1;
-							uint32_t scaled = (msg->data >> 16) * span;
-							envelopes[i].sus_current = 0x0101 * envelopes[i].sus_min - (scaled >> 16);
-						}
-					}
-				}
-			}
-			if (envelopes[i].rel_source.sourceType == ctrlType_t::CC){
-				if (envelopes[i].rel_source.channel == msg->channel){
-					if (envelopes[i].rel_source.sourceNum == controlNum){
-						if (envelopes[i].rel_max > envelopes[i].rel_min){
-							uint32_t diff = envelopes[i].rel_max - envelopes[i].rel_min;
-							uint32_t span = diff * 0x0101 + 1;
-							uint32_t scaled = (msg->data >> 16) * span;
-							envelopes[i].rel_current = 0x0101 * envelopes[i].rel_min + (scaled >> 16);
-						} else {
-							uint32_t diff = envelopes[i].rel_min - envelopes[i].rel_max;
-							uint32_t span = diff * 0x0101 + 1;
-							uint32_t scaled = (msg->data >> 16) * span;
-							envelopes[i].rel_current = 0x0101 * envelopes[i].rel_min - (scaled >> 16);
-						}
-					}
-				}
+			
+			// Release
+			src_current =
+				( uint8_t(envelopes[i].rel_source.sourceType) << 0 ) |
+				( envelopes[i].rel_source.channel << 8 ) |
+				( envelopes[i].rel_source.sourceNum << 16 );
+			if ( src_current == criteria ){
+				if (envelopes[i].rel_max > envelopes[i].rel_min){
+					uint32_t diff = envelopes[i].rel_max - envelopes[i].rel_min;
+					uint32_t span = diff * 0x0101 + 1;
+					uint32_t scaled = (msg->data >> 16) * span;
+					envelopes[i].rel_current = 0x0101 * envelopes[i].rel_min + (scaled >> 16);
+				} else {
+					uint32_t diff = envelopes[i].rel_min - envelopes[i].rel_max;
+					uint32_t span = diff * 0x0101 + 1;
+					uint32_t scaled = (msg->data >> 16) * span;
+					envelopes[i].rel_current = 0x0101 * envelopes[i].rel_min - (scaled >> 16);
+				}				
 			}
 		}
 	} else {
 		if (msg->channel == 9){
 			// Drum channel
+			uint32_t criteria = ( msg->channel << 8 ) | ( msg->note << 16 );
 			if (msg->status == MIDI2_VOICE_E::NoteOn){
 				bool foundLane = false;
 				for (uint8_t x = 0; x < 4; x++){
 					for (uint8_t y = 0; y < 4; y++){
-						if (outMatrix[x][y].type == GOType_t::Envelope){
-							if (outMatrix[x][y].env_source.channel == msg->channel){
-								if (outMatrix[x][y].env_source.sourceNum == msg->note){
-									foundLane = true;
-									outMatrix[x][y].envelope_stage = 1;
-									outMatrix[x][y].currentOut = outMatrix[x][y].min_range;
-								}
-							}
-						} else {
-							if (outMatrix[x][y].dc_source.channel == msg->channel){
-								if (outMatrix[x][y].dc_source.sourceNum == msg->note){
-									if (outMatrix[x][y].type == GOType_t::Gate){
-										foundLane = true;
-										outMatrix[x][y].currentOut = outMatrix[x][y].max_range;
-									} else if (outMatrix[x][y].type == GOType_t::Velocity){
-										foundLane = true;
-										outMatrix[x][y].currentOut = Rescale_16bit(msg->velocity, outMatrix[x][y].min_range, outMatrix[x][y].max_range);
-									}
-								}
-							}
+						uint32_t src_current = 
+							( uint8_t(outMatrix[x][y].type) << 0 ) |
+							( outMatrix[x][y].gen_source.channel << 8 ) |
+							( outMatrix[x][y].gen_source.sourceNum << 16 );
+						if ( src_current == ( criteria | uint8_t(GOType_t::Envelope) ) ){
+							foundLane = true;
+							outMatrix[x][y].envelope_stage = 1;
+							outMatrix[x][y].currentOut = outMatrix[x][y].min_range;
+							continue;
+						}
+						if ( src_current == ( criteria | uint8_t(GOType_t::Gate) ) ){
+							foundLane = true;
+							outMatrix[x][y].currentOut = outMatrix[x][y].max_range;
+							continue;
+						} 
+						if ( src_current == ( criteria | uint8_t(GOType_t::Velocity) ) ){
+							foundLane = true;
+							outMatrix[x][y].currentOut = Rescale_16bit(msg->velocity, outMatrix[x][y].min_range, outMatrix[x][y].max_range);
+							continue;
 						}
 					}
 					if (foundLane){
@@ -515,20 +529,19 @@ void GO_MIDI_Voice(MIDI2_voice_t* msg){
 				bool foundLane = false;
 				for (uint8_t x = 0; x < 4; x++){
 					for (uint8_t y = 0; y < 4; y++){
-						if (outMatrix[x][y].type == GOType_t::Envelope){
-							if (outMatrix[x][y].env_source.channel == msg->channel){
-								if (outMatrix[x][y].env_source.sourceNum == msg->note){
-									foundLane = true;
-									outMatrix[x][y].envelope_stage = 4;
-								}
-							}
-						} else if (outMatrix[x][y].type == GOType_t::Gate) {
-							if (outMatrix[x][y].dc_source.channel == msg->channel){
-								if (outMatrix[x][y].dc_source.sourceNum == msg->note){
-									foundLane = true;
-									outMatrix[x][y].currentOut = outMatrix[x][y].min_range;
-								}
-							}
+						uint32_t src_current =
+							( uint8_t(outMatrix[x][y].type) << 0 ) |
+							( outMatrix[x][y].gen_source.channel << 8 ) |
+							( outMatrix[x][y].gen_source.sourceNum << 16 );
+						if ( src_current == ( criteria | uint8_t(GOType_t::Envelope) ) ){
+							foundLane = true;
+							outMatrix[x][y].envelope_stage = 4;
+							continue;
+						} 
+						if ( src_current == ( criteria | uint8_t(GOType_t::Gate) ) ){
+							foundLane = true;
+							outMatrix[x][y].currentOut = outMatrix[x][y].min_range;
+							continue;
 						}
 					}
 					if (foundLane){
@@ -540,6 +553,7 @@ void GO_MIDI_Voice(MIDI2_voice_t* msg){
 		} else if(keyChannel == msg->channel) {
 			if (msg->status == MIDI2_VOICE_E::NoteOn){
 				uint8_t tempLane = 250;
+				// TODO: Check if note is already playing
 				for (uint8_t x = 0; x < 4; x++){
 					uint8_t lane = (currentKeyLane + x) & 0b11;
 					if (keyLanes[lane].state == keyLanes_t::KeyIdle){
@@ -576,20 +590,21 @@ void GO_MIDI_Voice(MIDI2_voice_t* msg){
 						}
 					}
 				}
-				if (tempLane == 250){
-					// Look for note in queue
-					uint8_t i;
-					for (i = 0; i < queueIndex; i++){
-						if (noteQueue[i].note == msg->note){
-							queueIndex--;
-							break;
-						}
+				
+				// Look for note in queue
+				uint8_t i;
+				for (i = 0; i < queueIndex; i++){
+					if (noteQueue[i].note == msg->note){
+						queueIndex--;
+						break;
 					}
-					// Overwrite that note
-					for (; i < queueIndex; i++){
-						noteQueue[i] = noteQueue[i+1];
-					}
-				} else {
+				}
+				// Overwrite that note
+				for (; i < queueIndex; i++){
+					noteQueue[i] = noteQueue[i+1];
+				}
+				
+				if (tempLane != 250){
 					if (queueIndex > 0){
 						// Start last note which was put in queue
 						uint8_t tempNote = noteQueue[--queueIndex].note;
@@ -603,39 +618,54 @@ void GO_MIDI_Voice(MIDI2_voice_t* msg){
 				uint16_t  tempBend = Rescale_16bit(msg->data >> 16, minBend, maxBend);
 				currentBend = tempBend - 0x7fff;
 				
-				
-				
-				// update outputs
+				// update v/oct outputs
+				uint32_t criteria = ( uint8_t(GOType_t::DC) << 0 ) | ( keyChannel << 8 ) | ( uint8_t(ctrlType_t::Key) << 16 );
 				for (uint8_t x = 0; x < 4; x++){
 					if (keyLanes[x].state != keyLanes_t::KeyPlaying){
 						continue;
 					}
 					for (uint8_t y = 0; y < 4; y++){
-						if (outMatrix[x][y].type == GOType_t::DC){
-							if (outMatrix[x][y].dc_source.channel == keyChannel){
-								if (outMatrix[x][y].dc_source.sourceType == ctrlType_t::Key){
-									outMatrix[x][y].currentOut = Note_To_Output(keyLanes[x].note);
-									break;
-								}
-							}
+						uint32_t src_current = 
+							( uint8_t(outMatrix[x][y].type) << 0 ) | 
+							( outMatrix[x][y].gen_source.channel << 8 ) | 
+							( uint8_t(outMatrix[x][y].gen_source.sourceType) << 16 );
+						if ( src_current == criteria ){
+							outMatrix[x][y].currentOut = Note_To_Output(keyLanes[x].note);
+							break;
 						}
 					}
 				}
 			} else if (msg->status == MIDI2_VOICE_E::ChanPressure){
+				uint32_t criteria = ( uint8_t(GOType_t::Pressure) << 0 ) | ( keyChannel << 8 ) | ( uint8_t(ctrlType_t::Key) << 16 );
 				for (uint8_t x = 0; x < 4; x++){
 					for (uint8_t y = 0; y < 4; y++){
-						if (outMatrix[x][y].type == GOType_t::Pressure){
+						uint32_t src_current = 
+							( uint8_t(outMatrix[x][y].type) << 0 ) | 
+							( outMatrix[x][y].gen_source.channel << 8 ) | 
+							( uint8_t(outMatrix[x][y].gen_source.sourceType) << 16 );
+						if ( src_current == criteria ){
 							outMatrix[x][y].currentOut = Rescale_16bit(msg->data >> 16, outMatrix[x][y].min_range, outMatrix[x][y].max_range);
-							return;
+							break;
 						}
 					}
 				}
 			} else if (msg->status == MIDI2_VOICE_E::Aftertouch){
-				
+				uint32_t criteria = ( uint8_t(GOType_t::Pressure) << 0 ) | ( keyChannel << 8 ) | ( uint8_t(ctrlType_t::Key) << 16 ) | ( msg->note << 24 );
+				for (uint8_t x = 0; x < 4; x++){
+					for (uint8_t y = 0; y < 4; y++){
+						uint32_t src_current = 
+							( uint8_t(outMatrix[x][y].type) << 0 ) | 
+							( outMatrix[x][y].gen_source.channel << 8 ) | 
+							( uint8_t(outMatrix[x][y].gen_source.sourceType) << 16 ) |
+							( keyLanes[x].note << 24 );
+						if ( src_current == criteria ){
+							outMatrix[x][y].currentOut = Rescale_16bit(msg->data >> 16, outMatrix[x][y].min_range, outMatrix[x][y].max_range);
+							break;
+						}
+					}
+				}
 			}
-			
 		}		
-		
 	}
 	return;
 }
