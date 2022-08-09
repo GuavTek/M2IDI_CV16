@@ -91,9 +91,9 @@ inline void Start_Note(uint8_t lane, uint8_t note, uint16_t velocity){
 			}
 		} else if (outMatrix[lane][y].type == GOType_t::Envelope){
 			if (keyChannel == outMatrix[lane][y].env_source.channel){
-				outMatrix[lane][y].outCount = outMatrix[lane][y].min_range << 16;
 				outMatrix[lane][y].envelope_stage = 1;
 			}
+			//outMatrix[lane][y].outCount = outMatrix[lane][y].min_range << 16;
 		}
 	}
 	
