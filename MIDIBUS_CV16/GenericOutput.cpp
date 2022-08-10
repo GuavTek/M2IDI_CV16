@@ -45,6 +45,29 @@ uint8_t group = 1;
 #define FIXED_POINT_POS 14
 #define FIXED_INT_PER_NOTE ((uint32_t) INT_PER_NOTE * (1 << FIXED_POINT_POS))
 
+// Low precision floating point to save memory space
+#define ufloat8_t uint8_t
+uint32_t ufloat8_to_uint32(ufloat8_t in){
+	uint8_t exp = in >> 3;
+	uint8_t mant = in & 0x07;
+	if (exp > 29){
+		exp = 29;
+	}
+	return mant << exp;
+}
+
+ufloat8_t uint32_to_ufloat8(uint32_t in){
+	uint8_t exp = 29;
+	uint8_t mant = 0;
+	for (; exp > 0; exp--){
+		mant = (in >> exp) & 0x07;
+		if (mant >= 4){
+			break;
+		}
+	}
+	return (mant | (exp << 3));
+}
+
 inline uint16_t Note_To_Output(uint8_t note){
 	int32_t tempOut = note * FIXED_INT_PER_NOTE;// * 546.133 fixed point multiplication
 	tempOut += 1 << (FIXED_POINT_POS - 1);	// + 0.5 to round intead of floor
