@@ -36,7 +36,7 @@ struct {
 // hasCC[4] is for envelopes
 bool hasCC[5][4];
 
-uint8_t group = 1;
+uint8_t midi_group = 1;
 
 #define ENV_MANTISSA 7
 
@@ -367,7 +367,7 @@ void GO_ENV(GenOut_t* go){
 }
 
 void GO_MIDI_Voice(MIDI2_voice_t* msg){
-	if(msg->group != group){
+	if(msg->group != midi_group){
 		return;
 	}
 	
