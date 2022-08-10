@@ -104,10 +104,18 @@ struct Env_base {
 
 // Envelope data to store in RAM
 struct Env_t : Env_base {
-	uint16_t att_current;
-	uint16_t dec_current;
+	uint32_t att_max;
+	uint32_t att_min;
+	uint32_t dec_max;
+	uint32_t dec_min;
+	uint16_t sus_max;
+	uint16_t sus_min;
+	uint32_t rel_max;
+	uint32_t rel_min;
+	uint32_t att_current;
+	uint32_t dec_current;
 	uint16_t sus_current;
-	uint16_t rel_current;
+	uint32_t rel_current;
 };
 
 
