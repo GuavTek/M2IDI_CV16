@@ -118,7 +118,9 @@ struct Env_t : Env_base {
 	uint32_t rel_current;
 };
 
-
+extern GenOut_t outMatrix[4][4];
+extern Env_t envelopes[4];
+extern uint8_t midi_group;
 
 void GO_Init();
 
