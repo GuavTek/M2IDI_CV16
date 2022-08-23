@@ -532,7 +532,7 @@
         </armgcccpp.linker.libraries.LibrarySearchPaths>
         <armgcccpp.linker.optimization.GarbageCollectUnusedSections>True</armgcccpp.linker.optimization.GarbageCollectUnusedSections>
         <armgcccpp.linker.memorysettings.ExternalRAM />
-        <armgcccpp.linker.miscellaneous.LinkerFlags>-Tsamd21g17d_flash.ld</armgcccpp.linker.miscellaneous.LinkerFlags>
+        <armgcccpp.linker.miscellaneous.LinkerFlags>-Wl,--section-start=.text=0x6000,-Tsamd21g17d_flash.ld</armgcccpp.linker.miscellaneous.LinkerFlags>
         <armgcccpp.assembler.general.IncludePaths>
           <ListValues>
             <Value>%24(PackRepoDir)\arm\CMSIS\5.4.0\CMSIS\Core\Include\</Value>
