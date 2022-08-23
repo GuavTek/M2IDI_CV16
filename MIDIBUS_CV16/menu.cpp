@@ -19,10 +19,17 @@ enum menu_status_t {
 	SetLFO,
 	SetRange,
 	Saving,
-	SetGroup
+	SetGroup,
+	Edit_8bit,
+	Edit_16bit,
+	Edit_32bit,
+	Edit_int,
+	Wait_MIDI
 } menuStatus;
 
 menuNode* currentNode;
+void* var_edit;
+uint16_t max_edit;
 uint8_t chanSel = 0;
 volatile bool buttUp;
 volatile bool buttDown;
@@ -49,6 +56,33 @@ extern struct menuNode edit_sel_type_lfo_back_n;
 extern struct menuNode edit_sel_type_back_n;
 extern struct menuNode edit_sel_max_range_n;
 extern struct menuNode edit_sel_min_range_n;
+extern struct menuNode edit_envelope;
+extern struct menuNode edit_env_0;
+extern struct menuNode edit_env_1;
+extern struct menuNode edit_env_2;
+extern struct menuNode edit_env_3;
+extern struct menuNode edit_env_back;
+extern struct menuNode edit_env_atk_n;
+extern struct menuNode edit_env_atk_max_n;
+extern struct menuNode edit_env_atk_min_n;
+extern struct menuNode edit_env_atk_bind_n;
+extern struct menuNode edit_env_atk_back_n;
+extern struct menuNode edit_env_dec_n;
+extern struct menuNode edit_env_dec_max_n;
+extern struct menuNode edit_env_dec_min_n;
+extern struct menuNode edit_env_dec_bind_n;
+extern struct menuNode edit_env_dec_back_n;
+extern struct menuNode edit_env_sus_n;
+extern struct menuNode edit_env_sus_max_n;
+extern struct menuNode edit_env_sus_min_n;
+extern struct menuNode edit_env_sus_bind_n;
+extern struct menuNode edit_env_sus_back_n;
+extern struct menuNode edit_env_rel_n;
+extern struct menuNode edit_env_rel_max_n;
+extern struct menuNode edit_env_rel_min_n;
+extern struct menuNode edit_env_rel_bind_n;
+extern struct menuNode edit_env_rel_back_n;
+extern struct menuNode edit_env_back_n;
 extern struct menuNode edit_back_n;
 extern struct menuNode save_n;
 extern struct menuNode save_default_n;
@@ -56,25 +90,42 @@ extern struct menuNode save_pc_n;
 extern struct menuNode save_back_n;
 extern struct menuNode group_n;
 
-const void Enter_Kid() { currentNode = currentNode->kid; }
-const void Enter_Selected() {  }
-const void Start_Learn() { menuStatus = Learning; }
-const void Edit_Bend() { menuStatus = EditBend; }
-const void Select_Pressure() {  }
-const void Select_CV() {}
-const void Select_Gate() {}
-const void Select_Envelope() { menuStatus = SetEnvelope; }
-const void Select_Velocity() {}
-const void Select_Clk() {}
-const void Select_LFO_Tri() { menuStatus = SetLFO; }
-const void Select_LFO_Saw() { menuStatus = SetLFO; }
-const void Select_LFO_Sqr() { menuStatus = SetLFO; }
-const void Select_LFO_Sin() { menuStatus = SetLFO; }
-const void Set_Max_Range() { menuStatus = SetRange; }
-const void Set_Min_Range() { menuStatus = SetRange; }
-const void Save_Default() { menuStatus = Saving; }
-const void Save_PC() { menuStatus = Saving; }
-const void Set_Group() { menuStatus = SetGroup; }
+const void Enter_Kid()			{ currentNode = currentNode->kid; }
+const void Enter_Env0()			{ chanSel = 0; currentNode = currentNode->kid; }
+const void Enter_Env1()			{ chanSel = 1; currentNode = currentNode->kid; }
+const void Enter_Env2()			{ chanSel = 2; currentNode = currentNode->kid; }
+const void Enter_Env3()			{ chanSel = 3; currentNode = currentNode->kid; }
+const void Exit_Env()			{ chanSel = 0; currentNode = currentNode->kid; }
+const void Enter_Selected()		{  }
+const void Start_Learn()		{ menuStatus = Learning; }
+const void Edit_Bend()			{ menuStatus = EditBend; }
+const void Select_Pressure()	{  }
+const void Select_CV()			{  }
+const void Select_Gate()		{  }
+const void Select_Envelope()	{ menuStatus = SetEnvelope; }
+const void Select_Velocity()	{  }
+const void Select_Clk()			{  }
+const void Select_LFO_Tri()		{ menuStatus = SetLFO; }
+const void Select_LFO_Saw()		{ menuStatus = SetLFO; }
+const void Select_LFO_Sqr()		{ menuStatus = SetLFO; }
+const void Select_LFO_Sin()		{ menuStatus = SetLFO; }
+const void Set_Max_Range()		{ menuStatus = SetRange; }
+const void Set_Min_Range()		{ menuStatus = SetRange; }
+const void Save_Default()		{ menuStatus = Saving; }
+const void Save_PC()			{ menuStatus = Saving; }
+const void Set_Group()			{ menuStatus = Edit_int; var_edit = &midi_group; max_edit = 16; }
+const void Set_Env_Atk_Max()	{ menuStatus = Edit_32bit; var_edit = &envelopes[chanSel].att_max; }
+const void Set_Env_Atk_Min()	{ menuStatus = Edit_32bit; var_edit = &envelopes[chanSel].att_min; }
+const void Set_Env_Atk_Bind()	{ menuStatus = Wait_MIDI; var_edit = &envelopes[chanSel].att_source; }
+const void Set_Env_Dec_Max()	{ menuStatus = Edit_32bit; var_edit = &envelopes[chanSel].dec_max; }
+const void Set_Env_Dec_Min()	{ menuStatus = Edit_32bit; var_edit = &envelopes[chanSel].dec_min; }
+const void Set_Env_Dec_Bind()	{ menuStatus = Wait_MIDI; var_edit = &envelopes[chanSel].dec_source; }
+const void Set_Env_Sus_Max()	{ menuStatus = Edit_32bit; var_edit = &envelopes[chanSel].sus_max; }
+const void Set_Env_Sus_Min()	{ menuStatus = Edit_32bit; var_edit = &envelopes[chanSel].sus_min; }
+const void Set_Env_Sus_Bind()	{ menuStatus = Wait_MIDI; var_edit = &envelopes[chanSel].sus_source; }
+const void Set_Env_Rel_Max()	{ menuStatus = Edit_32bit; var_edit = &envelopes[chanSel].rel_max; }
+const void Set_Env_Rel_Min()	{ menuStatus = Edit_32bit; var_edit = &envelopes[chanSel].rel_min; }
+const void Set_Env_Rel_Bind()	{ menuStatus = Wait_MIDI; var_edit = &envelopes[chanSel].rel_source; }
 
 void Menu_Init(){
 	currentNode = &learn_n;
@@ -254,7 +305,7 @@ struct menuNode edit_bend_n = {
 				0b11001001},
 	kid :		&edit_n,
 	previous :	&edit_back_n,
-	next :		&edit_select_n,
+	next :		&edit_envelope,
 	function :	Edit_Bend
 };
 
@@ -265,7 +316,7 @@ struct menuNode edit_select_n = {
 				0b11000011, 
 				0b11000011},
 	kid :		&edit_sel_type_n,
-	previous :	&edit_bend_n,
+	previous :	&edit_envelope,
 	next :		&edit_back_n,
 	function :	Enter_Kid
 };
@@ -485,6 +536,332 @@ struct menuNode edit_sel_type_back_n = {
 	next :		&edit_sel_type_pressure_n,
 	function :	Enter_Kid
 };
+
+
+struct menuNode edit_envelope = {
+	graphic :{	0b00100000,
+				0b01011000,
+				0b01000100,
+				0b10000010,
+				0b10000001},
+	kid :		&edit_env_0,
+	previous :	&edit_bend_n,
+	next :		&edit_select_n,
+	function :	Enter_Kid
+};
+
+struct menuNode edit_env_0 = {
+	graphic :{	0b11100010,
+				0b10000101,
+				0b11000101,
+				0b10000101,
+				0b11100010},
+	kid :		&edit_env_atk_n,
+	previous :	&edit_env_back,
+	next :		&edit_env_1,
+	function :	Enter_Env0
+};
+
+struct menuNode edit_env_1 = {
+	graphic :{	0b11100010,
+				0b10000010,
+				0b11000010,
+				0b10000010,
+				0b11100010},
+	kid :		&edit_env_atk_n,
+	previous :	&edit_env_0,
+	next :		&edit_env_2,
+	function :	Enter_Env1
+};
+
+struct menuNode edit_env_2 = {
+	graphic :{	0b11100110,
+				0b10000001,
+				0b11000010,
+				0b10000100,
+				0b11100111},
+	kid :		&edit_env_atk_n,
+	previous :	&edit_env_1,
+	next :		&edit_env_3,
+	function :	Enter_Env2
+};
+
+struct menuNode edit_env_3 = {
+	graphic :{	0b11100110,
+				0b10000001,
+				0b11000110,
+				0b10000001,
+				0b11100110},
+	kid :		&edit_env_atk_n,
+	previous :	&edit_env_2,
+	next :		&edit_env_back,
+	function :	Enter_Env3
+};
+
+struct menuNode edit_env_back = {
+	graphic :{	0b00010000,
+				0b00111000,
+				0b01010100,
+				0b00010000,
+				0b00011111},
+	kid :		&edit_env_atk_n,
+	previous :	&edit_env_3,
+	next :		&edit_env_0,
+	function :	Enter_Kid
+};
+
+struct menuNode edit_env_atk_n = {
+	graphic :{	0b00000010,
+				0b00000101,
+				0b00001000,
+				0b00010000,
+				0b00100000},
+	kid :		&edit_env_atk_max_n,
+	previous :	&edit_env_back_n,
+	next :		&edit_env_dec_n,
+	function :	Enter_Kid
+};
+
+struct menuNode edit_env_atk_max_n = {
+	graphic :{	0b10101010,
+				0b11101010,
+				0b10100100,
+				0b10101010,
+				0b10101010},
+	kid :		&edit_env_atk_max_n,
+	previous :	&edit_env_atk_back_n,
+	next :		&edit_env_atk_min_n,
+	function :	Set_Env_Atk_Max
+};
+
+struct menuNode edit_env_atk_min_n = {
+	graphic :{	0b10100000,
+				0b11100000,
+				0b10101100,
+				0b10101010,
+				0b10101010},
+	kid :		&edit_env_atk_min_n,
+	previous :	&edit_env_atk_max_n,
+	next :		&edit_env_atk_bind_n,
+	function :	Set_Env_Atk_Min
+};
+
+struct menuNode edit_env_atk_bind_n = {
+	graphic :{	0b11001000,
+				0b10100000,
+				0b11001110,
+				0b10101101,
+				0b11001101},
+	kid :		&edit_env_atk_bind_n,
+	previous :	&edit_env_atk_min_n,
+	next :		&edit_env_atk_back_n,
+	function :	Set_Env_Atk_Bind
+};
+
+struct menuNode edit_env_atk_back_n = {
+	graphic :{	0b00010000,
+				0b00111000,
+				0b01010100,
+				0b00010000,
+				0b00011111},
+	kid :		&edit_env_atk_n,
+	previous :	&edit_env_atk_bind_n,
+	next :		&edit_env_atk_max_n,
+	function :	Enter_Kid
+};
+
+struct menuNode edit_env_dec_n = {
+	graphic :{	0b01000000,
+				0b10100000,
+				0b10010000,
+				0b00001000,
+				0b00000111},
+	kid :		&edit_env_dec_max_n,
+	previous :	&edit_env_atk_n,
+	next :		&edit_env_sus_n,
+	function :	Enter_Kid
+};
+
+struct menuNode edit_env_dec_max_n = {
+	graphic :{	0b10101010,
+				0b11101010,
+				0b10100100,
+				0b10101010,
+				0b10101010},
+	kid :		&edit_env_dec_max_n,
+	previous :	&edit_env_dec_back_n,
+	next :		&edit_env_dec_min_n,
+	function :	Set_Env_Dec_Max
+};
+
+struct menuNode edit_env_dec_min_n = {
+	graphic :{	0b10100000,
+				0b11100000,
+				0b10101100,
+				0b10101010,
+				0b10101010},
+	kid :		&edit_env_dec_min_n,
+	previous :	&edit_env_dec_max_n,
+	next :		&edit_env_dec_bind_n,
+	function :	Set_Env_Dec_Min
+};
+
+struct menuNode edit_env_dec_bind_n = {
+	graphic :{	0b11001000,
+				0b10100000,
+				0b11001110,
+				0b10101101,
+				0b11001101},
+	kid :		&edit_env_dec_bind_n,
+	previous :	&edit_env_dec_min_n,
+	next :		&edit_env_dec_back_n,
+	function :	Set_Env_Dec_Bind
+};
+
+struct menuNode edit_env_dec_back_n = {
+	graphic :{	0b00010000,
+				0b00111000,
+				0b01010100,
+				0b00010000,
+				0b00011111},
+	kid :		&edit_env_dec_n,
+	previous :	&edit_env_dec_bind_n,
+	next :		&edit_env_dec_max_n,
+	function :	Enter_Kid
+};
+
+struct menuNode edit_env_sus_n = {
+	graphic :{	0b10000000,
+				0b01000000,
+				0b00111100,
+				0b00000010,
+				0b00000001},
+	kid :		&edit_env_sus_max_n,
+	previous :	&edit_env_dec_n,
+	next :		&edit_env_rel_n,
+	function :	Enter_Kid
+};
+
+struct menuNode edit_env_sus_max_n = {
+	graphic :{	0b10101010,
+				0b11101010,
+				0b10100100,
+				0b10101010,
+				0b10101010},
+	kid :		&edit_env_sus_max_n,
+	previous :	&edit_env_sus_back_n,
+	next :		&edit_env_sus_min_n,
+	function :	Set_Env_Sus_Max
+};
+
+struct menuNode edit_env_sus_min_n = {
+	graphic :{	0b10100000,
+				0b11100000,
+				0b10101100,
+				0b10101010,
+				0b10101010},
+	kid :		&edit_env_sus_min_n,
+	previous :	&edit_env_sus_max_n,
+	next :		&edit_env_sus_bind_n,
+	function :	Set_Env_Sus_Min
+};
+
+struct menuNode edit_env_sus_bind_n = {
+	graphic :{	0b11001000,
+				0b10100000,
+				0b11001110,
+				0b10101101,
+				0b11001101},
+	kid :		&edit_env_sus_bind_n,
+	previous :	&edit_env_sus_min_n,
+	next :		&edit_env_sus_back_n,
+	function :	Set_Env_Sus_Bind
+};
+
+struct menuNode edit_env_sus_back_n = {
+	graphic :{	0b00010000,
+				0b00111000,
+				0b01010100,
+				0b00010000,
+				0b00011111},
+	kid :		&edit_env_sus_n,
+	previous :	&edit_env_sus_bind_n,
+	next :		&edit_env_sus_max_n,
+	function :	Enter_Kid
+};
+
+struct menuNode edit_env_rel_n = {
+	graphic :{	0b00000000,
+				0b11100000,
+				0b00010000,
+				0b00001000,
+				0b00000100},
+	kid :		&edit_env_rel_max_n,
+	previous :	&edit_env_sus_n,
+	next :		&edit_env_back_n,
+	function :	Enter_Kid
+};
+
+struct menuNode edit_env_rel_max_n = {
+	graphic :{	0b10101010,
+				0b11101010,
+				0b10100100,
+				0b10101010,
+				0b10101010},
+	kid :		&edit_env_rel_max_n,
+	previous :	&edit_env_rel_back_n,
+	next :		&edit_env_rel_min_n,
+	function :	Set_Env_Rel_Max
+};
+
+struct menuNode edit_env_rel_min_n = {
+	graphic :{	0b10100000,
+				0b11100000,
+				0b10101100,
+				0b10101010,
+				0b10101010},
+	kid :		&edit_env_rel_min_n,
+	previous :	&edit_env_rel_max_n,
+	next :		&edit_env_rel_bind_n,
+	function :	Set_Env_Rel_Min
+};
+
+struct menuNode edit_env_rel_bind_n = {
+	graphic :{	0b11001000,
+				0b10100000,
+				0b11001110,
+				0b10101101,
+				0b11001101},
+	kid :		&edit_env_rel_bind_n,
+	previous :	&edit_env_rel_min_n,
+	next :		&edit_env_rel_back_n,
+	function :	Set_Env_Rel_Bind
+};
+
+struct menuNode edit_env_rel_back_n = {
+	graphic :{	0b00010000,
+				0b00111000,
+				0b01010100,
+				0b00010000,
+				0b00011111},
+	kid :		&edit_env_rel_n,
+	previous :	&edit_env_rel_bind_n,
+	next :		&edit_env_rel_max_n,
+	function :	Enter_Kid
+};
+
+struct menuNode edit_env_back_n = {
+	graphic :{	0b00010000,
+				0b00111000,
+				0b01010100,
+				0b00010000,
+				0b00011111},
+	kid :		&edit_env_back,
+	previous :	&edit_env_rel_n,
+	next :		&edit_env_atk_n,
+	function :	Exit_Env
+};
+
 
 struct menuNode save_n = {
 	graphic :{	0b01110001,
