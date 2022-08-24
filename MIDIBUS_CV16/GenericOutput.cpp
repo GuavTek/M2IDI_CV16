@@ -16,13 +16,14 @@ Env_t envelopes[4];
 struct keyLanes_t {
 	uint8_t note;
 	enum {
-		KeyNone,
-		KeyIdle,
+		KeyNone = 0,
+		KeyIdle = 1,
 		KeyPlaying} state;
 } keyLanes[4];
 uint8_t currentKeyLane = 0;
 uint8_t keyChannel = 1;
 
+uint8_t bendRange;
 int16_t currentBend;
 uint16_t maxBend = 0x7fff + 3277;
 uint16_t minBend = 0x7fff - 3277;
@@ -44,6 +45,61 @@ uint8_t midi_group = 1;
 #define INT_PER_NOTE INT_PER_VOLT/12
 #define FIXED_POINT_POS 14
 #define FIXED_INT_PER_NOTE ((uint32_t) INT_PER_NOTE * (1 << FIXED_POINT_POS))
+
+// Scan the configuration
+// To populate time saving variables
+void Scan_Matrix(){
+	// Keychannel
+	bool foundChannel = false;
+	for(uint8_t x = 0; x < 4; x++){
+		for (uint8_t y = 0; y < 4; y++){
+			if (outMatrix[x][y].gen_source.sourceType == ctrlType_t::Key){
+				if (outMatrix[x][y].gen_source.channel != 9){
+					keyChannel = outMatrix[x][y].gen_source.channel;
+					foundChannel = true;
+					break;
+				}
+			}
+		}
+		if (foundChannel){
+			break;
+		}
+	}
+	
+	// Keylanes
+	uint8_t tempLanes = 0;
+	for(uint8_t x = 0; x < 4; x++){
+		for (uint8_t y = 0; y < 4; y++){
+			if (outMatrix[x][y].gen_source.sourceType == ctrlType_t::Key){
+				if (outMatrix[x][y].gen_source.channel == keyChannel){
+					tempLanes |= 1 << x;
+					break;
+				}
+			}
+		}
+	}
+	
+	for (uint8_t i = 0; i < 4; i++){
+		if (!keyLanes[i].state != !(tempLanes & (1 << i))){
+			keyLanes[i].state = (tempLanes >> i) & 1;
+		}
+	}
+	
+	// HasCC
+	for (uint8_t x = 0; x < 4; x++){
+		for (uint8_t y = 0; y < 4; y++){
+			if (outMatrix[x][y].gen_source.sourceType == ctrlType_t::None){
+				hasCC[x][y] = 0;
+			} else {
+				hasCC[x][y] = 1;
+			}
+		}
+	}
+	
+	// maxBend minBend
+	uint16_t maxBend = 0x7fff + 819 * bendRange;
+	uint16_t minBend = 0x7fff - 819 * bendRange;
+}
 
 // Low precision floating point to save memory space
 #define ufloat8_t uint8_t
