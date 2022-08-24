@@ -96,6 +96,26 @@ void Scan_Matrix(){
 		}
 	}
 	
+	for (uint8_t i = 0; i < 4; i++){
+		hasCC[4][i] = 0;
+		if (envelopes[i].att_source.sourceType != ctrlType_t::None){
+			hasCC[4][i] = 1;
+			continue;
+		}
+		if (envelopes[i].dec_source.sourceType != ctrlType_t::None){
+			hasCC[4][i] = 1;
+			continue;
+		}
+		if (envelopes[i].sus_source.sourceType != ctrlType_t::None){
+			hasCC[4][i] = 1;
+			continue;
+		}
+		if (envelopes[i].rel_source.sourceType != ctrlType_t::None){
+			hasCC[4][i] = 1;
+			continue;
+		}
+	}
+	
 	// maxBend minBend
 	uint16_t maxBend = 0x7fff + 819 * bendRange;
 	uint16_t minBend = 0x7fff - 819 * bendRange;
