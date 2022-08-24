@@ -90,6 +90,7 @@ extern struct menuNode save_pc_n;
 extern struct menuNode save_back_n;
 extern struct menuNode group_n;
 
+// TODO: add paraphonic gate/envelope/pressure option
 const void Enter_Kid()			{ currentNode = currentNode->kid; }
 const void Enter_Env0()			{ chanSel = 0; currentNode = currentNode->kid; }
 const void Enter_Env1()			{ chanSel = 1; currentNode = currentNode->kid; }
@@ -151,6 +152,8 @@ void Menu_Init(){
 	NVIC_EnableIRQ(EIC_IRQn);
 }
 
+// TODO: trigger Scan_Matrix after a parameter is changed
+// TODO: implement parameter change
 uint8_t Menu_Service(){
 	bool screenChange = false;
 	switch(menuStatus){
