@@ -118,6 +118,14 @@ struct Env_t : Env_base {
 	uint32_t rel_current;
 };
 
+// Collection of data saved in NVM
+struct ConfigNVM_t {
+	uint8_t bendRange;
+	GenOut_base matrix[4][4];
+	Env_base env[4];
+};
+
+extern uint8_t bendRange;
 extern GenOut_t outMatrix[4][4];
 extern Env_t envelopes[4];
 extern uint8_t midi_group;
