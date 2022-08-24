@@ -98,7 +98,7 @@ const void Enter_Env3()			{ chanSel = 3; currentNode = currentNode->kid; }
 const void Exit_Env()			{ chanSel = 0; currentNode = currentNode->kid; }
 const void Enter_Selected()		{  }
 const void Start_Learn()		{ menuStatus = Learning; }
-const void Edit_Bend()			{ menuStatus = EditBend; }
+const void Edit_Bend()			{ menuStatus = Edit_int; var_edit = &bendRange; max_edit = 8; }
 const void Select_Pressure()	{  }
 const void Select_CV()			{  }
 const void Select_Gate()		{  }
