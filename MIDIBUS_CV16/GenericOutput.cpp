@@ -10,6 +10,8 @@
 #include "PWM.h"
 #include "MIDI_Driver.h"
 
+bool needScan = false;
+
 GenOut_t outMatrix[4][4];
 Env_t envelopes[4];
 

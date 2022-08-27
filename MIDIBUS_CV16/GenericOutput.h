@@ -126,6 +126,7 @@ struct ConfigNVM_t {
 	Env_base env[4];
 };
 
+extern bool needScan;
 extern uint8_t bendRange;
 extern GenOut_t outMatrix[4][4];
 extern Env_t envelopes[4];
