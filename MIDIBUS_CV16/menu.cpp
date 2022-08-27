@@ -607,6 +607,7 @@ struct menuNode edit_env_back = {
 				0b00101010,
 				0b00001000,
 				0b00001111},
+	kid :		&edit_envelope,
 	previous :	&edit_env_3,
 	next :		&edit_env_0,
 	function :	Enter_Kid
