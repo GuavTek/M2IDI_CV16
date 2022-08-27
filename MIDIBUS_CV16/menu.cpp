@@ -325,11 +325,11 @@ struct menuNode edit_select_n = {
 };
 
 struct menuNode edit_back_n = {
-	graphic :{	0b00010000,
-				0b00111000,
-				0b01010100,
-				0b00010000,
-				0b00011111},
+	graphic :{	0b10001000,
+				0b00011100,
+				0b00101010,
+				0b00001000,
+				0b00001111},
 	kid :		&edit_n,
 	previous :	&edit_select_n,
 	next :		&edit_bend_n,
@@ -337,11 +337,11 @@ struct menuNode edit_back_n = {
 };
 
 struct menuNode edit_sel_back_n = {
-	graphic :{	0b00010000,
-				0b00111000,
-				0b01010100,
-				0b00010000,
-				0b00011111},
+	graphic :{	0b00001000,
+				0b10011100,
+				0b00101010,
+				0b00001000,
+				0b00001111},
 	kid :		&edit_select_n,
 	previous :	&edit_sel_min_range_n,
 	next :		&edit_sel_type_n,
@@ -517,11 +517,11 @@ struct menuNode edit_sel_type_lfo_sin_n = {
 };
 
 struct menuNode edit_sel_type_lfo_back_n = {
-	graphic :{	0b00010000,
-				0b00111000,
-				0b01010100,
-				0b00010000,
-				0b00011111},
+	graphic :{	0b00001000,
+				0b00011100,
+				0b00101010,
+				0b10001000,
+				0b00001111},
 	kid :		&edit_sel_type_lfo_n,
 	previous :	&edit_sel_type_lfo_sin_n,
 	next :		&edit_sel_type_lfo_tri_n,
@@ -529,11 +529,11 @@ struct menuNode edit_sel_type_lfo_back_n = {
 };
 
 struct menuNode edit_sel_type_back_n = {
-	graphic :{	0b00010000,
-				0b00111000,
-				0b01010100,
-				0b00010000,
-				0b00011111},
+	graphic :{	0b00001000,
+				0b00011100,
+				0b10101010,
+				0b00001000,
+				0b00001111},
 	kid :		&edit_select_n,
 	previous :	&edit_sel_type_lfo_n,
 	next :		&edit_sel_type_pressure_n,
@@ -602,12 +602,11 @@ struct menuNode edit_env_3 = {
 };
 
 struct menuNode edit_env_back = {
-	graphic :{	0b00010000,
-				0b00111000,
-				0b01010100,
-				0b00010000,
-				0b00011111},
-	kid :		&edit_env_atk_n,
+	graphic :{	0b00001000,
+				0b10011100,
+				0b00101010,
+				0b00001000,
+				0b00001111},
 	previous :	&edit_env_3,
 	next :		&edit_env_0,
 	function :	Enter_Kid
@@ -662,11 +661,11 @@ struct menuNode edit_env_atk_bind_n = {
 };
 
 struct menuNode edit_env_atk_back_n = {
-	graphic :{	0b00010000,
-				0b00111000,
-				0b01010100,
-				0b00010000,
-				0b00011111},
+	graphic :{	0b00001000,
+				0b00011100,
+				0b00101010,
+				0b10001000,
+				0b00001111},
 	kid :		&edit_env_atk_n,
 	previous :	&edit_env_atk_bind_n,
 	next :		&edit_env_atk_max_n,
@@ -722,11 +721,11 @@ struct menuNode edit_env_dec_bind_n = {
 };
 
 struct menuNode edit_env_dec_back_n = {
-	graphic :{	0b00010000,
-				0b00111000,
-				0b01010100,
-				0b00010000,
-				0b00011111},
+	graphic :{	0b00001000,
+				0b00011100,
+				0b00101010,
+				0b10001000,
+				0b00001111},
 	kid :		&edit_env_dec_n,
 	previous :	&edit_env_dec_bind_n,
 	next :		&edit_env_dec_max_n,
@@ -782,11 +781,11 @@ struct menuNode edit_env_sus_bind_n = {
 };
 
 struct menuNode edit_env_sus_back_n = {
-	graphic :{	0b00010000,
-				0b00111000,
-				0b01010100,
-				0b00010000,
-				0b00011111},
+	graphic :{	0b00001000,
+				0b00011100,
+				0b00101010,
+				0b10001000,
+				0b00001111},
 	kid :		&edit_env_sus_n,
 	previous :	&edit_env_sus_bind_n,
 	next :		&edit_env_sus_max_n,
@@ -842,11 +841,11 @@ struct menuNode edit_env_rel_bind_n = {
 };
 
 struct menuNode edit_env_rel_back_n = {
-	graphic :{	0b00010000,
-				0b00111000,
-				0b01010100,
-				0b00010000,
-				0b00011111},
+	graphic :{	0b00001000,
+				0b00011100,
+				0b00101010,
+				0b10001000,
+				0b00001111},
 	kid :		&edit_env_rel_n,
 	previous :	&edit_env_rel_bind_n,
 	next :		&edit_env_rel_max_n,
@@ -854,11 +853,11 @@ struct menuNode edit_env_rel_back_n = {
 };
 
 struct menuNode edit_env_back_n = {
-	graphic :{	0b00010000,
-				0b00111000,
-				0b01010100,
-				0b00010000,
-				0b00011111},
+	graphic :{	0b00001000,
+				0b00011100,
+				0b10101010,
+				0b00001000,
+				0b00001111},
 	kid :		&edit_env_back,
 	previous :	&edit_env_rel_n,
 	next :		&edit_env_atk_n,
@@ -903,11 +902,11 @@ struct menuNode save_pc_n = {
 };
 
 struct menuNode save_back_n = {
-	graphic :{	0b00010000,
-				0b00111000,
-				0b01010100,
-				0b00010000,
-				0b00011111},
+	graphic :{	0b10001000,
+				0b00011100,
+				0b00101010,
+				0b00001000,
+				0b00001111},
 	kid :		&save_n,
 	previous :	&save_pc_n,
 	next :		&save_default_n,
