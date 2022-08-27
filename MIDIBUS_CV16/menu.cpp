@@ -82,7 +82,6 @@ extern struct menuNode save_n;
 extern struct menuNode save_slot_n;
 extern struct menuNode save_bind_pc_n;
 extern struct menuNode save_back_n;
-// TODO: add paraphonic gate/envelope/pressure option
 extern struct menuNode save_back_accept_n;
 extern struct menuNode save_back_abort_n;
 extern struct menuNode load_n;
@@ -90,6 +89,7 @@ extern struct menuNode load_slot_n;
 extern struct menuNode load_back_n;
 extern struct menuNode edit_group;
 
+// TODO: add paraphonic gate/envelope/pressure option (Fix in Scan())
 const void Enter_Kid()			{ currentNode = currentNode->kid; }
 const void Enter_Env0()			{ chanSel = 0; currentNode = currentNode->kid; }
 const void Enter_Env1()			{ chanSel = 1; currentNode = currentNode->kid; }
