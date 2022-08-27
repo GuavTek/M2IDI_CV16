@@ -17,7 +17,7 @@ Env_t envelopes[4];
 
 struct keyLanes_t {
 	uint8_t note;
-	enum {
+	enum keyState_t {
 		KeyNone = 0,
 		KeyIdle = 1,
 		KeyPlaying} state;
@@ -82,8 +82,8 @@ void Scan_Matrix(){
 	}
 	
 	for (uint8_t i = 0; i < 4; i++){
-		if (!keyLanes[i].state != !(tempLanes & (1 << i))){
-			keyLanes[i].state = (tempLanes >> i) & 1;
+		if (!((uint8_t) keyLanes[i].state) != !(tempLanes & (1 << i))){
+			keyLanes[i].state = (keyLanes_t::keyState_t) ((tempLanes >> i) & 1);
 		}
 	}
 	
