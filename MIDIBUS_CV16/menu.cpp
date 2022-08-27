@@ -13,13 +13,7 @@
 
 enum menu_status_t {
 	Navigate,
-	Learning,
-	EditBend,
-	SetEnvelope,
 	SetLFO,
-	SetRange,
-	Saving,
-	SetGroup,
 	Edit_8bit,
 	Edit_16bit,
 	Edit_32bit,
