@@ -17,7 +17,7 @@ uint8_t currentCol = 0;
 
 uint8_t lmData[5] = {255,36,24,36,255};
 const uint8_t LEDR[5] = { 23, 22, 21, 20, 42 };
-const uint8_t LEDC[8] = { 8, 9, 10, 11, 43, 17, 18, 19 };
+const uint8_t LEDC[8] = { 19, 18, 17, 43, 11, 10, 9, 8 };
 
 void LM_Init(){
 	PORT->Group[0].DIRSET.reg = 1 << LEDC1_PIN;
@@ -47,24 +47,41 @@ void LM_Service(){
 		// Disable column
 		port_pin_set_output_level(LEDC[currentCol], 1);
 		
-		if (currentCol >= 7) {
-			currentCol = 0;
-			
-			// Disable row
-			port_pin_set_output_level(LEDR[currentRow], 0);
-			
-			if (currentRow >= 4) {
-				currentRow = 0;
-			} else {
-				currentRow++;
+		// Find the next pixel
+		uint8_t tempCol = currentCol+1;
+		bool found = false;
+		bool newRow = false;
+		for (uint8_t y = 0; y < 5; y++){
+			uint8_t x = tempCol;
+			uint8_t tempRow = currentRow + y;
+			if (tempRow >= 5){
+				tempRow -= 5;
 			}
-			
-			port_pin_set_output_level(LEDR[currentRow], 1);
-		} else {
-			currentCol++;
+			for (; x < 8; x++){
+				if (lmData[tempRow] & (1 << x)){
+					currentRow = tempRow;
+					currentCol = x;
+					found = true;
+					break;
+				}
+			}
+			if (found){
+				break;
+			} else {
+				tempCol = 0;
+				// Disable row
+				port_pin_set_output_level(LEDR[currentRow], 0);
+				newRow = true;
+			}
 		}
+		
+		// Enable new row
+		if (newRow){
+			port_pin_set_output_level(LEDR[currentRow], 1);
+		}
+		
 		// Enable column
-		port_pin_set_output_level(LEDC[currentCol], !(lmData[currentRow] & (1 << (7 - currentCol))));
+		port_pin_set_output_level(LEDC[currentCol], 0);
 	}
 }
 
