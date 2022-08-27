@@ -17,9 +17,20 @@ struct menuNode {
 	void const (*function)();
 };
 
+enum menu_status_t {
+	Navigate,
+	SetLFO,
+	Edit_8bit,
+	Edit_16bit,
+	Edit_32bit,
+	Edit_int,
+	Wait_MIDI
+};
+
 void Menu_Init();
 uint8_t Menu_Service();
 
+menu_status_t Get_Menu_State();
 
 
 #endif /* MENU_H_ */

@@ -11,16 +11,7 @@
 #include "menu.h"
 #include "system_interrupt.h"
 
-enum menu_status_t {
-	Navigate,
-	SetLFO,
-	Edit_8bit,
-	Edit_16bit,
-	Edit_32bit,
-	Edit_int,
-	Wait_MIDI
-} menuStatus;
-
+menu_status_t menuStatus;
 menuNode* currentNode;
 void* var_edit;
 void* var_monitor;
@@ -230,6 +221,11 @@ uint8_t Menu_Service(){
 		return 0;
 	}
 }
+
+menu_status_t Get_Menu_State(){
+	return menuStatus;
+}
+
 /*
 // Butt1 right, Butt2 up, Butt3 down
 void EIC_Handler(){
