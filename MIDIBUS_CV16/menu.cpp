@@ -23,6 +23,7 @@ enum menu_status_t {
 
 menuNode* currentNode;
 void* var_edit;
+void* var_monitor;
 uint16_t max_edit;
 uint8_t chanSel = 0;
 volatile bool buttUp;
@@ -109,18 +110,18 @@ const void Set_Min_Range()		{ menuStatus = SetRange; }
 const void Save_Default()		{ menuStatus = Saving; }
 const void Save_PC()			{ menuStatus = Saving; }
 const void Set_Group()			{ menuStatus = Edit_int; var_edit = &midi_group; max_edit = 16; }
-const void Set_Env_Atk_Max()	{ menuStatus = Edit_32bit; var_edit = &envelopes[chanSel].att_max; }
-const void Set_Env_Atk_Min()	{ menuStatus = Edit_32bit; var_edit = &envelopes[chanSel].att_min; }
 const void Set_Env_Atk_Bind()	{ menuStatus = Wait_MIDI; var_edit = &envelopes[chanSel].att_source; }
-const void Set_Env_Dec_Max()	{ menuStatus = Edit_32bit; var_edit = &envelopes[chanSel].dec_max; }
-const void Set_Env_Dec_Min()	{ menuStatus = Edit_32bit; var_edit = &envelopes[chanSel].dec_min; }
 const void Set_Env_Dec_Bind()	{ menuStatus = Wait_MIDI; var_edit = &envelopes[chanSel].dec_source; }
-const void Set_Env_Sus_Max()	{ menuStatus = Edit_32bit; var_edit = &envelopes[chanSel].sus_max; }
-const void Set_Env_Sus_Min()	{ menuStatus = Edit_32bit; var_edit = &envelopes[chanSel].sus_min; }
 const void Set_Env_Sus_Bind()	{ menuStatus = Wait_MIDI; var_edit = &envelopes[chanSel].sus_source; }
-const void Set_Env_Rel_Max()	{ menuStatus = Edit_32bit; var_edit = &envelopes[chanSel].rel_max; }
-const void Set_Env_Rel_Min()	{ menuStatus = Edit_32bit; var_edit = &envelopes[chanSel].rel_min; }
 const void Set_Env_Rel_Bind()	{ menuStatus = Wait_MIDI; var_edit = &envelopes[chanSel].rel_source; }
+const void Set_Env_Atk_Max()	{ menuStatus = Edit_32bit; var_edit = &envelopes[chanSel].att_max; var_monitor = &envelopes[chanSel].att_current; }
+const void Set_Env_Atk_Min()	{ menuStatus = Edit_32bit; var_edit = &envelopes[chanSel].att_min; var_monitor = &envelopes[chanSel].att_current; }
+const void Set_Env_Dec_Max()	{ menuStatus = Edit_32bit; var_edit = &envelopes[chanSel].dec_max; var_monitor = &envelopes[chanSel].dec_current; }
+const void Set_Env_Dec_Min()	{ menuStatus = Edit_32bit; var_edit = &envelopes[chanSel].dec_min; var_monitor = &envelopes[chanSel].dec_current; }
+const void Set_Env_Sus_Max()	{ menuStatus = Edit_16bit; var_edit = &envelopes[chanSel].sus_max; var_monitor = &envelopes[chanSel].sus_current; }
+const void Set_Env_Sus_Min()	{ menuStatus = Edit_16bit; var_edit = &envelopes[chanSel].sus_min; var_monitor = &envelopes[chanSel].sus_current; }
+const void Set_Env_Rel_Max()	{ menuStatus = Edit_32bit; var_edit = &envelopes[chanSel].rel_max; var_monitor = &envelopes[chanSel].rel_current; }
+const void Set_Env_Rel_Min()	{ menuStatus = Edit_32bit; var_edit = &envelopes[chanSel].rel_min; var_monitor = &envelopes[chanSel].rel_current; }
 
 void Menu_Init(){
 	currentNode = &learn_n;
