@@ -25,7 +25,8 @@ enum class GOType_t : uint8_t {
 enum class ctrlType_t : uint8_t {
 	None,
 	Key,
-	CC
+	CC,
+	PC
 };
 
 struct ctrlSource_t {
