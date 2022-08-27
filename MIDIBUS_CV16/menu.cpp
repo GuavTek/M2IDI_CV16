@@ -157,7 +157,7 @@ void Menu_Init(){
 uint8_t Menu_Service(){
 	bool screenChange = false;
 	switch(menuStatus){
-		case Navigate:
+		case menu_status_t::Navigate:
 			if (currentNode == &edit_select_n){
 				if (buttUp) {
 					if (chanSel > 0){
@@ -202,6 +202,20 @@ uint8_t Menu_Service(){
 				}
 			}
 			break;
+		case menu_status_t::Wait_MIDI:
+		menuStatus = menu_status_t::Navigate;
+			break;
+		case menu_status_t::SetLFO:
+		menuStatus = menu_status_t::Navigate;
+			break;
+		case menu_status_t::Edit_int:
+			menuStatus = menu_status_t::Navigate;
+			break;
+		case menu_status_t::Edit_8bit:
+		case menu_status_t::Edit_16bit:
+		case menu_status_t::Edit_32bit:
+			menuStatus = menu_status_t::Navigate;
+			break;
 		default:
 			// Invalid state, reset menu
 			Menu_Init();
@@ -209,6 +223,7 @@ uint8_t Menu_Service(){
 	}
 	
 	if (screenChange) {
+		if (menuStatus == menu_status_t::Navigate){
 		// Channel select screen override
 		if (currentNode == &edit_select_n){
 			LM_WriteRow(0, 0xff);
@@ -219,6 +234,7 @@ uint8_t Menu_Service(){
 			for (uint8_t i = 0; i < 5; i++)	{
 				LM_WriteRow(i, currentNode->graphic[i]);
 			}
+		}
 		}
 		return 1;
 	} else {
