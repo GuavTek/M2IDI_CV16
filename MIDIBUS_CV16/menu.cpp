@@ -253,6 +253,7 @@ uint8_t Menu_Service(){
 				tempSrc->sourceType = ctrlType_t::None;
 				menuStatus = menu_status_t::Navigate;
 				needScan = true;
+				currentNode = currentNode->kid;
 			}
 			if (buttDown){
 				buttDown = false;
@@ -261,7 +262,6 @@ uint8_t Menu_Service(){
 				buttUp = false;
 			}
 			screenChange = true;
-			currentNode = currentNode->kid;
 			break;
 		case menu_status_t::SetLFO:
 		menuStatus = menu_status_t::Navigate;
