@@ -805,6 +805,7 @@ void GO_Service(){
 	}
 }
 
+// TODO: Fix glitch in wave
 // Return sine output from linear input
 uint16_t TriSine(uint16_t in){
 	// Smoothstep approximation
