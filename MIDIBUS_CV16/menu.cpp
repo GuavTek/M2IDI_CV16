@@ -162,10 +162,10 @@ uint8_t Menu_MIDI(MIDI2_voice_t* msg){
 				return 0;
 		}
 		
-		
 		tempSource->channel = msg->channel;
 		menuStatus = menu_status_t::Navigate;
 		needScan = true;
+		currentNode = currentNode->kid;
 		return 1;
 	}
 	return 0;
@@ -262,6 +262,7 @@ uint8_t Menu_Service(){
 				buttUp = false;
 			}
 			screenChange = true;
+			currentNode = currentNode->kid;
 			break;
 		case menu_status_t::SetLFO:
 		menuStatus = menu_status_t::Navigate;
