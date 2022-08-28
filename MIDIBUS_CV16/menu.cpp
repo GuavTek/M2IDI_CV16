@@ -131,7 +131,7 @@ const void Set_Env_Rel_Bind()	{ menuStatus = Wait_MIDI; var_edit = &envelopes[ch
 // Used to bind MIDI sources in configuration
 uint8_t Menu_MIDI(MIDI2_voice_t* msg){
 	if (menuStatus == menu_status_t::Wait_MIDI){
-		ctrlSource_t* tempSource = var_edit;
+		ctrlSource_t* tempSource = (ctrlSource_t*) var_edit;
 		
 		uint8_t tempMask = 0;
 		switch(msg->status){
@@ -249,11 +249,10 @@ uint8_t Menu_Service(){
 			// Press to un-bind
 			if (buttRight){
 				buttRight = false;
-				ctrlSource_t* tempSrc = var_edit;
+				ctrlSource_t* tempSrc = (ctrlSource_t*) var_edit;
 				tempSrc->sourceType = ctrlType_t::None;
 				menuStatus = menu_status_t::Navigate;
 				needScan = true;
-				screenChange = true;
 			}
 			if (buttDown){
 				buttDown = false;
