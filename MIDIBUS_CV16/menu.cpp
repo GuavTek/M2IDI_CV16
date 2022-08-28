@@ -133,7 +133,6 @@ uint8_t Menu_MIDI(MIDI2_voice_t* msg){
 	if (menuStatus == menu_status_t::Wait_MIDI){
 		ctrlSource_t* tempSource = (ctrlSource_t*) var_edit;
 		
-		uint8_t tempMask = 0;
 		switch(msg->status){
 			case MIDI2_VOICE_E::ProgChange:
 				if (!(midiTypeMask & 0b100)){
