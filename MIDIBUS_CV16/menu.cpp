@@ -362,7 +362,7 @@ struct menuNode edit_bend_n = {
 				0b11001001},
 	kid :		&edit_n,
 	previous :	&edit_back_n,
-	next :		&edit_envelope,
+	next :		&edit_group,
 	function :	Edit_Bend
 };
 
