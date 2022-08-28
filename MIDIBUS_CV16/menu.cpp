@@ -263,7 +263,32 @@ uint8_t Menu_Service(){
 			screenChange = true;
 			break;
 		case menu_status_t::SetLFO:
-		menuStatus = menu_status_t::Navigate;
+			if (buttUp) {
+				uint8_t* tempPoint = (uint8_t*) var_edit;
+				uint8_t tempShape = *tempPoint;
+				tempShape++;
+				if (tempShape >= 4){
+					tempShape = 0;
+				}
+				*tempPoint = tempShape;
+				buttUp = false;
+			}
+			if (buttDown) {
+				uint8_t* tempPoint = (uint8_t*) var_edit;
+				uint8_t tempShape = *tempPoint;
+				tempShape--;
+				if (tempShape >= 4){
+					tempShape = 3;
+				}
+				*tempPoint = tempShape;
+				buttDown = false;
+			}
+			if (buttRight) {
+				buttRight = false;
+				menuStatus = menu_status_t::Navigate;
+				currentNode = currentNode->kid;
+			}
+			screenChange = true;
 			break;
 		case menu_status_t::Edit_int:
 			menuStatus = menu_status_t::Navigate;
