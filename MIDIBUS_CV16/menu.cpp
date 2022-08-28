@@ -97,19 +97,19 @@ const void Enter_Env2()			{ chanSel = 2; currentNode = currentNode->kid; }
 const void Enter_Env3()			{ chanSel = 3; currentNode = currentNode->kid; }
 const void Exit_Env()			{ chanSel = 0; currentNode = currentNode->kid; }
 const void Edit_Bend()			{ menuStatus = Edit_int; var_edit = &bendRange; max_edit = 8; }
-const void Select_Pressure()	{ outMatrix[chanSel >> 2][chanSel & 0b11].type = GOType_t::Pressure; currentNode = currentNode->kid; }
-const void Select_CV()			{ outMatrix[chanSel >> 2][chanSel & 0b11].type = GOType_t::DC; currentNode = currentNode->kid; }
-const void Select_Gate()		{ outMatrix[chanSel >> 2][chanSel & 0b11].type = GOType_t::Gate; currentNode = currentNode->kid; }
-const void Select_Envelope()	{ menuStatus = Edit_int; var_edit = &outMatrix[chanSel >> 2][chanSel & 0b11].env_num; max_edit = 4; outMatrix[chanSel >> 2][chanSel & 0b11].type = GOType_t::Envelope; }
-const void Select_Velocity()	{ outMatrix[chanSel >> 2][chanSel & 0b11].type = GOType_t::Velocity; currentNode = currentNode->kid; }
-const void Select_Clk()			{ outMatrix[chanSel >> 2][chanSel & 0b11].type = GOType_t::CLK; currentNode = currentNode->kid; }
-const void Select_LFO()			{ outMatrix[chanSel >> 2][chanSel & 0b11].type = GOType_t::LFO; currentNode = currentNode->kid; }
-const void Select_LFO_Shape()	{ menuStatus = SetLFO; &outMatrix[chanSel >> 2][chanSel & 0b11].shape; }
-const void Select_LFO_Freq_Max(){ menuStatus = Edit_32bit; var_edit = &outMatrix[chanSel >> 2][chanSel & 0b11].freq_max; var_monitor = &outMatrix[chanSel >> 2][chanSel & 0b11].freq_current; }
-const void Select_LFO_Freq_Min(){ menuStatus = Edit_32bit; var_edit = &outMatrix[chanSel >> 2][chanSel & 0b11].freq_min; var_monitor = &outMatrix[chanSel >> 2][chanSel & 0b11].freq_current; }
-const void Set_GO_MIDI()		{ menuStatus = Wait_MIDI; var_edit = &outMatrix[chanSel >> 2][chanSel & 0b11].gen_source; midiTypeMask = 0b111; }
-const void Set_Max_Range()		{ menuStatus = Edit_16bit; var_edit = &outMatrix[chanSel >> 2][chanSel & 0b11].max_range; var_monitor = &outMatrix[chanSel >> 2][chanSel & 0b11].currentOut; }
-const void Set_Min_Range()		{ menuStatus = Edit_16bit; var_edit = &outMatrix[chanSel >> 2][chanSel & 0b11].min_range; var_monitor = &outMatrix[chanSel >> 2][chanSel & 0b11].currentOut; }
+const void Select_Pressure()	{ outMatrix[chanSel & 0b11][chanSel >> 2].type = GOType_t::Pressure; currentNode = currentNode->kid; }
+const void Select_CV()			{ outMatrix[chanSel & 0b11][chanSel >> 2].type = GOType_t::DC; currentNode = currentNode->kid; }
+const void Select_Gate()		{ outMatrix[chanSel & 0b11][chanSel >> 2].type = GOType_t::Gate; currentNode = currentNode->kid; }
+const void Select_Envelope()	{ menuStatus = Edit_int; var_edit = &outMatrix[chanSel & 0b11][chanSel >> 2].env_num; max_edit = 4; outMatrix[chanSel >> 2][chanSel & 0b11].type = GOType_t::Envelope; }
+const void Select_Velocity()	{ outMatrix[chanSel & 0b11][chanSel >> 2].type = GOType_t::Velocity; currentNode = currentNode->kid; }
+const void Select_Clk()			{ outMatrix[chanSel & 0b11][chanSel >> 2].type = GOType_t::CLK; currentNode = currentNode->kid; }
+const void Select_LFO()			{ outMatrix[chanSel & 0b11][chanSel >> 2].type = GOType_t::LFO; currentNode = currentNode->kid; }
+const void Select_LFO_Shape()	{ menuStatus = SetLFO; var_edit = &outMatrix[chanSel & 0b11][chanSel >> 2].shape; }
+const void Select_LFO_Freq_Max(){ menuStatus = Edit_32bit; var_edit = &outMatrix[chanSel & 0b11][chanSel >> 2].freq_max; var_monitor = &outMatrix[chanSel & 0b11][chanSel >> 2].freq_current; }
+const void Select_LFO_Freq_Min(){ menuStatus = Edit_32bit; var_edit = &outMatrix[chanSel & 0b11][chanSel >> 2].freq_min; var_monitor = &outMatrix[chanSel & 0b11][chanSel >> 2].freq_current; }
+const void Set_GO_MIDI()		{ menuStatus = Wait_MIDI; var_edit = &outMatrix[chanSel & 0b11][chanSel >> 2].gen_source; midiTypeMask = 0b111; }
+const void Set_Max_Range()		{ menuStatus = Edit_16bit; var_edit = &outMatrix[chanSel & 0b11][chanSel >> 2].max_range; var_monitor = &outMatrix[chanSel & 0b11][chanSel >> 2].currentOut; }
+const void Set_Min_Range()		{ menuStatus = Edit_16bit; var_edit = &outMatrix[chanSel & 0b11][chanSel >> 2].min_range; var_monitor = &outMatrix[chanSel & 0b11][chanSel >> 2].currentOut; }
 const void Set_Conf_Slot()		{ menuStatus = Edit_int; var_edit = &confSlot; max_edit = MAX_SLOTS; }
 const void Set_Save_PC()		{ menuStatus = Wait_MIDI; var_edit = &confPC; midiTypeMask = 0b100; }
 const void Save_Config()		{ needSave = true; currentNode = currentNode->kid; }
