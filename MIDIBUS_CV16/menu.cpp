@@ -261,6 +261,7 @@ uint8_t Menu_Service(){
 			if (buttUp){
 				buttUp = false;
 			}
+			screenChange = true;
 			break;
 		case menu_status_t::SetLFO:
 		menuStatus = menu_status_t::Navigate;
@@ -281,17 +282,24 @@ uint8_t Menu_Service(){
 	
 	if (screenChange) {
 		if (menuStatus == menu_status_t::Navigate){
-		// Channel select screen override
-		if (currentNode == &edit_select_n){
-			LM_WriteRow(0, 0xff);
-			for (uint8_t i = 0; i < 4; i++){
-				LM_WriteRow(i+1, 0b11000011 | (((chanSel % 4) == i) << (5 - chanSel/4)));
+			// Channel select screen override
+			if (currentNode == &edit_select_n){
+				LM_WriteRow(0, 0xff);
+				for (uint8_t i = 0; i < 4; i++){
+					LM_WriteRow(i+1, 0b11000011 | (((chanSel % 4) == i) << (5 - chanSel/4)));
+				}
+			} else {
+				for (uint8_t i = 0; i < 5; i++)	{
+					LM_WriteRow(i, currentNode->graphic[i]);
+				}
 			}
-		} else {
-			for (uint8_t i = 0; i < 5; i++)	{
-				LM_WriteRow(i, currentNode->graphic[i]);
-			}
-		}
+		} else if (menuStatus == menu_status_t::Wait_MIDI){
+			LM_WriteRow(0,0xff);
+			LM_WriteRow(1,0);
+			LM_WriteRow(2,0);
+			LM_WriteRow(4,0);
+			uint8_t timer = (RTC->MODE0.COUNT.reg >> 14) & 0b111;
+			LM_WriteRow(3, 0b01010101 & ~(1 << timer));
 		}
 		return 1;
 	} else {
