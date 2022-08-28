@@ -128,6 +128,49 @@ const void Set_Env_Rel_Max()	{ menuStatus = Edit_32bit; var_edit = &envelopes[ch
 const void Set_Env_Rel_Min()	{ menuStatus = Edit_32bit; var_edit = &envelopes[chanSel].rel_min; var_monitor = &envelopes[chanSel].rel_current; }
 const void Set_Env_Rel_Bind()	{ menuStatus = Wait_MIDI; var_edit = &envelopes[chanSel].rel_source; midiTypeMask = 0b001; }
 
+// Used to bind MIDI sources in configuration
+uint8_t Menu_MIDI(MIDI2_voice_t* msg){
+	if (menuStatus == menu_status_t::Wait_MIDI){
+		ctrlSource_t* tempSource = var_edit;
+		
+		uint8_t tempMask = 0;
+		switch(msg->status){
+			case MIDI2_VOICE_E::ProgChange:
+				if (!(midiTypeMask & 0b100)){
+					return 0;
+				}
+				// TODO: Set global bank?
+				tempSource->sourceType = ctrlType_t::PC;
+				tempSource->sourceNum = msg->program;
+				break;
+			case MIDI2_VOICE_E::NoteOn:
+			case MIDI2_VOICE_E::NoteOff:
+				if (!(midiTypeMask & 0b010)){
+					return 0;
+				}
+				tempSource->sourceType = ctrlType_t::Key;
+				tempSource->sourceNum = msg->note;
+				break;
+			case MIDI2_VOICE_E::CControl:
+				if (!(midiTypeMask & 0b001)){
+					return 0;
+				}
+				tempSource->sourceType = ctrlType_t::CC;
+				tempSource->sourceNum = msg->controller;
+				break;
+			default:
+				return 0;
+		}
+		
+		
+		tempSource->channel = msg->channel;
+		menuStatus = menu_status_t::Navigate;
+		needScan = true;
+		return 1;
+	}
+	return 0;
+}
+
 void Menu_Init(){
 	currentNode = &edit_n;
 	menuStatus = Navigate;
@@ -203,7 +246,21 @@ uint8_t Menu_Service(){
 			}
 			break;
 		case menu_status_t::Wait_MIDI:
-		menuStatus = menu_status_t::Navigate;
+			// Press to un-bind
+			if (buttRight){
+				buttRight = false;
+				ctrlSource_t* tempSrc = var_edit;
+				tempSrc->sourceType = ctrlType_t::None;
+				menuStatus = menu_status_t::Navigate;
+				needScan = true;
+				screenChange = true;
+			}
+			if (buttDown){
+				buttDown = false;
+			}
+			if (buttUp){
+				buttUp = false;
+			}
 			break;
 		case menu_status_t::SetLFO:
 		menuStatus = menu_status_t::Navigate;

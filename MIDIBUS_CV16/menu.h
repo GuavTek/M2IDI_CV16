@@ -9,6 +9,8 @@
 #ifndef MENU_H_
 #define MENU_H_
 
+#include "MIDI_Driver.h"
+
 struct menuNode {
 	const uint8_t graphic[5];
 	menuNode* const kid;
@@ -29,6 +31,7 @@ enum menu_status_t {
 
 void Menu_Init();
 uint8_t Menu_Service();
+uint8_t Menu_MIDI(MIDI2_voice_t* msg);
 
 menu_status_t Get_Menu_State();
 
