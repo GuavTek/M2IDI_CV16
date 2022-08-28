@@ -300,6 +300,39 @@ uint8_t Menu_Service(){
 			LM_WriteRow(4,0);
 			uint8_t timer = (RTC->MODE0.COUNT.reg >> 14) & 0b111;
 			LM_WriteRow(3, 0b01010101 & ~(1 << timer));
+		} else if (menuStatus == menu_status_t::SetLFO){
+			WavShape_t* tempPoint = (WavShape_t*) var_edit;
+			WavShape_t tempShape = *tempPoint;
+			switch(tempShape){
+				case WavShape_t::Square:
+					LM_WriteRow(0, 0b01111001);
+					LM_WriteRow(1, 0b01001001);
+					LM_WriteRow(2, 0b01001001);
+					LM_WriteRow(3, 0b01001001);
+					LM_WriteRow(4, 0b11001111);
+					break;
+				case WavShape_t::Triangle:
+					LM_WriteRow(0, 0b00001000);
+					LM_WriteRow(1, 0b00010100);
+					LM_WriteRow(2, 0b00100010);
+					LM_WriteRow(3, 0b01000001);
+					LM_WriteRow(4, 0b10000000);
+					break;
+				case WavShape_t::Sawtooth:
+					LM_WriteRow(0, 0b10001000);
+					LM_WriteRow(1, 0b10011001);
+					LM_WriteRow(2, 0b10101010);
+					LM_WriteRow(3, 0b11001100);
+					LM_WriteRow(4, 0b10001000);
+					break;
+				case WavShape_t::Sine:
+					LM_WriteRow(0, 0b00000001);
+					LM_WriteRow(1, 0b00000110);
+					LM_WriteRow(2, 0b00000100);
+					LM_WriteRow(3, 0b10001100);
+					LM_WriteRow(4, 0b01110000);
+					break;
+			}
 		}
 		return 1;
 	} else {
