@@ -16,6 +16,7 @@ menuNode* currentNode;
 void* var_edit;
 void* var_monitor;
 uint8_t max_edit;
+uint8_t bit_edit_stage = 0;
 uint8_t chanSel = 0;
 volatile bool buttUp;
 volatile bool buttDown;
@@ -323,9 +324,175 @@ uint8_t Menu_Service(){
 			screenChange = true;
 			break;
 		case menu_status_t::Edit_8bit:
+			if (buttUp) {
+				uint8_t* tempPoint = (uint8_t*) var_edit;
+				uint8_t tempInt = *tempPoint;
+				buttUp = false;
+				needScan = true;
+				if (bit_edit_stage & 0x80){
+					uint8_t delta = 1 << (bit_edit_stage & 0x07);
+					tempInt += delta;
+				} else {
+					uint8_t i;
+					for (i = 7; (i > 0) && !(tempInt & (1 << i)); i--);
+					i++;
+					bit_edit_stage = i & 0x07;
+					tempInt = 1 << bit_edit_stage;
+				}
+				*tempPoint = tempInt;
+				tempPoint = (uint8_t*) var_monitor;
+				*tempPoint = tempInt;
+			}
+			if (buttDown) {
+				uint8_t* tempPoint = (uint8_t*) var_edit;
+				uint8_t tempInt = *tempPoint;
+				buttDown = false;
+				needScan = true;
+				if (bit_edit_stage & 0x80){
+					uint8_t delta = 1 << (bit_edit_stage & 0x07);
+					tempInt -= delta;
+				} else {
+					uint8_t i;
+					for (i = 7; (i > 0) && !(tempInt & (1 << i)); i--);
+					i--;
+					bit_edit_stage = i & 0x07;
+					tempInt = 1 << bit_edit_stage;
+				}
+				*tempPoint = tempInt;
+				tempPoint = (uint8_t*) var_monitor;
+				*tempPoint = tempInt;
+			}
+			if (buttRight) {
+				buttRight = false;
+				if (bit_edit_stage & 0x80){
+					bit_edit_stage = 0;
+					menuStatus = menu_status_t::Navigate;
+					needScan = true;
+					currentNode = currentNode->kid;
+				} else {
+					if (bit_edit_stage > 3){
+						bit_edit_stage -= 3;
+					} else {
+						bit_edit_stage = 0;
+					}
+					bit_edit_stage |= 0x80;
+				}
+			}
+			screenChange = true;
+			break;
 		case menu_status_t::Edit_16bit:
+			if (buttUp) {
+				uint16_t* tempPoint = (uint16_t*) var_edit;
+				uint16_t tempInt = *tempPoint;
+				buttUp = false;
+				needScan = true;
+				if (bit_edit_stage & 0x80){
+					uint16_t delta = 1 << (bit_edit_stage & 0x0f);
+					tempInt += delta;
+				} else {
+					uint8_t i;
+					for (i = 15; (i > 0) && !(tempInt & (1 << i)); i--);
+					i++;
+					bit_edit_stage = i & 0x0f;
+					tempInt = 1 << bit_edit_stage;
+				}
+				*tempPoint = tempInt;
+				tempPoint = (uint16_t*) var_monitor;
+				*tempPoint = tempInt;
+			}
+			if (buttDown) {
+				uint16_t* tempPoint = (uint16_t*) var_edit;
+				uint16_t tempInt = *tempPoint;
+				buttDown = false;
+				needScan = true;
+				if (bit_edit_stage & 0x80){
+					uint16_t delta = 1 << (bit_edit_stage & 0x0f);
+					tempInt -= delta;
+				} else {
+					uint8_t i;
+					for (i = 15; (i > 0) && !(tempInt & (1 << i)); i--);
+					i--;
+					bit_edit_stage = i & 0x0f;
+					tempInt = 1 << bit_edit_stage;
+				}
+				*tempPoint = tempInt;
+				tempPoint = (uint16_t*) var_monitor;
+				*tempPoint = tempInt;
+			}
+			if (buttRight) {
+				buttRight = false;
+				if (bit_edit_stage & 0x80){
+					bit_edit_stage = 0;
+					menuStatus = menu_status_t::Navigate;
+					needScan = true;
+					currentNode = currentNode->kid;
+				} else {
+					if (bit_edit_stage > 3){
+						bit_edit_stage -= 3;
+					} else {
+						bit_edit_stage = 0;
+					}
+					bit_edit_stage |= 0x80;
+				}
+			}
+			screenChange = true;
+			break;
 		case menu_status_t::Edit_32bit:
-			menuStatus = menu_status_t::Navigate;
+			if (buttUp) {
+				uint32_t* tempPoint = (uint32_t*) var_edit;
+				uint32_t tempInt = *tempPoint;
+				buttUp = false;
+				needScan = true;
+				if (bit_edit_stage & 0x80){
+					uint32_t delta = 1 << (bit_edit_stage & 0x1f);
+					tempInt += delta;
+				} else {
+					uint8_t i;
+					for (i = 31; (i > 0) && !(tempInt & (1 << i)); i--);
+					i++;
+					bit_edit_stage = i & 0x1f;
+					tempInt = 1 << bit_edit_stage;
+				}
+				*tempPoint = tempInt;
+				tempPoint = (uint32_t*) var_monitor;
+				*tempPoint = tempInt;
+			}
+			if (buttDown) {
+				uint32_t* tempPoint = (uint32_t*) var_edit;
+				uint32_t tempInt = *tempPoint;
+				buttDown = false;
+				needScan = true;
+				if (bit_edit_stage & 0x80){
+					uint32_t delta = 1 << (bit_edit_stage & 0x1f);
+					tempInt -= delta;
+				} else {
+					uint8_t i;
+					for (i = 31; (i > 0) && !(tempInt & (1 << i)); i--);
+					i--;
+					bit_edit_stage = i & 0x1f;
+					tempInt = 1 << bit_edit_stage;
+				}
+				*tempPoint = tempInt;
+				tempPoint = (uint32_t*) var_monitor;
+				*tempPoint = tempInt;
+			}
+			if (buttRight) {
+				buttRight = false;
+				if (bit_edit_stage & 0x80){
+					bit_edit_stage = 0;
+					menuStatus = menu_status_t::Navigate;
+					needScan = true;
+					currentNode = currentNode->kid;
+				} else {
+					if (bit_edit_stage > 3){
+						bit_edit_stage -= 3;
+					} else {
+						bit_edit_stage = 0;
+					}
+					bit_edit_stage |= 0x80;
+				}
+			}
+			screenChange = true;
 			break;
 		default:
 			// Invalid state, reset menu
@@ -397,6 +564,26 @@ uint8_t Menu_Service(){
 			LM_WriteRow(2, 0xff >> (8-hi));
 			LM_WriteRow(3, 0xff >> (8-mid));
 			LM_WriteRow(4, 0xff >> (7-lo));
+		} else {
+			uint32_t tempNum;
+			if (menuStatus == menu_status_t::Edit_8bit){
+				uint8_t* tempPoint = (uint8_t*) var_edit;
+				tempNum = *tempPoint | (*tempPoint << 8) | (*tempPoint << 16) | (*tempPoint << 24);
+			} else if (menuStatus == menu_status_t::Edit_16bit){
+				uint16_t* tempPoint = (uint16_t*) var_edit;
+				tempNum = *tempPoint | (*tempPoint << 16);
+			} else {
+				uint32_t* tempPoint = (uint32_t*) var_edit;
+				tempNum = *tempPoint;
+			}
+			LM_WriteRow(4, 0xff);
+			LM_WriteRow(3, tempNum & 0xff);
+			tempNum >>= 8;
+			LM_WriteRow(2, tempNum & 0xff);
+			tempNum >>= 8;
+			LM_WriteRow(1, tempNum & 0xff);
+			tempNum >>= 8;
+			LM_WriteRow(0, tempNum & 0xff);
 		}
 		return 1;
 	} else {
