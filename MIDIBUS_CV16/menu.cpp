@@ -15,7 +15,7 @@ menu_status_t menuStatus;
 menuNode* currentNode;
 void* var_edit;
 void* var_monitor;
-uint16_t max_edit;
+uint8_t max_edit;
 uint8_t chanSel = 0;
 volatile bool buttUp;
 volatile bool buttDown;
@@ -29,6 +29,7 @@ bool needSave = false;
 bool needLoad = false;
 uint8_t confSlot;
 ctrlSource_t confPC;
+
 
 extern struct menuNode edit_n;
 extern struct menuNode edit_bend_n;
@@ -291,7 +292,35 @@ uint8_t Menu_Service(){
 			screenChange = true;
 			break;
 		case menu_status_t::Edit_int:
-			menuStatus = menu_status_t::Navigate;
+			if (buttUp) {
+				uint8_t* tempPoint = (uint8_t*) var_edit;
+				uint8_t tempInt = *tempPoint;
+				tempInt++;
+				if (tempInt >= max_edit){
+					tempInt = 0;
+				}
+				*tempPoint = tempInt;
+				buttUp = false;
+				needScan = true;
+			}
+			if (buttDown) {
+				uint8_t* tempPoint = (uint8_t*) var_edit;
+				uint8_t tempInt = *tempPoint;
+				tempInt--;
+				if (tempInt >= max_edit){
+					tempInt = max_edit - 1;
+				}
+				*tempPoint = tempInt;
+				buttDown = false;
+				needScan = true;
+			}
+			if (buttRight) {
+				buttRight = false;
+				menuStatus = menu_status_t::Navigate;
+				needScan = true;
+				currentNode = currentNode->kid;
+			}
+			screenChange = true;
 			break;
 		case menu_status_t::Edit_8bit:
 		case menu_status_t::Edit_16bit:
@@ -357,6 +386,17 @@ uint8_t Menu_Service(){
 					LM_WriteRow(4, 0b01110000);
 					break;
 			}
+		} else if (menuStatus == menu_status_t::Edit_int){
+			uint8_t* tempPoint = (uint8_t*) var_edit;
+			uint8_t tempNum = *tempPoint;
+			uint8_t lo = tempNum & 0b111;
+			uint8_t mid = (tempNum >> 3) & 0b111;
+			uint8_t hi = tempNum >> 6;
+			LM_WriteRow(0, 0xff);
+			LM_WriteRow(1, 0);
+			LM_WriteRow(2, 0xff >> (8-hi));
+			LM_WriteRow(3, 0xff >> (8-mid));
+			LM_WriteRow(4, 0xff >> (7-lo));
 		}
 		return 1;
 	} else {
