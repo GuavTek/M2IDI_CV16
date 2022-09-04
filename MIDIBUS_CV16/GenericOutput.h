@@ -13,13 +13,13 @@
 #include "MIDI_Driver.h"
 
 enum class GOType_t : uint8_t {
-	DC,
-	LFO,
-	Envelope,
-	CLK,
-	Pressure,
-	Velocity,
-	Gate
+	DC = 0,
+	LFO = 1,
+	Envelope = 2,
+	CLK = 3,
+	Pressure = 4,
+	Velocity = 5,
+	Gate = 6
 };
 
 enum class ctrlType_t : uint8_t {
