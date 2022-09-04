@@ -51,7 +51,7 @@ uint8_t midi_group = 1;
 // Scan the configuration
 // To populate time saving variables
 void Scan_Matrix(){
-	// Keychannel
+	// find Keychannel
 	bool foundChannel = false;
 	for(uint8_t x = 0; x < 4; x++){
 		for (uint8_t y = 0; y < 4; y++){
@@ -68,7 +68,7 @@ void Scan_Matrix(){
 		}
 	}
 	
-	// Keylanes
+	// Get Keylane configuration
 	uint8_t tempLanes = 0;
 	for(uint8_t x = 0; x < 4; x++){
 		for (uint8_t y = 0; y < 4; y++){
@@ -81,13 +81,17 @@ void Scan_Matrix(){
 		}
 	}
 	
+	// Update keylane states
 	for (uint8_t i = 0; i < 4; i++){
 		if (!((uint8_t) keyLanes[i].state) != !(tempLanes & (1 << i))){
 			keyLanes[i].state = (keyLanes_t::keyState_t) ((tempLanes >> i) & 1);
 		}
 	}
 	
-	// HasCC
+	// Find paraphonic outputs
+	
+	
+	// Find CC bound to outputs
 	for (uint8_t x = 0; x < 4; x++){
 		for (uint8_t y = 0; y < 4; y++){
 			if (outMatrix[x][y].gen_source.sourceType == ctrlType_t::None){
@@ -98,6 +102,7 @@ void Scan_Matrix(){
 		}
 	}
 	
+	// Detect CC in envelopes
 	for (uint8_t i = 0; i < 4; i++){
 		hasCC[4][i] = 0;
 		if (envelopes[i].att_source.sourceType != ctrlType_t::None){
@@ -118,7 +123,7 @@ void Scan_Matrix(){
 		}
 	}
 	
-	// maxBend minBend
+	// Configure note bend range
 	uint16_t maxBend = 0x7fff + 819 * bendRange;
 	uint16_t minBend = 0x7fff - 819 * bendRange;
 }
