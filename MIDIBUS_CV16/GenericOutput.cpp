@@ -354,11 +354,7 @@ void GO_Init(){
 	
 	
 	// Fill out utility variables
-	for (uint8_t x = 0; x < 4; x++){
-		for (uint8_t y = 0; y < 4; y++){
-			
-		}
-	}
+	Scan_Matrix();
 	
 }
 
@@ -793,6 +789,9 @@ void GO_MIDI_Realtime(MIDI2_com_t* msg){
 }
 
 void GO_Service(){
+	// Update configuration when needed
+	if (needScan) Scan_Matrix();
+	
 	for (uint8_t x = 0; x < 4; x++){
 		for (uint8_t y = 0; y < 4; y++){
 			switch(outMatrix[x][y].type){
