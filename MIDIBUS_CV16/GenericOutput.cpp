@@ -24,6 +24,8 @@ struct keyLanes_t {
 } keyLanes[4];
 uint8_t currentKeyLane = 0;
 uint8_t keyChannel = 1;
+uint32_t keyPara;
+uint8_t keyParaNum;
 
 uint8_t bendRange;
 int16_t currentBend;
@@ -48,6 +50,7 @@ uint8_t midi_group = 1;
 #define FIXED_POINT_POS 14
 #define FIXED_INT_PER_NOTE ((uint32_t) INT_PER_NOTE * (1 << FIXED_POINT_POS))
 
+// TODO: verify paraphonic configuration
 // Scan the configuration
 // To populate time saving variables
 void Scan_Matrix(){
@@ -70,26 +73,90 @@ void Scan_Matrix(){
 	
 	// Get Keylane configuration
 	uint8_t tempLanes = 0;
+	int32_t lane_conf[4];
 	for(uint8_t x = 0; x < 4; x++){
+		lane_conf[x] = 0;
 		for (uint8_t y = 0; y < 4; y++){
 			if (outMatrix[x][y].gen_source.sourceType == ctrlType_t::Key){
 				if (outMatrix[x][y].gen_source.channel == keyChannel){
 					tempLanes |= 1 << x;
-					break;
+					lane_conf[x] += 1 << (4 * ((uint8_t) outMatrix[x][y].type));
 				}
 			}
 		}
 	}
 	
-	// Update keylane states
+	uint8_t min_diff = 69;
+	uint32_t min_conf = 0;
 	for (uint8_t i = 0; i < 4; i++){
-		if (!((uint8_t) keyLanes[i].state) != !(tempLanes & (1 << i))){
-			keyLanes[i].state = (keyLanes_t::keyState_t) ((tempLanes >> i) & 1);
+		// Detect lane differences
+		if (lane_conf[i]){
+			for (uint8_t j = 0; j < i; j++){
+				if (lane_conf[j]){
+					uint8_t diff = 0;
+					uint32_t diff_conf = 0;
+					for (uint8_t k = 0; k < 6; k++){
+						int8_t temp = (lane_conf[j] >> 4*k) & 0xf;
+						temp -= (lane_conf[i] >> 4*k) & 0xf;
+						if (temp < 0){
+							diff -= temp;
+						} else {
+							diff += temp;
+							diff_conf |= temp << 4*k;
+						}
+					}
+					if (diff < min_diff){
+						min_diff = diff;
+						min_conf = lane_conf[j] - diff_conf;
+					}
+				}
+			}
 		}
 	}
 	
-	// Find paraphonic outputs
-	
+	// Find common outputs
+	keyPara = 0;
+	keyParaNum = 0;
+	uint16_t matKey = (uint16_t) ctrlType_t::Key | (keyChannel << 8);
+	for (uint8_t x = 0; x < 4; x++){
+		// Has key outputs?
+		if (lane_conf[x]){
+			// Base config
+			uint32_t tempConf = min_conf;
+			uint8_t recNum = 0;
+			uint16_t recPos = 0;
+			for (uint8_t y = 0; y < 4; y++){
+				uint16_t tempKey = (uint16_t) outMatrix[x][y].gen_source.sourceType | (outMatrix[x][y].gen_source.channel << 8);
+				if (tempKey == matKey){
+					int8_t temp = (tempConf >> (4 * ((uint8_t) outMatrix[x][y].type))) & 0xf;
+					temp--;
+					if (temp < 0){
+						// Common output
+						keyPara |= (y | (x << 2)) << (keyParaNum * 4);
+						keyParaNum++;
+					} else {
+						// Maybe not common
+						tempConf -= 1 << (4 * ((uint8_t) outMatrix[x][y].type));
+						recPos |= (y | (x << 2)) << (recNum * 4);
+						recNum++;
+					}
+				}
+			}
+			// tempConf != 0 -> is pure common lane
+			if (tempConf){
+				tempLanes &= ~(1 << x);
+				// Recover outputs marked not common
+				for (uint8_t i = 0; i < recNum; i++){
+					keyPara |= ((recPos >> (4 * i)) & 0xf) << (4 * keyParaNum);
+					keyParaNum++;
+				}
+			}
+			// Update keylane states
+			if (!((uint8_t) keyLanes[x].state) != !(tempLanes & (1 << x))){
+				keyLanes[x].state = (keyLanes_t::keyState_t) ((tempLanes >> x) & 1);
+			}
+		}
+	}
 	
 	// Find CC bound to outputs
 	for (uint8_t x = 0; x < 4; x++){
