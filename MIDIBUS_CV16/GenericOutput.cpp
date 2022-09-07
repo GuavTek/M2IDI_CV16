@@ -279,6 +279,42 @@ inline void Start_Note(uint8_t lane, uint8_t note, uint16_t velocity){
 		}
 	}
 	
+	// Handle shared outputs
+	for (uint8_t i = 0; i < keyParaNum; i++){
+		uint8_t y = (keyPara >> (4*i));
+		uint8_t x = (y >> 2) & 0b0011;
+		y &= 0b0011;
+		
+		// Skip already handled outputs
+		if (x == lane) continue;
+		
+		if ( outMatrix[x][y].type == GOType_t::DC ){
+			outMatrix[x][y].gen_source.sourceNum = note;
+			outMatrix[x][y].currentOut = Note_To_Output(note);
+			continue;
+		}
+		
+		if ( outMatrix[x][y].type == GOType_t::Gate ){
+			outMatrix[x][y].gen_source.sourceNum = note;
+			outMatrix[x][y].currentOut = outMatrix[x][y].max_range;
+			continue;
+		}
+		
+		if ( outMatrix[x][y].type == GOType_t::Velocity ){
+			outMatrix[x][y].gen_source.sourceNum = note;
+			outMatrix[x][y].currentOut = Rescale_16bit(velocity, outMatrix[x][y].min_range, outMatrix[x][y].max_range);
+			continue;
+		}
+		
+		if ( outMatrix[x][y].type == GOType_t::Envelope ){
+			outMatrix[x][y].gen_source.sourceNum = note;
+			//outMatrix[x][y].outCount = outMatrix[x][y].min_range << 16;
+			outMatrix[x][y].envelope_stage = 1;
+			continue;
+		}
+		
+	}
+	
 	keyLanes[lane].state = keyLanes_t::KeyPlaying;
 	keyLanes[lane].note = note;
 }
@@ -295,6 +331,27 @@ inline void Stop_Note(uint8_t lane){
 			outMatrix[lane][y].envelope_stage = 4;
 			continue;
 		}
+	}
+	
+	// Handle shared outputs
+	for (uint8_t i = 0; i < keyParaNum; i++){
+		uint8_t y = (keyPara >> (4*i));
+		uint8_t x = (y >> 2) & 0b0011;
+		y &= 0b0011;
+		
+		// Skip already handled outputs
+		if (x == lane) continue;
+		
+		if ( outMatrix[x][y].type == GOType_t::Gate ){
+			outMatrix[x][y].currentOut = outMatrix[x][y].min_range;
+			continue;
+		}
+		
+		if ( outMatrix[x][y].type == GOType_t::Envelope ){
+			outMatrix[x][y].envelope_stage = 4;
+			continue;
+		}
+		
 	}
 	
 	keyLanes[lane].state = keyLanes_t::KeyIdle;
