@@ -25,6 +25,7 @@ MIDI_C MIDI(2);
 void CAN_Receive(CAN_Rx_msg_t* msgIn);
 
 void MIDI1_Handler(MIDI1_msg_t* msg);
+void MIDI2_Voice_Handler(MIDI2_voice_t* msg);
 
 int main(void)
 {
@@ -37,7 +38,7 @@ int main(void)
 	CAN.Init(CAN_CONF, SPI_CONF);
 	CAN.Set_Rx_Callback(CAN_Receive);
 	MIDI.Set_handler(MIDI1_Handler);
-	MIDI.Set_handler(GO_MIDI_Voice);
+	MIDI.Set_handler(MIDI2_Voice_Handler);
 	MIDI.Set_handler(GO_MIDI_Realtime);
 	
 	NVIC_EnableIRQ(SERCOM4_IRQn);
@@ -103,7 +104,13 @@ void MIDI1_Handler(MIDI1_msg_t* msg){
 	MIDI2_voice_t msgOut;
 	MIDI.Convert(&msgOut, msg);
 
-	GO_MIDI_Voice(&msgOut);
+	MIDI2_Voice_Handler(&msgOut);
+}
+
+void MIDI2_Voice_Handler(MIDI2_voice_t* msg){
+	// Send to menu when needed
+	Menu_MIDI(msg);
+	GO_MIDI_Voice(msg);
 }
 
 // Sercom4 interrupt leads to sercom2 handler
