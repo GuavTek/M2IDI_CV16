@@ -592,6 +592,9 @@ void GO_MIDI_Voice(MIDI2_voice_t* msg){
 		case MIDI2_VOICE_E::Pitchbend:
 			msgType = ctrlType_t::Key;
 			break;
+		case MIDI2_VOICE_E::ProgChange:
+			msgType = ctrlType_t::PC;
+			break;
 		default:
 			return;
 	};
@@ -717,6 +720,24 @@ void GO_MIDI_Voice(MIDI2_voice_t* msg){
 					uint32_t scaled = (msg->data >> 16) * span;
 					envelopes[i].rel_current = 0x0101 * envelopes[i].rel_min - (scaled >> 16);
 				}				
+			}
+		}
+	} else if(msgType == ctrlType_t::PC){
+		uint32_t criteria = (uint8_t(GOType_t::DC)) | ( msg->channel << 8 ) | ( msg->program << 16 );
+		for (uint8_t x = 0; x < 4; x++){
+			for (uint8_t y = 0; y < 4; y++){
+				uint32_t src_current =
+				( uint8_t(outMatrix[x][y].type) << 0 ) |
+				( outMatrix[x][y].gen_source.channel << 8 ) |
+				( outMatrix[x][y].gen_source.sourceNum << 16 );
+				if ( src_current == criteria ){
+					if (outMatrix[x][y].currentOut == outMatrix[x][y].max_range){
+						outMatrix[x][y].currentOut = outMatrix[x][y].min_range;
+					} else {
+						outMatrix[x][y].currentOut = outMatrix[x][y].max_range;
+					}
+					return;
+				}
 			}
 		}
 	} else {
