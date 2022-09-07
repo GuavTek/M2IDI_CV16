@@ -165,7 +165,7 @@ uint8_t Menu_MIDI(MIDI2_voice_t* msg){
 		tempSource->channel = msg->channel;
 		menuStatus = menu_status_t::Navigate;
 		needScan = true;
-		currentNode = currentNode->kid;
+		Enter_Kid();
 		return 1;
 	}
 	return 0;
@@ -251,7 +251,7 @@ uint8_t Menu_Service(){
 				tempSrc->sourceType = ctrlType_t::None;
 				menuStatus = menu_status_t::Navigate;
 				needScan = true;
-				currentNode = currentNode->kid;
+				Enter_Kid();
 			}
 			if (buttDown){
 				buttDown = false;
