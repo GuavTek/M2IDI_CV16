@@ -71,16 +71,24 @@ void Scan_Matrix(){
 		}
 	}
 	
-	// Get Keylane configuration
+	// Scan matrix
 	uint8_t tempLanes = 0;
 	int32_t lane_conf[4];
 	for(uint8_t x = 0; x < 4; x++){
 		lane_conf[x] = 0;
 		for (uint8_t y = 0; y < 4; y++){
+			// Get Keylane configuration
 			if (outMatrix[x][y].gen_source.sourceType == ctrlType_t::Key){
 				if (outMatrix[x][y].gen_source.channel == keyChannel){
 					tempLanes |= 1 << x;
 					lane_conf[x] += 1 << (4 * ((uint8_t) outMatrix[x][y].type));
+				}
+			}
+			
+			// Set LFO direction
+			if (outMatrix[x][y].type == GOType_t::LFO){
+				if (outMatrix[x][y].direction == 0){
+					outMatrix[x][y].direction = 1;
 				}
 			}
 		}
