@@ -44,19 +44,28 @@ int main(void)
 	NVIC_EnableIRQ(SERCOM4_IRQn);
 	system_interrupt_enable_global();
 	
-    /* Replace with your application code */
     while (1){
 		static uint32_t periodic_timer = 0;
 		static uint32_t smiley_timer = 0;
 		if (periodic_timer < RTC->MODE0.COUNT.reg)	{
+			static uint8_t matrixUpdate = 0;
 			periodic_timer = RTC->MODE0.COUNT.reg;
-			GO_Service();
-			if (Menu_Service())	{
-				// Inactivity timeout
-				smiley_timer = RTC->MODE0.COUNT.reg + 200000;
-			}
+			// Update LED matrix every time (1ms/32)
 			LM_Service();
-			PWM_Service();
+			if (matrixUpdate == 0) {
+				// Update menu every 32 times (1ms)
+				if (Menu_Service())	{
+					// Inactivity timeout
+					smiley_timer = RTC->MODE0.COUNT.reg + 200000;
+				}
+			}
+			if ((matrixUpdate & 0b00111) == 0) {
+				// Update �utputs and PWM multiplexer every 8 times (1ms/4)
+				GO_Service(matrixUpdate & 0b11);
+				PWM_Service();
+			}
+			matrixUpdate++;
+			matrixUpdate &= 0b11111;
 		}
 		if (smiley_timer < RTC->MODE0.COUNT.reg) {
 			smiley_timer = RTC->MODE0.COUNT.reg + 10240;

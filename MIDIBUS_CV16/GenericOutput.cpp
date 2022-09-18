@@ -964,6 +964,25 @@ void GO_Service(){
 	}
 }
 
+void GO_Service(uint8_t x){
+	// Update configuration when needed
+	if (needScan) Scan_Matrix();
+	
+	for (uint8_t y = 0; y < 4; y++){
+		switch(outMatrix[x][y].type){
+		case GOType_t::LFO:
+			GO_LFO(&outMatrix[x][y]);
+			break;
+		case GOType_t::Envelope:
+			GO_ENV(&outMatrix[x][y]);
+			break;
+		default:
+			break;
+		}
+		PWM_Set(x,y,outMatrix[x][y].currentOut);
+	}
+}
+
 // TODO: Fix glitch in wave
 // Return sine output from linear input
 uint16_t TriSine(uint16_t in){

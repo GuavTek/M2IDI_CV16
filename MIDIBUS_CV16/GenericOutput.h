@@ -135,6 +135,7 @@ extern uint8_t midi_group;
 void GO_Init();
 
 void GO_Service();
+void GO_Service(uint8_t x);
 
 void GO_MIDI_Voice(MIDI2_voice_t* msg);
 
