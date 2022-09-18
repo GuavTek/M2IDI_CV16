@@ -51,6 +51,7 @@ uint8_t midi_group = 1;
 #define FIXED_INT_PER_NOTE ((uint32_t) INT_PER_NOTE * (1 << FIXED_POINT_POS))
 
 // TODO: verify paraphonic configuration
+// TODO: Setting gate on y > 1 breaks lanes. Sometimes???
 // Scan the configuration
 // To populate time saving variables
 void Scan_Matrix(){
@@ -413,6 +414,7 @@ void GO_Init(){
 	outMatrix[3][2].currentOut = 0x7000;
 	outMatrix[3][3].currentOut = 0x7000;
 	
+	// Temporary settings
 	outMatrix[1][3].type = GOType_t::LFO;
 	outMatrix[1][3].shape = WavShape_t::Sawtooth;
 	outMatrix[1][3].max_range = 0x3fff;
@@ -538,6 +540,7 @@ void GO_LFO(GenOut_t* go){
 	}
 }
 
+// TODO: Envelopes only work reliably on full-scale
 void GO_ENV(GenOut_t* go){
 	Env_t* tempEnv = &envelopes[go->env_num];
 	switch(go->envelope_stage){
@@ -814,7 +817,7 @@ void GO_MIDI_Voice(MIDI2_voice_t* msg){
 				for (uint8_t x = 0; x < 4; x++){
 					uint8_t lane = (currentKeyLane + x) & 0b11;
 					if (keyLanes[lane].state == keyLanes_t::KeyIdle){
-						// Found a unused lane
+						// Found an unused lane
 						tempLane = lane;
 						break;
 					} else if ((tempLane == 250)&&(keyLanes[lane].state == keyLanes_t::KeyPlaying)){

@@ -629,6 +629,8 @@ void WDT_Handler(){
 	}
 }
 
+// TODO: Improve node linking ( going down a level should lead to the first node at that level )
+
 // lvl0
 struct menuNode edit_n = {
 	graphic :{	0b11101100, 
