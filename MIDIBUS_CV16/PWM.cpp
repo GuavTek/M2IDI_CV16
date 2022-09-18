@@ -59,6 +59,7 @@ void PWM_Set(uint8_t row, uint8_t col, uint16_t data){
 	outLevel[y][x] = data;
 }
 
+// TODO: Reduce wobble?
 void PWM_Service(){
 	// Inhibit MUX
 	port_pin_set_output_level(6, 1);
