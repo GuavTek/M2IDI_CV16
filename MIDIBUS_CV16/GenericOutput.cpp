@@ -200,8 +200,8 @@ void Scan_Matrix(){
 	}
 	
 	// Configure note bend range
-	uint16_t maxBend = 0x7fff + 819 * bendRange;
-	uint16_t minBend = 0x7fff - 819 * bendRange;
+	maxBend = 0x7fff + 819 * bendRange;
+	minBend = 0x7fff - 819 * bendRange;
 	
 	needScan = false;
 }
