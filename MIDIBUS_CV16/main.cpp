@@ -100,12 +100,14 @@ void RTC_Init(){
 void CAN_Receive(CAN_Rx_msg_t* msgIn){
 	uint8_t length = CAN.Get_Data_Length(msgIn->dataLengthCode);
 	MIDI.Decode(msgIn->payload, length);
-
-	LM_WriteRow(0, 0b00100100);
-	LM_WriteRow(1, 0b00000000);
-	LM_WriteRow(2, 0b00011000);
-	LM_WriteRow(3, 0b00100100);
-	LM_WriteRow(4, 0b00011000);
+	
+	if (Get_Menu_State() == menu_status_t::Navigate){
+		LM_WriteRow(0, 0b00100100);
+		LM_WriteRow(1, 0b00000000);
+		LM_WriteRow(2, 0b00111100);
+		LM_WriteRow(3, 0b01000010);
+		LM_WriteRow(4, 0b00111100);		
+	}
 
 }
 
