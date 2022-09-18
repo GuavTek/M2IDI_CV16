@@ -60,7 +60,7 @@ int main(void)
 				}
 			}
 			if ((matrixUpdate & 0b00111) == 0) {
-				// Update �utputs and PWM multiplexer every 8 times (1ms/4)
+				// Update outputs and PWM multiplexer every 8 times (1ms/4)
 				GO_Service(matrixUpdate & 0b11);
 				PWM_Service();
 			}
