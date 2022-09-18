@@ -397,22 +397,13 @@ inline void Reset_All_Controllers(){
 
 void GO_Init(){
 	// Set default values
-	outMatrix[0][0].currentOut = 0x7000;
-	outMatrix[0][1].currentOut = 0x7000;
-	outMatrix[0][2].currentOut = 0x7000;
-	outMatrix[0][3].currentOut = 0x7000;
-	outMatrix[1][0].currentOut = 0x7000;
-	outMatrix[1][1].currentOut = 0x7000;
-	outMatrix[1][2].currentOut = 0x7000;
-	outMatrix[1][3].currentOut = 0x7000;
-	outMatrix[2][0].currentOut = 0x7000;
-	outMatrix[2][1].currentOut = 0x7000;
-	outMatrix[2][2].currentOut = 0x7000;
-	outMatrix[2][3].currentOut = 0x7000;
-	outMatrix[3][0].currentOut = 0x7000;
-	outMatrix[3][1].currentOut = 0x7000;
-	outMatrix[3][2].currentOut = 0x7000;
-	outMatrix[3][3].currentOut = 0x7000;
+	for (uint8_t x = 0; x < 4; x++){
+		for (uint8_t y = 0; y < 4; y++){
+			outMatrix[x][y].currentOut = 0x7000;
+			outMatrix[x][y].max_range = 0xffff;
+			outMatrix[x][y].min_range = 0;
+		}
+	}
 	
 	// Temporary settings
 	outMatrix[1][3].type = GOType_t::LFO;
