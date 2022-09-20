@@ -486,49 +486,50 @@ void GO_Init(){
 }
 
 void GO_LFO(GenOut_t* go){
-	go->outCount += go->direction * go->freq_current;
-	uint16_t tempOut = go->outCount >> 16;
 	if (go->shape == WavShape_t::Sawtooth){
-		uint32_t remain = go->outCount - (go->min_range << 16);
-		if (remain < go->freq_current){
-			uint32_t diff = go->freq_current - remain;
-			go->outCount = go->max_range - diff;
-		}
 		go->currentOut = go->outCount >> 16;
+		go->direction = -1;
+		uint32_t remain = go->outCount - (go->min_range << 16);
+		if (remain <= go->freq_current){
+			uint32_t diff = go->freq_current - remain;
+			go->outCount = (go->max_range << 16) - diff;
+		}
 	} else if (go->shape == WavShape_t::Square){
-			uint32_t remain = 0xffffffff - go->outCount;
-			if (remain < go->freq_current){
-				go->outCount = go->freq_current - remain;
-				if (go->currentOut == go->min_range){
-					go->currentOut = go->max_range;
-				} else {
-					go->currentOut = go->min_range;
-				}
-			}
-	} else {
-		if (go->direction == 1){
-			uint32_t remain = (go->max_range << 16) - go->outCount;
-			if (remain < go->freq_current){
-				// change direction
-				go->direction = -1;
-				uint32_t diff = go->freq_current - remain;
-				go->outCount = go->max_range - diff;
-			}
-		} else {
-			uint32_t remain = go->outCount - (go->min_range << 16);
-			if (remain < go->freq_current){
-				go->direction = 1;
-				uint32_t diff = go->freq_current - remain;
-				go->outCount = go->min_range + diff;
+		go->direction = 1;
+		uint32_t remain = 0xffffffff - go->outCount;
+		if (remain <= go->freq_current){
+			go->outCount = go->freq_current - remain;
+			if (go->currentOut == go->min_range){
+				go->currentOut = go->max_range;
+			} else {
+				go->currentOut = go->min_range;
 			}
 		}
-		
+	} else {
 		if (go->shape == WavShape_t::Sine){
 			go->currentOut = TriSine(go->outCount >> 16);
 		} else {
 			go->currentOut = go->outCount >> 16;
 		}
+		
+		if (go->direction == 1){
+			uint32_t remain = (go->max_range << 16) - go->outCount;
+			if (remain <= go->freq_current){
+				// change direction
+				go->direction = -1;
+				uint32_t diff = go->freq_current - remain;
+				go->outCount = (go->max_range << 16) - diff;
+			}
+		} else {
+			uint32_t remain = go->outCount - (go->min_range << 16);
+			if (remain <= go->freq_current){
+				go->direction = 1;
+				uint32_t diff = go->freq_current - remain;
+				go->outCount = (go->min_range << 16) + diff;
+			}
+		}
 	}
+	go->outCount += go->direction * go->freq_current;
 }
 
 // TODO: Envelopes only work reliably on full-scale
