@@ -537,9 +537,9 @@ uint8_t Menu_Service(){
 					break;
 				case WavShape_t::Sawtooth:
 					LM_WriteRow(0, 0b10001000);
-					LM_WriteRow(1, 0b10011001);
+					LM_WriteRow(1, 0b11001100);
 					LM_WriteRow(2, 0b10101010);
-					LM_WriteRow(3, 0b11001100);
+					LM_WriteRow(3, 0b10011001);
 					LM_WriteRow(4, 0b10001000);
 					break;
 				case WavShape_t::Sine:
