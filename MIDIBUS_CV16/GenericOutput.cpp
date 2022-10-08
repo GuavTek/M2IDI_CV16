@@ -490,6 +490,9 @@ void GO_LFO(GenOut_t* go){
 	if (go->shape == WavShape_t::Sawtooth){
 		go->outCount -= go->freq_current;
 		go->currentOut = Rescale_16bit(go->outCount >> 16, go->min_range, go->max_range);
+	} else if (go->shape == WavShape_t::SinSaw){
+		go->outCount -= go->freq_current;
+		go->currentOut = Rescale_16bit(TriSine(go->outCount >> 16), go->min_range, go->max_range);
 	} else if (go->shape == WavShape_t::Square){
 		go->outCount -= go->freq_current;
 		uint32_t remain = go->outCount;

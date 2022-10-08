@@ -35,11 +35,13 @@ struct ctrlSource_t {
 	uint16_t sourceNum;
 };
 
+
 enum class WavShape_t : uint8_t {
 	Square = 0,
 	Triangle = 1,
 	Sawtooth = 2,
-	Sine = 3
+	Sine = 3,
+	SinSaw = 4
 };
 
 // The data to store in NVM

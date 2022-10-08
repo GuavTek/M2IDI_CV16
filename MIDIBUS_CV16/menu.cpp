@@ -266,7 +266,7 @@ uint8_t Menu_Service(){
 				uint8_t* tempPoint = (uint8_t*) var_edit;
 				uint8_t tempShape = *tempPoint;
 				tempShape++;
-				if (tempShape >= 4){
+				if (tempShape >= 5){
 					tempShape = 0;
 				}
 				*tempPoint = tempShape;
@@ -276,8 +276,8 @@ uint8_t Menu_Service(){
 				uint8_t* tempPoint = (uint8_t*) var_edit;
 				uint8_t tempShape = *tempPoint;
 				tempShape--;
-				if (tempShape >= 4){
-					tempShape = 3;
+				if (tempShape >= 5){
+					tempShape = 4;
 				}
 				*tempPoint = tempShape;
 				buttDown = false;
@@ -548,6 +548,13 @@ uint8_t Menu_Service(){
 					LM_WriteRow(2, 0b00000100);
 					LM_WriteRow(3, 0b10001100);
 					LM_WriteRow(4, 0b01110000);
+					break;
+				case WavShape_t::SinSaw:
+					LM_WriteRow(0, 0b11000110);
+					LM_WriteRow(1, 0b10100101);
+					LM_WriteRow(2, 0b10100100);
+					LM_WriteRow(3, 0b10010100);
+					LM_WriteRow(4, 0b10001100);
 					break;
 			}
 		} else if (menuStatus == menu_status_t::Edit_int){
