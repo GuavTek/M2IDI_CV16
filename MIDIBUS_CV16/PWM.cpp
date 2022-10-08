@@ -10,6 +10,7 @@
 #include "PWM.h"
 
 uint16_t outLevel[4][4];
+const uint8_t tempBitReduction = 4;
 
 void PWM_Init(){
 	// PA02, PA03, PA04, PA05 are PWM outputs
@@ -42,7 +43,7 @@ void PWM_Init(){
 	TCC3->PATTB.reg = TCC_PATT_PGE0 | TCC_PATT_PGE1 | TCC_PATT_PGE2 | TCC_PATT_PGE3;
 	
 	// Set period
-	TCC3->PERB.bit.PERB = 0x10000;
+	TCC3->PERB.bit.PERB = 0x10000 >> tempBitReduction;
 	
 	// Enable timer
 	TCC3->CTRLA.bit.ENABLE = 1;
@@ -56,7 +57,7 @@ void PWM_Set(uint8_t row, uint8_t col, uint16_t data){
 	} else {
 		y = row;
 	}
-	outLevel[y][x] = data;
+	outLevel[y][x] = data >> tempBitReduction;
 }
 
 // TODO: Reduce wobble?
