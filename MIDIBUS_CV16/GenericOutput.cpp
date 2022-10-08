@@ -805,27 +805,34 @@ void GO_MIDI_Voice(MIDI2_voice_t* msg){
 		} else if(keyChannel == msg->channel) {
 			if (msg->status == MIDI2_VOICE_E::NoteOn){
 				uint8_t tempLane = 250;
-				// TODO: Check if note is already playing
 				for (uint8_t x = 0; x < 4; x++){
 					uint8_t lane = (currentKeyLane + x) & 0b11;
-					if (keyLanes[lane].state == keyLanes_t::KeyIdle){
-						// Found an unused lane
-						tempLane = lane;
-						break;
-					} else if ((tempLane == 250)&&(keyLanes[lane].state == keyLanes_t::KeyPlaying)){
-						tempLane = lane;
+					if (keyLanes[lane].state == keyLanes_t::KeyPlaying && keyLanes[lane].note == msg->note){
+						// Note is already playing
+						return;
+					}
+					if (tempLane == 250){
+						if (keyLanes[lane].state == keyLanes_t::KeyIdle){
+							// Found an unused lane
+							tempLane = lane;
+							//break;
+						} else if (keyLanes[lane].state == keyLanes_t::KeyPlaying){
+							// Next lane in round-robin
+							tempLane = lane;
+						}
 					}
 				}
 				
 				if (tempLane == 250){
-					// No keys
+					// No keys configured
 					return;
 				}
 				
+				// Update starting lane for Round-robin arbitration
 				currentKeyLane = (tempLane + 1) & 0b11;
 				
 				if (keyLanes[tempLane].state == keyLanes_t::KeyPlaying){
-					// Note already playing. Push to queue
+					// Note already playing in lane. Push to queue
 					noteQueue[queueIndex++].note = keyLanes[tempLane].note;
 				}
 				
