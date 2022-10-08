@@ -367,8 +367,8 @@ uint8_t Menu_Service(){
 					needScan = true;
 					Enter_Kid();
 				} else {
-					if (bit_edit_stage > 3){
-						bit_edit_stage -= 3;
+					if (bit_edit_stage > 4){
+						bit_edit_stage -= 4;
 					} else {
 						bit_edit_stage = 0;
 					}
@@ -424,8 +424,8 @@ uint8_t Menu_Service(){
 					needScan = true;
 					Enter_Kid();
 				} else {
-					if (bit_edit_stage > 3){
-						bit_edit_stage -= 3;
+					if (bit_edit_stage > 4){
+						bit_edit_stage -= 4;
 					} else {
 						bit_edit_stage = 0;
 					}
@@ -481,8 +481,8 @@ uint8_t Menu_Service(){
 					needScan = true;
 					Enter_Kid();
 				} else {
-					if (bit_edit_stage > 3){
-						bit_edit_stage -= 3;
+					if (bit_edit_stage > 4){
+						bit_edit_stage -= 4;
 					} else {
 						bit_edit_stage = 0;
 					}

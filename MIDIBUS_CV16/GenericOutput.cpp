@@ -214,6 +214,9 @@ uint32_t ufloat8_to_uint32(ufloat8_t in){
 	if (exp > 29){
 		exp = 29;
 	}
+	if (exp > 0){
+		mant |= 0x08;
+	}
 	return mant << exp;
 }
 
@@ -221,12 +224,12 @@ ufloat8_t uint32_to_ufloat8(uint32_t in){
 	uint8_t exp = 29;
 	uint8_t mant = 0;
 	for (; exp > 0; exp--){
-		mant = (in >> exp) & 0x07;
-		if (mant >= 4){
+		mant = (in >> exp) & 0x0f;
+		if (mant >= 8){
 			break;
 		}
 	}
-	return (mant | (exp << 3));
+	return ((mant & 0x07) | (exp << 3));
 }
 
 inline uint16_t Note_To_Output(uint8_t note){
