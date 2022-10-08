@@ -485,20 +485,15 @@ void GO_Init(){
 	
 }
 
+// TODO: Verify new LFO method
 void GO_LFO(GenOut_t* go){
 	if (go->shape == WavShape_t::Sawtooth){
-		go->currentOut = go->outCount >> 16;
-		go->direction = -1;
-		uint32_t remain = go->outCount - (go->min_range << 16);
-		if (remain <= go->freq_current){
-			uint32_t diff = go->freq_current - remain;
-			go->outCount = (go->max_range << 16) - diff;
-		}
+		go->outCount -= go->freq_current;
+		go->currentOut = Rescale_16bit(go->outCount >> 16, go->min_range, go->max_range);
 	} else if (go->shape == WavShape_t::Square){
-		go->direction = 1;
-		uint32_t remain = 0xffffffff - go->outCount;
-		if (remain <= go->freq_current){
-			go->outCount = go->freq_current - remain;
+		go->outCount -= go->freq_current;
+		uint32_t remain = go->outCount;
+		if (remain < go->freq_current){
 			if (go->currentOut == go->min_range){
 				go->currentOut = go->max_range;
 			} else {
@@ -507,29 +502,33 @@ void GO_LFO(GenOut_t* go){
 		}
 	} else {
 		if (go->shape == WavShape_t::Sine){
-			go->currentOut = TriSine(go->outCount >> 16);
+			go->currentOut = Rescale_16bit(TriSine(go->outCount >> 16), go->min_range, go->max_range);
 		} else {
-			go->currentOut = go->outCount >> 16;
+			go->currentOut = Rescale_16bit(go->outCount >> 16, go->min_range, go->max_range);
 		}
 		
 		if (go->direction == 1){
-			uint32_t remain = (go->max_range << 16) - go->outCount;
+			uint32_t remain = (0xFFFF'FFFF << 16) - go->outCount;
 			if (remain <= go->freq_current){
 				// change direction
 				go->direction = -1;
 				uint32_t diff = go->freq_current - remain;
-				go->outCount = (go->max_range << 16) - diff;
+				go->outCount = (0xFFFF'FFFF << 16) - diff;
+			} else {
+				go->outCount += go->freq_current;
 			}
 		} else {
-			uint32_t remain = go->outCount - (go->min_range << 16);
+			uint32_t remain = go->outCount;
 			if (remain <= go->freq_current){
 				go->direction = 1;
 				uint32_t diff = go->freq_current - remain;
-				go->outCount = (go->min_range << 16) + diff;
+				go->outCount = diff;
+			} else {
+				go->outCount -= go->freq_current;
 			}
 		}
 	}
-	go->outCount += go->direction * go->freq_current;
+	
 }
 
 // TODO: Verify
