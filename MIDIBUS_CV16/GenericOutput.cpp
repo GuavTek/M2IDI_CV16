@@ -532,46 +532,45 @@ void GO_LFO(GenOut_t* go){
 	go->outCount += go->direction * go->freq_current;
 }
 
-// TODO: Envelopes only work reliably on full-scale
+// TODO: Verify
 void GO_ENV(GenOut_t* go){
 	Env_t* tempEnv = &envelopes[go->env_num];
+	uint32_t remain;
 	switch(go->envelope_stage){
-		uint32_t remain;
 		case 1:
 			// attack
-			remain = (go->max_range - go->currentOut) << ENV_MANTISSA;
-			if (remain < tempEnv->att_current){
+			remain = (0xFFFF'FFFF << 16) - go->outCount;
+			if (remain <= tempEnv->att_current){
 				go->envelope_stage++;
-				go->outCount = go->max_range << 16;
+				go->outCount = 0xFFFF'FFFF << 16;
 			} else {
-				go->outCount += tempEnv->att_current << (16 - ENV_MANTISSA);
+				go->outCount += tempEnv->att_current;
 			}
 			break;
 		case 2:
 			// decay
-			remain = (go->currentOut - tempEnv->sus_current) << ENV_MANTISSA;
-			if (remain < tempEnv->dec_current){
+			remain = go->outCount - (tempEnv->sus_current << 16);
+			if (remain <= tempEnv->dec_current){
 				go->envelope_stage++;
 				go->outCount = tempEnv->sus_current << 16;
 			} else {
-				go->outCount -= tempEnv->dec_current << (16 - ENV_MANTISSA);
+				go->outCount -= tempEnv->dec_current;
 			}
 			break;
 		case 4:
 			// release
-			remain = (go->currentOut - go->min_range) << ENV_MANTISSA;
-			if (remain < tempEnv->rel_current){
+			if (go->outCount <= tempEnv->rel_current){
 				go->envelope_stage = 0;
-				go->outCount = go->min_range << 16;
+				go->outCount = 0;
 			} else {
-				go->outCount -= tempEnv->rel_current << (16 - ENV_MANTISSA);
+				go->outCount -= tempEnv->rel_current;
 			}
 			break;
 		default:
 			break;
 	}
 	// Set new value
-	go->currentOut = go->outCount >> 16;
+	go->currentOut = Rescale_16bit(go->outCount >> 16, go->min_range, go->max_range);
 }
 
 void GO_MIDI_Voice(MIDI2_voice_t* msg){
