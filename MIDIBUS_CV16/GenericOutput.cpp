@@ -815,17 +815,19 @@ void GO_MIDI_Voice(MIDI2_voice_t* msg){
 						// Note is already playing
 						return;
 					}
-					if (tempLane == 250){
+					if (tempLane & 0x80){
 						if (keyLanes[lane].state == keyLanes_t::KeyIdle){
 							// Found an unused lane
 							tempLane = lane;
 							//break;
-						} else if (keyLanes[lane].state == keyLanes_t::KeyPlaying){
+						} else if ((tempLane == 250) && (keyLanes[lane].state == keyLanes_t::KeyPlaying)){
 							// Next lane in round-robin
-							tempLane = lane;
+							tempLane = lane | 0x80;
 						}
 					}
 				}
+				
+				tempLane &= 0x7f;
 				
 				if (tempLane == 250){
 					// No keys configured
