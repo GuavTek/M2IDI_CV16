@@ -31,6 +31,31 @@ bool needLoad = false;
 uint8_t confSlot;
 ctrlSource_t confPC;
 
+inline uint32_t extrapolate_num (uint32_t in, uint8_t pos){
+	uint32_t tempResult = 0;
+	uint8_t cleanIn = (in >> pos) & 0xf;
+	int8_t i = pos;
+	for (; i > 0; i -= 4){
+		tempResult |= cleanIn << i;
+	}
+	tempResult |= cleanIn >> -i;
+	return tempResult;
+}
+
+inline uint16_t extrapolate_num (uint16_t in, uint8_t pos){
+	uint16_t tempResult = 0;
+	uint8_t cleanIn = (in >> pos) & 0xf;
+	int8_t i = pos;
+	for (; i > 0; i -= 4){
+		tempResult |= cleanIn << i;
+	}
+	tempResult |= cleanIn >> -i;
+	return tempResult;
+}
+
+inline uint8_t extrapolate_num (uint8_t in, uint8_t pos){
+	return in | (in >> 4);
+}
 
 extern struct menuNode edit_n;
 extern struct menuNode edit_bend_n;
@@ -329,6 +354,7 @@ uint8_t Menu_Service(){
 				if (bit_edit_stage & 0x80){
 					uint8_t delta = 1 << (bit_edit_stage & 0x07);
 					tempInt += delta;
+					tempInt = extrapolate_num(tempInt, bit_edit_stage & 0x07);
 				} else {
 					uint8_t i;
 					for (i = 7; (i > 0) && !(tempInt & (1 << i)); i--);
@@ -348,6 +374,7 @@ uint8_t Menu_Service(){
 				if (bit_edit_stage & 0x80){
 					uint8_t delta = 1 << (bit_edit_stage & 0x07);
 					tempInt -= delta;
+					tempInt = extrapolate_num(tempInt, bit_edit_stage & 0x07);
 				} else {
 					uint8_t i;
 					for (i = 7; (i > 0) && !(tempInt & (1 << i)); i--);
@@ -367,8 +394,8 @@ uint8_t Menu_Service(){
 					needScan = true;
 					Enter_Kid();
 				} else {
-					if (bit_edit_stage > 4){
-						bit_edit_stage -= 4;
+					if (bit_edit_stage > 3){
+						bit_edit_stage -= 3;
 					} else {
 						bit_edit_stage = 0;
 					}
@@ -386,6 +413,7 @@ uint8_t Menu_Service(){
 				if (bit_edit_stage & 0x80){
 					uint16_t delta = 1 << (bit_edit_stage & 0x0f);
 					tempInt += delta;
+					tempInt = extrapolate_num(tempInt, bit_edit_stage & 0x0f);
 				} else {
 					uint8_t i;
 					for (i = 15; (i > 0) && !(tempInt & (1 << i)); i--);
@@ -405,6 +433,7 @@ uint8_t Menu_Service(){
 				if (bit_edit_stage & 0x80){
 					uint16_t delta = 1 << (bit_edit_stage & 0x0f);
 					tempInt -= delta;
+					tempInt = extrapolate_num(tempInt, bit_edit_stage & 0x0f);
 				} else {
 					uint8_t i;
 					for (i = 15; (i > 0) && !(tempInt & (1 << i)); i--);
@@ -424,8 +453,8 @@ uint8_t Menu_Service(){
 					needScan = true;
 					Enter_Kid();
 				} else {
-					if (bit_edit_stage > 4){
-						bit_edit_stage -= 4;
+					if (bit_edit_stage > 3){
+						bit_edit_stage -= 3;
 					} else {
 						bit_edit_stage = 0;
 					}
@@ -443,6 +472,7 @@ uint8_t Menu_Service(){
 				if (bit_edit_stage & 0x80){
 					uint32_t delta = 1 << (bit_edit_stage & 0x1f);
 					tempInt += delta;
+					tempInt = extrapolate_num(tempInt, bit_edit_stage & 0x1f);
 				} else {
 					uint8_t i;
 					for (i = 31; (i > 0) && !(tempInt & (1 << i)); i--);
@@ -462,6 +492,7 @@ uint8_t Menu_Service(){
 				if (bit_edit_stage & 0x80){
 					uint32_t delta = 1 << (bit_edit_stage & 0x1f);
 					tempInt -= delta;
+					tempInt = extrapolate_num(tempInt, bit_edit_stage & 0x1f);
 				} else {
 					uint8_t i;
 					for (i = 31; (i > 0) && !(tempInt & (1 << i)); i--);
@@ -481,8 +512,8 @@ uint8_t Menu_Service(){
 					needScan = true;
 					Enter_Kid();
 				} else {
-					if (bit_edit_stage > 4){
-						bit_edit_stage -= 4;
+					if (bit_edit_stage > 3){
+						bit_edit_stage -= 3;
 					} else {
 						bit_edit_stage = 0;
 					}
