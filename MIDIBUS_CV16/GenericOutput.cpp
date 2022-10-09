@@ -45,7 +45,9 @@ uint8_t midi_group = 1;
 
 #define ENV_MANTISSA 7
 
-#define INT_PER_VOLT 6553.6
+// TODO: update gain if switching to DACs
+#define OUTPUT_GAIN 1.0453		// Nominal gain
+#define INT_PER_VOLT 6553.6/OUTPUT_GAIN
 #define INT_PER_NOTE INT_PER_VOLT/12
 #define FIXED_POINT_POS 14
 #define FIXED_INT_PER_NOTE ((uint32_t) INT_PER_NOTE * (1 << FIXED_POINT_POS))
