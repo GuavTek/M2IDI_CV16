@@ -468,15 +468,15 @@ void GO_Init(){
 	outMatrix[3][2].gen_source.sourceType = ctrlType_t::Key;
 	outMatrix[3][2].gen_source.channel = 1;
 	
-	envelopes[0].att_current = 400;
-	envelopes[0].att_max = 1;
+	envelopes[0].att_current = 0x3000'0000;
+	envelopes[0].att_max = 0x3000'0000;
 	envelopes[0].att_min = 255;
 	envelopes[0].att_source.sourceType = ctrlType_t::CC;
 	envelopes[0].att_source.channel = 1;
 	envelopes[0].att_source.sourceNum = 66;
-	envelopes[0].dec_current = 600;
+	envelopes[0].dec_current = 0x0080'0000;
 	envelopes[0].sus_current = 0xA000;
-	envelopes[0].rel_current = 0xffff;
+	envelopes[0].rel_current = 0x1000'0000;
 	hasCC[4][0] = 1;
 	
 	// Load setup from NVM
