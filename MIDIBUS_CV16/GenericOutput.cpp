@@ -232,9 +232,16 @@ inline uint16_t Note_To_Output(uint8_t note){
 
 // Scales a value
 inline uint16_t Rescale_16bit(uint16_t val, uint16_t minOut, uint16_t maxOut){
-	uint32_t tempResult = (maxOut-minOut+1) * val;
-	tempResult >>= 16; // Divide by input range
-	tempResult += minOut;
+	uint32_t tempResult = 0;
+	if (maxOut > minOut) {
+		tempResult = (maxOut-minOut+1) * val;
+		tempResult >>= 16; // Divide by input range
+		tempResult += minOut;
+	} else if (minOut > maxOut) {
+		tempResult = (minOut-maxOut+1) * val;
+		tempResult >>= 16; // Divide by input range
+		tempResult = minOut - tempResult;
+	}
 	return (uint16_t) tempResult;
 }
 
@@ -870,7 +877,7 @@ void GO_MIDI_Voice(MIDI2_voice_t* msg){
 					}
 				}
 			} else if (msg->status == MIDI2_VOICE_E::Pitchbend){
-				uint16_t  tempBend = Rescale_16bit(msg->data >> 16, minBend, maxBend);
+				uint16_t tempBend = Rescale_16bit(msg->data >> 16, minBend, maxBend);
 				currentBend = tempBend - 0x7fff;
 				
 				// update v/oct outputs
