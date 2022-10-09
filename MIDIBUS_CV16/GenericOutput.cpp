@@ -26,6 +26,7 @@ uint8_t currentKeyLane = 0;
 uint8_t keyChannel = 1;
 uint32_t keyPara;
 uint8_t keyParaNum;
+uint16_t keyMask;
 
 uint8_t bendRange = 4;
 int16_t currentBend = 0;
@@ -52,7 +53,7 @@ uint8_t midi_group = 1;
 #define FIXED_POINT_POS 14
 #define FIXED_INT_PER_NOTE ((uint32_t) INT_PER_NOTE * (1 << FIXED_POINT_POS))
 
-// TODO: verify paraphonic configuration
+// TODO: Fix grid selection (use functions)
 // TODO: Setting gate on y > 1 breaks lanes. Sometimes???
 // Scan the configuration
 // To populate time saving variables
@@ -75,7 +76,6 @@ void Scan_Matrix(){
 	}
 	
 	// Scan matrix
-	uint8_t tempLanes = 0;
 	int32_t lane_conf[4];
 	for(uint8_t x = 0; x < 4; x++){
 		lane_conf[x] = 0;
@@ -83,44 +83,33 @@ void Scan_Matrix(){
 			// Get Keylane configuration
 			if (outMatrix[x][y].gen_source.sourceType == ctrlType_t::Key){
 				if (outMatrix[x][y].gen_source.channel == keyChannel){
-					tempLanes |= 1 << x;
-					lane_conf[x] += 1 << (4 * ((uint8_t) outMatrix[x][y].type));
-				}
-			}
-			
-			// Set LFO direction
-			if (outMatrix[x][y].type == GOType_t::LFO){
-				if (outMatrix[x][y].direction == 0){
-					outMatrix[x][y].direction = 1;
+					lane_conf[x] |= 1 << (4 * ((uint8_t) outMatrix[x][y].type) + y);
 				}
 			}
 		}
 	}
 	
-	uint8_t min_diff = 69;
-	uint32_t min_conf = 0;
+	uint8_t maxCom = 0;
+	uint32_t comConf = 0;
 	for (uint8_t i = 0; i < 4; i++){
-		// Detect lane differences
+		// Detect lane similarities
 		if (lane_conf[i]){
 			for (uint8_t j = 0; j < i; j++){
 				if (lane_conf[j]){
-					uint8_t diff = 0;
-					uint32_t diff_conf = 0;
-					for (uint8_t k = 0; k < 6; k++){
-						int8_t temp = (lane_conf[j] >> 4*k) & 0xf;
-						temp -= (lane_conf[i] >> 4*k) & 0xf;
-						if (temp < 0){
-							diff -= temp;
-						} else {
-							diff += temp;
-							diff_conf |= temp << 4*k;
-						}
+					uint8_t numCom = 0;
+					uint32_t conf = lane_conf[i] & lane_conf[j];
+					for (uint8_t k = 0; k < 32; k++){
+						numCom += (conf >> k) & 1;	
 					}
-					if (diff < min_diff){
-						min_diff = diff;
-						min_conf = lane_conf[j] - diff_conf;
+					if (numCom > maxCom){
+						maxCom = numCom;
+						comConf = conf;
 					}
 				}
+			}
+			// Set config for fallback
+			if (!comConf){
+				comConf = lane_conf[i];
 			}
 		}
 	}
@@ -128,43 +117,32 @@ void Scan_Matrix(){
 	// Find common outputs
 	keyPara = 0;
 	keyParaNum = 0;
+	keyMask = 0;
 	uint16_t matKey = (uint16_t) ctrlType_t::Key | (keyChannel << 8);
 	for (uint8_t x = 0; x < 4; x++){
+		uint8_t hasLane = 0;
 		// Has key outputs?
 		if (lane_conf[x]){
-			// Base config
-			uint32_t tempConf = min_conf;
-			uint8_t recNum = 0;
-			uint16_t recPos = 0;
 			for (uint8_t y = 0; y < 4; y++){
-				uint16_t tempKey = (uint16_t) outMatrix[x][y].gen_source.sourceType | (outMatrix[x][y].gen_source.channel << 8);
-				if (tempKey == matKey){
-					int8_t temp = (tempConf >> (4 * ((uint8_t) outMatrix[x][y].type))) & 0xf;
-					temp--;
-					if (temp < 0){
-						// Common output
-						keyPara |= (y | (x << 2)) << (keyParaNum * 4);
-						keyParaNum++;
-					} else {
-						// Maybe not common
-						tempConf -= 1 << (4 * ((uint8_t) outMatrix[x][y].type));
-						recPos |= (y | (x << 2)) << (recNum * 4);
-						recNum++;
+				if (comConf & (1 << (4 * ((uint8_t) outMatrix[x][y].type) + y))){
+					// Not a common output?
+					if ((comConf & lane_conf[x]) == comConf){
+						// Not a common output!
+						keyMask |= 1 << (y + 4*x);
+						hasLane = 1;
+						continue;
 					}
 				}
-			}
-			// tempConf != 0 -> is pure common lane
-			if (tempConf){
-				tempLanes &= ~(1 << x);
-				// Recover outputs marked not common
-				for (uint8_t i = 0; i < recNum; i++){
-					keyPara |= ((recPos >> (4 * i)) & 0xf) << (4 * keyParaNum);
+				uint16_t tempKey = (uint16_t) outMatrix[x][y].gen_source.sourceType | (outMatrix[x][y].gen_source.channel << 8);
+				if (tempKey == matKey){
+					// Common output
+					keyPara |= (y | (x << 2)) << (keyParaNum * 4);
 					keyParaNum++;
 				}
 			}
 			// Update keylane states
-			if (!((uint8_t) keyLanes[x].state) != !(tempLanes & (1 << x))){
-				keyLanes[x].state = (keyLanes_t::keyState_t) ((tempLanes >> x) & 1);
+			if (!((uint8_t) keyLanes[x].state) != !hasLane){
+				keyLanes[x].state = (keyLanes_t::keyState_t) hasLane;
 			}
 		}
 	}
@@ -262,30 +240,29 @@ inline uint16_t Rescale_16bit(uint16_t val, uint16_t minOut, uint16_t maxOut){
 
 inline void Start_Note(uint8_t lane, uint8_t note, uint16_t velocity){
 	for (uint8_t y = 0; y < 4; y++){
-		uint32_t src_current = ( uint8_t(outMatrix[lane][y].type) << 0 ) | ( uint8_t(outMatrix[lane][y].gen_source.sourceType) << 8 ) | ( outMatrix[lane][y].gen_source.channel << 16 );
-		uint32_t criteria = ( uint8_t(GOType_t::DC) << 0 ) | ( uint8_t(ctrlType_t::Key) << 8 ) | ( keyChannel << 16 );
-		if ( src_current == criteria ){
+		if (!(keyMask & (1 << (y + 4*lane)))){
+			continue;
+		}
+		
+		if ( outMatrix[lane][y].type == GOType_t::DC ){
 			outMatrix[lane][y].gen_source.sourceNum = note;
 			outMatrix[lane][y].currentOut = Note_To_Output(note);
 			continue;
 		}
 		
-		criteria = ( uint8_t(GOType_t::Gate) << 0 ) | ( uint8_t(ctrlType_t::Key) << 8 ) | ( keyChannel << 16 );
-		if ( src_current == criteria ){
+		if ( outMatrix[lane][y].type == GOType_t::Gate ){
 			outMatrix[lane][y].gen_source.sourceNum = note;
 			outMatrix[lane][y].currentOut = outMatrix[lane][y].max_range;
 			continue;
 		}
 		
-		criteria = ( uint8_t(GOType_t::Velocity) << 0 ) | ( uint8_t(ctrlType_t::Key) << 8 ) | ( keyChannel << 16 );
-		if ( src_current == criteria ){
+		if ( outMatrix[lane][y].type == GOType_t::Velocity ){
 			outMatrix[lane][y].gen_source.sourceNum = note;
 			outMatrix[lane][y].currentOut = Rescale_16bit(velocity, outMatrix[lane][y].min_range, outMatrix[lane][y].max_range);
 			continue;
 		}
 		
-		criteria = ( uint8_t(GOType_t::Envelope) << 0 ) | ( uint8_t(ctrlType_t::Key) << 8 ) | ( keyChannel << 16 );
-		if ( src_current == criteria ){
+		if ( outMatrix[lane][y].type == GOType_t::Envelope ){
 			outMatrix[lane][y].gen_source.sourceNum = note;
 			//outMatrix[lane][y].outCount = outMatrix[lane][y].min_range << 16;
 			outMatrix[lane][y].envelope_stage = 1;
@@ -293,14 +270,14 @@ inline void Start_Note(uint8_t lane, uint8_t note, uint16_t velocity){
 		}
 	}
 	
+	keyLanes[lane].state = keyLanes_t::KeyPlaying;
+	keyLanes[lane].note = note;
+	
 	// Handle shared outputs
 	for (uint8_t i = 0; i < keyParaNum; i++){
 		uint8_t y = (keyPara >> (4*i));
 		uint8_t x = (y >> 2) & 0b0011;
 		y &= 0b0011;
-		
-		// Skip already handled outputs
-		if (x == lane) continue;
 		
 		if ( outMatrix[x][y].type == GOType_t::DC ){
 			outMatrix[x][y].gen_source.sourceNum = note;
@@ -328,22 +305,33 @@ inline void Start_Note(uint8_t lane, uint8_t note, uint16_t velocity){
 		}
 		
 	}
-	
-	keyLanes[lane].state = keyLanes_t::KeyPlaying;
-	keyLanes[lane].note = note;
 }
 
 inline void Stop_Note(uint8_t lane){
 	for (uint8_t y = 0; y < 4; y++){
-		uint32_t src_current = ( uint8_t(outMatrix[lane][y].type) << 0 ) | ( outMatrix[lane][y].gen_source.channel << 8 );
-		if ( src_current == (uint8_t(GOType_t::Gate) | ( keyChannel << 8 )) ){
+		if (!(keyMask & (1 << (y + 4*lane)))){
+			continue;
+		}
+		
+		if ( outMatrix[lane][y].type == GOType_t::Gate ){
 			outMatrix[lane][y].currentOut = outMatrix[lane][y].min_range;
 			continue;
 		} 
 		
-		if ( src_current == (uint8_t(GOType_t::Envelope) | (keyChannel << 8 )) ){
+		if ( outMatrix[lane][y].type == GOType_t::Envelope ){
 			outMatrix[lane][y].envelope_stage = 4;
 			continue;
+		}
+	}
+	
+	keyLanes[lane].state = keyLanes_t::KeyIdle;
+	
+	// Check lanestates, to know if shared outputs should be turned off
+	bool foundActive = false;
+	for (uint8_t i = 0; i < 4; i++){
+		if (keyLanes[i].state == keyLanes_t::KeyPlaying){
+			foundActive = true;
+			break;
 		}
 	}
 	
@@ -352,23 +340,25 @@ inline void Stop_Note(uint8_t lane){
 		uint8_t y = (keyPara >> (4*i));
 		uint8_t x = (y >> 2) & 0b0011;
 		y &= 0b0011;
-		
-		// Skip already handled outputs
-		if (x == lane) continue;
-		
+				
 		if ( outMatrix[x][y].type == GOType_t::Gate ){
-			outMatrix[x][y].currentOut = outMatrix[x][y].min_range;
+			if (!foundActive){
+				outMatrix[x][y].currentOut = outMatrix[x][y].min_range;
+			}
 			continue;
 		}
 		
 		if ( outMatrix[x][y].type == GOType_t::Envelope ){
-			outMatrix[x][y].envelope_stage = 4;
+			if (foundActive){
+				outMatrix[x][y].envelope_stage = 1;
+			} else {
+				outMatrix[x][y].envelope_stage = 4;
+			}
 			continue;
 		}
 		
 	}
 	
-	keyLanes[lane].state = keyLanes_t::KeyIdle;
 }
 
 inline void Stop_All_Notes(){
