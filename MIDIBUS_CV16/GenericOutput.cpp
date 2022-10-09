@@ -490,7 +490,6 @@ void GO_Init(){
 	
 }
 
-// TODO: Verify new LFO method
 void GO_LFO(GenOut_t* go){
 	if (go->shape == WavShape_t::Sawtooth){
 		go->outCount -= go->freq_current;
@@ -539,7 +538,6 @@ void GO_LFO(GenOut_t* go){
 	
 }
 
-// TODO: Verify
 void GO_ENV(GenOut_t* go){
 	Env_t* tempEnv = &envelopes[go->env_num];
 	uint32_t remain;
