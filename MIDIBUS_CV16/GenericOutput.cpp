@@ -479,7 +479,7 @@ void GO_Init(){
 	envelopes[0].rel_current = 0x1000'0000;
 	hasCC[4][0] = 1;
 	
-	// Load setup from NVM
+	// TODO: Load setup from NVM
 	
 	
 	// Fill out utility variables
@@ -575,6 +575,8 @@ void GO_ENV(GenOut_t* go){
 	go->currentOut = Rescale_16bit(go->outCount >> 16, go->min_range, go->max_range);
 }
 
+// TODO: Fix stuck notes
+// TODO: Optimize pitchbend
 void GO_MIDI_Voice(MIDI2_voice_t* msg){
 	if(msg->group != midi_group){
 		return;

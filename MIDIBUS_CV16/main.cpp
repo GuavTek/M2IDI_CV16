@@ -27,6 +27,7 @@ void CAN_Receive(CAN_Rx_msg_t* msgIn);
 void MIDI1_Handler(MIDI1_msg_t* msg);
 void MIDI2_Voice_Handler(MIDI2_voice_t* msg);
 
+// TODO: DMA driven CAN controller.
 int main(void)
 {
 	system_init();
