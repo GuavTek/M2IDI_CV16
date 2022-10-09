@@ -991,7 +991,6 @@ void GO_Service(uint8_t x){
 	}
 }
 
-// TODO: Fix glitch in wave
 // Return sine output from linear input
 uint16_t TriSine(uint16_t in){
 	// Smoothstep approximation
@@ -1013,6 +1012,13 @@ uint16_t TriSine(uint16_t in){
 	tempIn *= in;
 	tempIn >>= 16;
 	tempOut += 6*tempIn;
+	
+	// Clamp output
+	if (tempOut > 0xFFFF){
+		tempOut = 0xFFFF;
+	} else if (tempOut < 0) {
+		tempOut = 0;
+	}
 	
 	return tempOut;
 }
