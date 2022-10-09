@@ -27,10 +27,10 @@ uint8_t keyChannel = 1;
 uint32_t keyPara;
 uint8_t keyParaNum;
 
-uint8_t bendRange;
-int16_t currentBend;
-uint16_t maxBend = 0x7fff + 3277;
-uint16_t minBend = 0x7fff - 3277;
+uint8_t bendRange = 4;
+int16_t currentBend = 0;
+uint16_t maxBend;
+uint16_t minBend;
 
 uint8_t queueIndex;
 struct {
