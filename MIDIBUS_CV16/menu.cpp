@@ -126,7 +126,7 @@ const void Edit_Bend()			{ menuStatus = Edit_int; var_edit = &bendRange; max_edi
 const void Select_Pressure()	{ outMatrix[chanSel & 0b11][chanSel >> 2].type = GOType_t::Pressure; needScan = true; Enter_Kid(); }
 const void Select_CV()			{ outMatrix[chanSel & 0b11][chanSel >> 2].type = GOType_t::DC; needScan = true; Enter_Kid(); }
 const void Select_Gate()		{ outMatrix[chanSel & 0b11][chanSel >> 2].type = GOType_t::Gate; needScan = true; Enter_Kid(); }
-const void Select_Envelope()	{ menuStatus = Edit_int; var_edit = &outMatrix[chanSel & 0b11][chanSel >> 2].env_num; max_edit = 4; outMatrix[chanSel >> 2][chanSel & 0b11].type = GOType_t::Envelope; }
+const void Select_Envelope()	{ menuStatus = Edit_int; var_edit = &outMatrix[chanSel & 0b11][chanSel >> 2].env_num; max_edit = 4; outMatrix[chanSel & 0b11][chanSel >> 2].type = GOType_t::Envelope; }
 const void Select_Velocity()	{ outMatrix[chanSel & 0b11][chanSel >> 2].type = GOType_t::Velocity; needScan = true; Enter_Kid(); }
 const void Select_Clk()			{ outMatrix[chanSel & 0b11][chanSel >> 2].type = GOType_t::CLK; needScan = true; Enter_Kid(); }
 const void Select_LFO()			{ outMatrix[chanSel & 0b11][chanSel >> 2].type = GOType_t::LFO; needScan = true; Enter_Kid(); }
