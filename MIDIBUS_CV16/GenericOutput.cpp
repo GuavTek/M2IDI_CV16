@@ -24,7 +24,7 @@ struct keyLanes_t {
 } keyLanes[4];
 uint8_t currentKeyLane = 0;
 uint8_t keyChannel = 1;
-uint32_t keyPara;
+GridPos_t keyPara[8];
 uint8_t keyParaNum;
 uint16_t keyMask;
 
@@ -114,7 +114,6 @@ void Scan_Matrix(){
 	}
 	
 	// Find common outputs
-	keyPara = 0;
 	keyParaNum = 0;
 	keyMask = 0;
 	uint16_t matKey = (uint16_t) ctrlType_t::Key | (keyChannel << 8);
@@ -135,7 +134,8 @@ void Scan_Matrix(){
 				uint16_t tempKey = (uint16_t) outMatrix[x][y].gen_source.sourceType | (outMatrix[x][y].gen_source.channel << 8);
 				if (tempKey == matKey){
 					// Common output
-					keyPara |= (y | (x << 2)) << (keyParaNum * 4);
+					keyPara[keyParaNum].x = x;
+					keyPara[keyParaNum].y = y;
 					keyParaNum++;
 				}
 			}
@@ -281,9 +281,8 @@ inline void Start_Note(uint8_t lane, uint8_t note, uint16_t velocity){
 	
 	// Handle shared outputs
 	for (uint8_t i = 0; i < keyParaNum; i++){
-		uint8_t y = (keyPara >> (4*i));
-		uint8_t x = (y >> 2) & 0b0011;
-		y &= 0b0011;
+		uint8_t y = keyPara[i].y;
+		uint8_t x = keyPara[i].x;
 		
 		if ( outMatrix[x][y].type == GOType_t::DC ){
 			outMatrix[x][y].gen_source.sourceNum = note;
@@ -343,9 +342,8 @@ inline void Stop_Note(uint8_t lane){
 	
 	// Handle shared outputs
 	for (uint8_t i = 0; i < keyParaNum; i++){
-		uint8_t y = (keyPara >> (4*i));
-		uint8_t x = (y >> 2) & 0b0011;
-		y &= 0b0011;
+		uint8_t y = keyPara[i].y;
+		uint8_t x = keyPara[i].x;
 				
 		if ( outMatrix[x][y].type == GOType_t::Gate ){
 			if (!foundActive){

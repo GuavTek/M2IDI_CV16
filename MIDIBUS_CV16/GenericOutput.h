@@ -44,6 +44,11 @@ enum class WavShape_t : uint8_t {
 	SinSaw = 4
 };
 
+struct GridPos_t {
+	uint8_t x : 2;
+	uint8_t y : 2;
+};
+
 // The data to store in NVM
 struct GenOut_base {
 	enum GOType_t type = GOType_t::DC;
