@@ -32,9 +32,9 @@ uint8_t confSlot;
 ctrlSource_t confPC;
 
 inline uint32_t extrapolate_num (uint32_t in, uint8_t pos){
-	uint32_t tempResult = 0;
+	uint32_t tempResult = in & (0xffff'ffff << pos);
 	uint8_t cleanIn = (in >> pos) & 0xf;
-	int8_t i = pos;
+	int8_t i = pos - 4;
 	for (; i > 0; i -= 4){
 		tempResult |= cleanIn << i;
 	}
@@ -43,9 +43,9 @@ inline uint32_t extrapolate_num (uint32_t in, uint8_t pos){
 }
 
 inline uint16_t extrapolate_num (uint16_t in, uint8_t pos){
-	uint16_t tempResult = 0;
+	uint16_t tempResult = in & (0xffff << pos);
 	uint8_t cleanIn = (in >> pos) & 0xf;
-	int8_t i = pos;
+	int8_t i = pos - 4;
 	for (; i > 0; i -= 4){
 		tempResult |= cleanIn << i;
 	}
