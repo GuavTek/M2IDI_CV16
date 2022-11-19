@@ -51,7 +51,7 @@ uint8_t midi_group = 1;
 #define INT_PER_VOLT 6553.6/OUTPUT_GAIN
 #define INT_PER_NOTE INT_PER_VOLT/12
 #define FIXED_POINT_POS 14
-#define FIXED_INT_PER_NOTE ((uint32_t) INT_PER_NOTE * (1 << FIXED_POINT_POS))
+#define FIXED_INT_PER_NOTE ((uint32_t) (INT_PER_NOTE * (1 << FIXED_POINT_POS)))
 
 // TODO: Setting gate on y > 1 breaks lanes. Sometimes???
 // Scan the configuration
