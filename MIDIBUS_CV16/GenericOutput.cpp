@@ -249,29 +249,30 @@ inline void Start_Note(uint8_t lane, uint8_t note, uint16_t velocity){
 		if (!(keyMask & (1 << (y + 4*lane)))){
 			continue;
 		}
+		GenOut_t* tempOut = &outMatrix[lane][y];
 		
-		if ( outMatrix[lane][y].type == GOType_t::DC ){
-			outMatrix[lane][y].gen_source.sourceNum = note;
-			outMatrix[lane][y].currentOut = Note_To_Output(note);
+		if ( tempOut->type == GOType_t::DC ){
+			tempOut->gen_source.sourceNum = note;
+			tempOut->currentOut = Note_To_Output(note);
 			continue;
 		}
 		
-		if ( outMatrix[lane][y].type == GOType_t::Gate ){
-			outMatrix[lane][y].gen_source.sourceNum = note;
-			outMatrix[lane][y].currentOut = outMatrix[lane][y].max_range;
+		if ( tempOut->type == GOType_t::Gate ){
+			tempOut->gen_source.sourceNum = note;
+			tempOut->currentOut = tempOut->max_range;
 			continue;
 		}
 		
-		if ( outMatrix[lane][y].type == GOType_t::Velocity ){
-			outMatrix[lane][y].gen_source.sourceNum = note;
-			outMatrix[lane][y].currentOut = Rescale_16bit(velocity, outMatrix[lane][y].min_range, outMatrix[lane][y].max_range);
+		if ( tempOut->type == GOType_t::Velocity ){
+			tempOut->gen_source.sourceNum = note;
+			tempOut->currentOut = Rescale_16bit(velocity, tempOut->min_range, tempOut->max_range);
 			continue;
 		}
 		
-		if ( outMatrix[lane][y].type == GOType_t::Envelope ){
-			outMatrix[lane][y].gen_source.sourceNum = note;
-			//outMatrix[lane][y].outCount = outMatrix[lane][y].min_range << 16;
-			outMatrix[lane][y].envelope_stage = 1;
+		if ( tempOut->type == GOType_t::Envelope ){
+			tempOut->gen_source.sourceNum = note;
+			//tempOut->outCount = tempOut->min_range << 16;
+			tempOut->envelope_stage = 1;
 			continue;
 		}
 	}
@@ -281,31 +282,30 @@ inline void Start_Note(uint8_t lane, uint8_t note, uint16_t velocity){
 	
 	// Handle shared outputs
 	for (uint8_t i = 0; i < keyParaNum; i++){
-		uint8_t y = keyPara[i].y;
-		uint8_t x = keyPara[i].x;
+		GenOut_t* tempOut = &outMatrix[keyPara[i].x][keyPara[i].y];
 		
-		if ( outMatrix[x][y].type == GOType_t::DC ){
-			outMatrix[x][y].gen_source.sourceNum = note;
-			outMatrix[x][y].currentOut = Note_To_Output(note);
+		if ( tempOut->type == GOType_t::DC ){
+			tempOut->gen_source.sourceNum = note;
+			tempOut->currentOut = Note_To_Output(note);
 			continue;
 		}
 		
-		if ( outMatrix[x][y].type == GOType_t::Gate ){
-			outMatrix[x][y].gen_source.sourceNum = note;
-			outMatrix[x][y].currentOut = outMatrix[x][y].max_range;
+		if ( tempOut->type == GOType_t::Gate ){
+			tempOut->gen_source.sourceNum = note;
+			tempOut->currentOut = tempOut->max_range;
 			continue;
 		}
 		
-		if ( outMatrix[x][y].type == GOType_t::Velocity ){
-			outMatrix[x][y].gen_source.sourceNum = note;
-			outMatrix[x][y].currentOut = Rescale_16bit(velocity, outMatrix[x][y].min_range, outMatrix[x][y].max_range);
+		if ( tempOut->type == GOType_t::Velocity ){
+			tempOut->gen_source.sourceNum = note;
+			tempOut->currentOut = Rescale_16bit(velocity, tempOut->min_range, tempOut->max_range);
 			continue;
 		}
 		
-		if ( outMatrix[x][y].type == GOType_t::Envelope ){
-			outMatrix[x][y].gen_source.sourceNum = note;
-			//outMatrix[x][y].outCount = outMatrix[x][y].min_range << 16;
-			outMatrix[x][y].envelope_stage = 1;
+		if ( tempOut->type == GOType_t::Envelope ){
+			tempOut->gen_source.sourceNum = note;
+			//tempOut->outCount = tempOut->min_range << 16;
+			tempOut->envelope_stage = 1;
 			continue;
 		}
 		
@@ -342,21 +342,20 @@ inline void Stop_Note(uint8_t lane){
 	
 	// Handle shared outputs
 	for (uint8_t i = 0; i < keyParaNum; i++){
-		uint8_t y = keyPara[i].y;
-		uint8_t x = keyPara[i].x;
+		GenOut_t* tempOut = &outMatrix[keyPara[i].x][keyPara[i].y];
 				
-		if ( outMatrix[x][y].type == GOType_t::Gate ){
+		if ( tempOut->type == GOType_t::Gate ){
 			if (!foundActive){
-				outMatrix[x][y].currentOut = outMatrix[x][y].min_range;
+				tempOut->currentOut = tempOut->min_range;
 			}
 			continue;
 		}
 		
-		if ( outMatrix[x][y].type == GOType_t::Envelope ){
+		if ( tempOut->type == GOType_t::Envelope ){
 			if (foundActive){
-				outMatrix[x][y].envelope_stage = 1;
+				tempOut->envelope_stage = 1;
 			} else {
-				outMatrix[x][y].envelope_stage = 4;
+				tempOut->envelope_stage = 4;
 			}
 			continue;
 		}
@@ -372,11 +371,12 @@ inline void Stop_All_Notes(){
 			keyLanes[x].state = keyLanes_t::KeyIdle;
 		}
 		for (uint8_t y = 0; y < 4; y++){
-			if (outMatrix[x][y].type == GOType_t::Envelope){
-				outMatrix[x][y].currentOut = outMatrix[x][y].min_range;
-				outMatrix[x][y].envelope_stage = 0;
-			} else if (outMatrix[x][y].type == GOType_t::Gate){
-				outMatrix[x][y].currentOut = outMatrix[x][y].min_range;
+			GenOut_t* tempOut = &outMatrix[x][y];
+			if (tempOut->type == GOType_t::Envelope){
+				tempOut->currentOut = tempOut->min_range;
+				tempOut->envelope_stage = 4;
+			} else if (tempOut->type == GOType_t::Gate){
+				tempOut->currentOut = tempOut->min_range;
 			}
 		}
 	}
@@ -941,7 +941,7 @@ void GO_MIDI_Realtime(MIDI2_com_t* msg){
 	if(msg->status == MIDI2_COM_E::TimingClock){
 		for (uint8_t x = 0; x < 4; x++){
 			for (uint8_t y = 0; y < 4; y++){
-				GOType_t* tempOut = &outMatrix[x][y];
+				GenOut_t* tempOut = &outMatrix[x][y];
 				if (tempOut->type == GOType_t::CLK){
 					tempOut->outCount++;
 					if (tempOut->outCount > tempOut->freq_current){
