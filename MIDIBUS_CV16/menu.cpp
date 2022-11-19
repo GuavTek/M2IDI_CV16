@@ -128,7 +128,7 @@ const void Select_CV()			{ outMatrix[chanSel & 0b11][chanSel >> 2].type = GOType
 const void Select_Gate()		{ outMatrix[chanSel & 0b11][chanSel >> 2].type = GOType_t::Gate; needScan = true; Enter_Kid(); }
 const void Select_Envelope()	{ menuStatus = Edit_int; var_edit = &outMatrix[chanSel & 0b11][chanSel >> 2].env_num; max_edit = 4; outMatrix[chanSel & 0b11][chanSel >> 2].type = GOType_t::Envelope; }
 const void Select_Velocity()	{ outMatrix[chanSel & 0b11][chanSel >> 2].type = GOType_t::Velocity; needScan = true; Enter_Kid(); }
-const void Select_Clk()			{ outMatrix[chanSel & 0b11][chanSel >> 2].type = GOType_t::CLK; needScan = true; Enter_Kid(); }
+const void Select_Clk()			{ menuStatus = Edit_int; var_edit = &outMatrix[chanSel & 0b11][chanSel >> 2].freq_current; outMatrix[chanSel & 0b11][chanSel >> 2].freq_current=12; max_edit = 128; outMatrix[chanSel & 0b11][chanSel >> 2].type = GOType_t::CLK; }
 const void Select_LFO()			{ outMatrix[chanSel & 0b11][chanSel >> 2].type = GOType_t::LFO; needScan = true; Enter_Kid(); }
 const void Select_LFO_Shape()	{ menuStatus = SetLFO; var_edit = &outMatrix[chanSel & 0b11][chanSel >> 2].shape; }
 const void Select_LFO_Freq_Max(){ menuStatus = Edit_32bit; var_edit = &outMatrix[chanSel & 0b11][chanSel >> 2].freq_max; var_monitor = &outMatrix[chanSel & 0b11][chanSel >> 2].freq_current; }

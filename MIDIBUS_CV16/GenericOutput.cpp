@@ -465,6 +465,12 @@ void GO_Init(){
 	outMatrix[3][2].gen_source.sourceType = ctrlType_t::Key;
 	outMatrix[3][2].gen_source.channel = 1;
 	
+	outMatrix[3][3].type = GOType_t::CLK;
+	outMatrix[3][3].max_range = 0xffff;
+	outMatrix[3][3].min_range = 0;
+	outMatrix[3][3].freq_current = 23;
+	
+	
 	envelopes[0].att_current = 0x3000'0000;
 	envelopes[0].att_max = 0x3000'0000;
 	envelopes[0].att_min = 255;
@@ -935,11 +941,12 @@ void GO_MIDI_Realtime(MIDI2_com_t* msg){
 	if(msg->status == MIDI2_COM_E::TimingClock){
 		for (uint8_t x = 0; x < 4; x++){
 			for (uint8_t y = 0; y < 4; y++){
-				if (outMatrix[x][y].type == GOType_t::CLK){
-					outMatrix[x][y].outCount++;
-					if (outMatrix[x][y].outCount > outMatrix[x][y].freq_current){
-						outMatrix[x][y].outCount = 0;
-						outMatrix[x][y].currentOut = (outMatrix[x][y].currentOut == outMatrix[x][y].max_range) ? outMatrix[x][y].min_range : outMatrix[x][y].max_range;
+				GOType_t* tempOut = &outMatrix[x][y];
+				if (tempOut->type == GOType_t::CLK){
+					tempOut->outCount++;
+					if (tempOut->outCount > tempOut->freq_current){
+						tempOut->outCount = 0;
+						tempOut->currentOut = (tempOut->currentOut == tempOut->max_range) ? tempOut->min_range : tempOut->max_range;
 					}
 				}
 			}
