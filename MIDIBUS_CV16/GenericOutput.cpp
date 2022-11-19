@@ -405,12 +405,12 @@ void GO_Init(){
 	}
 	
 	// Temporary settings
-	outMatrix[1][3].type = GOType_t::LFO;
-	outMatrix[1][3].shape = WavShape_t::Sawtooth;
-	outMatrix[1][3].max_range = 0x3fff;
-	outMatrix[1][3].min_range = 0;
-	outMatrix[1][3].direction = -1;
-	outMatrix[1][3].freq_current = 0x0008 << 16;
+	outMatrix[0][3].type = GOType_t::LFO;
+	outMatrix[0][3].shape = WavShape_t::Sawtooth;
+	outMatrix[0][3].max_range = 0x3fff;
+	outMatrix[0][3].min_range = 0;
+	outMatrix[0][3].direction = -1;
+	outMatrix[0][3].freq_current = 0x0008 << 16;
 	
 	outMatrix[1][2].type = GOType_t::LFO;
 	outMatrix[1][2].shape = WavShape_t::Sawtooth;
@@ -447,13 +447,13 @@ void GO_Init(){
 	
 	outMatrix[3][0].type = GOType_t::DC;
 	outMatrix[3][0].gen_source.sourceType = ctrlType_t::Key;
-	outMatrix[3][0].gen_source.channel = 1;
+	outMatrix[3][0].gen_source.channel = 0;
 	outMatrix[3][0].max_range = 0xffff;
 	outMatrix[3][0].min_range = 0;
 	
 	outMatrix[3][1].type = GOType_t::Gate;
 	outMatrix[3][1].gen_source.sourceType = ctrlType_t::Key;
-	outMatrix[3][1].gen_source.channel = 1;
+	outMatrix[3][1].gen_source.channel = 0;
 	outMatrix[3][1].max_range = 0xffff;
 	outMatrix[3][1].min_range = 0;
 	
@@ -463,23 +463,64 @@ void GO_Init(){
 	outMatrix[3][2].min_range = 0;
 	outMatrix[3][2].envelope_stage = 0;
 	outMatrix[3][2].gen_source.sourceType = ctrlType_t::Key;
-	outMatrix[3][2].gen_source.channel = 1;
+	outMatrix[3][2].gen_source.channel = 0;
 	
 	outMatrix[3][3].type = GOType_t::CLK;
 	outMatrix[3][3].max_range = 0xffff;
 	outMatrix[3][3].min_range = 0;
 	outMatrix[3][3].freq_current = 23;
 	
+	outMatrix[2][0].type = GOType_t::DC;
+	outMatrix[2][0].gen_source.sourceType = ctrlType_t::Key;
+	outMatrix[2][0].gen_source.channel = 0;
+	outMatrix[2][0].max_range = 0xffff;
+	outMatrix[2][0].min_range = 0;
+	
+	outMatrix[2][1].type = GOType_t::Gate;
+	outMatrix[2][1].gen_source.sourceType = ctrlType_t::Key;
+	outMatrix[2][1].gen_source.channel = 0;
+	outMatrix[2][1].max_range = 0xffff;
+	outMatrix[2][1].min_range = 0;
+	
+	outMatrix[2][2].type = GOType_t::Envelope;
+	outMatrix[2][2].env_num = 0;
+	outMatrix[2][2].max_range = 0xffff;
+	outMatrix[2][2].min_range = 0;
+	outMatrix[2][2].envelope_stage = 0;
+	outMatrix[2][2].gen_source.sourceType = ctrlType_t::Key;
+	outMatrix[2][2].gen_source.channel = 0;
+	
+	outMatrix[1][3].type = GOType_t::DC;
+	outMatrix[1][3].gen_source.sourceType = ctrlType_t::CC;
+	outMatrix[1][3].gen_source.channel = 0;
+	outMatrix[1][3].gen_source.sourceNum = 24;
+	outMatrix[1][3].max_range = 0xffff;
+	outMatrix[1][3].min_range = 0;
 	
 	envelopes[0].att_current = 0x3000'0000;
 	envelopes[0].att_max = 0x3000'0000;
 	envelopes[0].att_min = 255;
 	envelopes[0].att_source.sourceType = ctrlType_t::CC;
-	envelopes[0].att_source.channel = 1;
-	envelopes[0].att_source.sourceNum = 66;
+	envelopes[0].att_source.channel = 0;
+	envelopes[0].att_source.sourceNum = 24;
 	envelopes[0].dec_current = 0x0080'0000;
+	envelopes[0].dec_max = 0x0800'0000;
+	envelopes[0].dec_min = 0x0000'8000;
+	envelopes[0].dec_source.sourceType = ctrlType_t::CC;
+	envelopes[0].dec_source.channel = 0;
+	envelopes[0].dec_source.sourceNum = 25;
 	envelopes[0].sus_current = 0xA000;
+	envelopes[0].sus_max = 0xffff;
+	envelopes[0].sus_min = 0;
+	envelopes[0].sus_source.sourceType = ctrlType_t::CC;
+	envelopes[0].sus_source.channel = 0;
+	envelopes[0].sus_source.sourceNum = 26;
 	envelopes[0].rel_current = 0x1000'0000;
+	envelopes[0].rel_max = 0x03ff'ffff;
+	envelopes[0].rel_min = 1;
+	envelopes[0].rel_source.sourceType = ctrlType_t::CC;
+	envelopes[0].rel_source.channel = 0;
+	envelopes[0].rel_source.sourceNum = 27;
 	hasCC[4][0] = 1;
 	
 	// TODO: Load setup from NVM
