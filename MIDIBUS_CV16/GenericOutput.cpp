@@ -493,7 +493,7 @@ void GO_Init(){
 	outMatrix[1][3].type = GOType_t::DC;
 	outMatrix[1][3].gen_source.sourceType = ctrlType_t::CC;
 	outMatrix[1][3].gen_source.channel = 0;
-	outMatrix[1][3].gen_source.sourceNum = 24;
+	outMatrix[1][3].gen_source.sourceNum = 20;
 	outMatrix[1][3].max_range = 0xffff;
 	outMatrix[1][3].min_range = 0;
 	
@@ -516,7 +516,7 @@ void GO_Init(){
 	envelopes[0].sus_source.channel = 0;
 	envelopes[0].sus_source.sourceNum = 26;
 	envelopes[0].rel_current = 0x1000'0000;
-	envelopes[0].rel_max = 0x03ff'ffff;
+	envelopes[0].rel_max = 0x3fff'ffff;
 	envelopes[0].rel_min = 1;
 	envelopes[0].rel_source.sourceType = ctrlType_t::CC;
 	envelopes[0].rel_source.channel = 0;
@@ -696,6 +696,7 @@ void GO_MIDI_Voice(MIDI2_voice_t* msg){
 				continue;
 			}
 			
+			// TODO: fix scaling
 			// Attack
 			uint32_t src_current = 
 				( uint8_t(envelopes[i].att_source.sourceType) << 0 ) | 
