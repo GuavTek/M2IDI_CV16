@@ -1,6 +1,5 @@
-# Debug folder
-MIDIBUS_CV16/Debug/
-.atsuo
+# build folder
+build/
 
 # Prerequisites
 *.d

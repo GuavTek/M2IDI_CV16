@@ -10,10 +10,11 @@
 #ifndef MIDI_CONFIG_H_
 #define MIDI_CONFIG_H_
 
+#include "SPI_RP2040.h"
 #include "MCP2517.h"
 
 // Define CAN filters
-CAN_Filter_t CAN_FLT0 = {
+const CAN_Filter_t CAN_FLT0 = {
 	.enabled = true,
 	.fifoDestination = 1,
 	.extendedID = false,
@@ -22,7 +23,7 @@ CAN_Filter_t CAN_FLT0 = {
 	.maskID = 1 << 10
 };
 
-CAN_Filter_t CAN_FLT1 = {
+const CAN_Filter_t CAN_FLT1 = {
 	.enabled = true,
 	.fifoDestination = 1,
 	.extendedID = false,
@@ -32,10 +33,11 @@ CAN_Filter_t CAN_FLT1 = {
 };
 
 // Define FIFO configurations
-CAN_FIFO_t CAN_FIFO1 = {
+// Rx FIFO
+const CAN_FIFO_t CAN_FIFO1 = {
 	.enabled = true,
-	.payloadSize = 16,
-	.fifoDepth = 31,
+	.payloadSize = 64,
+	.fifoDepth = 18,
 	.retransmitAttempt = CAN_FIFO_t::unlimited,
 	.messagePriority = 0,
 	.txEnable = false,
@@ -48,10 +50,11 @@ CAN_FIFO_t CAN_FIFO1 = {
 	.notFullEmptyInterrupt = true
 };
 
-CAN_FIFO_t CAN_FIFO2 = {
+// Tx FIFO
+const CAN_FIFO_t CAN_FIFO2 = {
 	.enabled = true,
-	.payloadSize = 16,
-	.fifoDepth = 31,
+	.payloadSize = 64,
+	.fifoDepth = 8,
 	.retransmitAttempt = CAN_FIFO_t::unlimited,
 	.messagePriority = 0,
 	.txEnable = true,
@@ -66,19 +69,20 @@ CAN_FIFO_t CAN_FIFO2 = {
 
 
 const spi_config_t SPI_CONF = {
-	.sercomNum = 4,
-	.dipoVal = 0x0,
-	.dopoVal = 0x1,
+	.dma_irq_num = 1,
+	.phase = SPI_CPHA_0,
+	.polarity = SPI_CPOL_0,
+	.order = SPI_MSB_FIRST,
 	.speed = 8000000,
-	.pin_cs = PIN_PA13,
-	.pinmux_mosi = PINMUX_PA14D_SERCOM4_PAD2,
-	.pinmux_miso = PINMUX_PA12D_SERCOM4_PAD0,
-	.pinmux_sck = PINMUX_PA15D_SERCOM4_PAD3
+	.pin_tx = M2IDI_CAN_SPI_TX_PIN,
+	.pin_rx = M2IDI_CAN_SPI_RX_PIN,
+	.pin_ck = M2IDI_CAN_SPI_SCK_PIN,
+	.num_cs = 1,
+	.pin_cs = {M2IDI_CAN_SPI_CSN_PIN}
 };
 
 const CAN_Config_t CAN_CONF = {
-	.rxMethod = CAN_Config_t::CAN_Rx_Interrupt,
-	.interruptPin = 16,
+	.comSlaveNum = 0,
 	.clkOutDiv = CAN_Config_t::clkOutDiv1,
 	.sysClkDiv = false,
 	.clkDisable = false,
