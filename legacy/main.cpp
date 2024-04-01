@@ -30,9 +30,6 @@ void MIDI2_Voice_Handler(MIDI2_voice_t* msg);
 // TODO: DMA driven CAN controller.
 int main(void)
 {
-	system_init();
-	RTC_Init();
-	LM_Init();
 	PWM_Init();
 	Menu_Init();
 	GO_Init();
@@ -80,22 +77,6 @@ int main(void)
 		}
 		CAN.State_Machine();
     }
-}
-
-void RTC_Init(){
-	// Enable clock
-	PM->APBAMASK.bit.RTC_ = 1;
-	
-	GCLK->CLKCTRL.reg = GCLK_CLKCTRL_CLKEN | GCLK_CLKCTRL_GEN_GCLK1 | GCLK_CLKCTRL_ID_RTC;
-	
-	RTC->MODE0.READREQ.bit.RCONT = 1;
-	
-	RTC->MODE0.COUNT.reg = 0;
-	
-	RTC->MODE0.CTRL.bit.MODE = RTC_MODE0_CTRL_MODE_COUNT32_Val;
-	RTC->MODE0.CTRL.bit.PRESCALER = RTC_MODE0_CTRL_PRESCALER_DIV1_Val;
-	
-	RTC->MODE0.CTRL.bit.ENABLE = 1;
 }
 
 void CAN_Receive(CAN_Rx_msg_t* msgIn){

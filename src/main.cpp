@@ -4,12 +4,17 @@
 #include <hardware/spi.h>
 #include <hardware/irq.h>
 #include <hardware/timer.h>
-#include "MIDI_Config.h"
+#include "midi_config.h"
 #include "SPI_RP2040.h"
 #include "MCP2517.h"
 // #include "AM_MIDI2"
+#include "led_matrix.h"
 
 void main1(void);
+
+uint8_t dac_processed;
+uint8_t dac_output;
+bool dac_valid;
 
 // Core0 main
 int main(void){
@@ -27,18 +32,19 @@ int main(void){
 
 // Core1 main
 void main1(void) {
-
+    LM_Init();
     while (true){
-        static int32_t dac_count;   // Counts DAC iterations
-        // LED matrix, updated 30*5*4 times per second = 600Hz (=176400/294)
-        if (dac_count >= 294){
-            sleep_ms(1);
+        if(!dac_valid){
+            static int32_t dac_count;   // Counts DAC iterations
+            dac_valid = 1;
+            // LED matrix, 30Hz* 5 rows * 4 levels times per second = 600Hz (=176400/294)
+            if (dac_count >= 294){
+                dac_count = 0;
+                LM_Service();
+            }
+
+            // DAC multiplexing, 44,1kHz * 4 channels = 176400Hz
+            dac_count++;
         }
-        
-        // DAC multiplexing, 44,1kHz*4 = 176400Hz
-        dac_count++;
-        sleep_ms(1);
-        // Put core to sleep if the next set of output values are valid
-        
     }
 }

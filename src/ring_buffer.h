@@ -1,5 +1,5 @@
 /*
- * RingBuffer.h
+ * ring_buffer.h
  *
  * Created: 22-Okt-22
  *  Author: GuavTek
@@ -7,11 +7,11 @@
 
 // A simple, generalized ringbuffer object in C++
 
-#ifndef RINGBUFFER_H_
-#define RINGBUFFER_H_
+#ifndef RING_BUFFER_H_
+#define RING_BUFFER_H_
 
 template <uint8_t BUFFER_SIZE, typename T>
-class RingBuffer
+class ring_buffer_c
 {
 public:
 	uint8_t Read(T* output);
@@ -20,7 +20,7 @@ public:
 	uint8_t Count();
 	void Flush();
 	const uint8_t length = BUFFER_SIZE;
-	//RingBuffer();
+	//ring_buffer_c();
 	
 private:
 	T buffer[BUFFER_SIZE];
@@ -30,7 +30,7 @@ private:
 
 /*
 template <uint8_t BUFFER_SIZE, typename T>
-RingBuffer<BUFFER_SIZE, T>::RingBuffer(){
+ring_buffer_c<BUFFER_SIZE, T>::ring_buffer_c(){
 	tail = 0;
 	head = 0;
 	length = BUFFER_SIZE;
@@ -39,7 +39,7 @@ RingBuffer<BUFFER_SIZE, T>::RingBuffer(){
 
 //Read the next element in buffer
 template <uint8_t BUFFER_SIZE, typename T>
-uint8_t RingBuffer<BUFFER_SIZE, T>::Read(T* output){
+uint8_t ring_buffer_c<BUFFER_SIZE, T>::Read(T* output){
 	if (Count() > 0)
 	{
 		tail++;
@@ -55,7 +55,7 @@ uint8_t RingBuffer<BUFFER_SIZE, T>::Read(T* output){
 
 //Read next element without incrementing pointers
 template <uint8_t BUFFER_SIZE, typename T>
-void RingBuffer<BUFFER_SIZE, T>::Peek(T* output){
+void ring_buffer_c<BUFFER_SIZE, T>::Peek(T* output){
 	uint8_t tempTail = tail + 1;
 	
 	if (tempTail >= length)
@@ -68,7 +68,7 @@ void RingBuffer<BUFFER_SIZE, T>::Peek(T* output){
 
 //Write an element to the buffer
 template <uint8_t BUFFER_SIZE, typename T>
-void RingBuffer<BUFFER_SIZE, T>::Write(T* in){
+void ring_buffer_c<BUFFER_SIZE, T>::Write(T* in){
 	if (Count() < length - 2)
 	{
 		head++;
@@ -84,7 +84,7 @@ void RingBuffer<BUFFER_SIZE, T>::Write(T* in){
 
 //Returns how many elements are in the buffer
 template <uint8_t BUFFER_SIZE, typename T>
-uint8_t RingBuffer<BUFFER_SIZE, T>::Count(){
+uint8_t ring_buffer_c<BUFFER_SIZE, T>::Count(){
 	//Compensate for overflows
 	if (head >= tail)
 	{
@@ -96,10 +96,10 @@ uint8_t RingBuffer<BUFFER_SIZE, T>::Count(){
 
 //Resets buffer
 template <uint8_t BUFFER_SIZE, typename T>
-void RingBuffer<BUFFER_SIZE, T>::Flush(){
+void ring_buffer_c<BUFFER_SIZE, T>::Flush(){
 	tail = 0;
 	head = 0;
 }
 
 
-#endif /* RINGBUFFER_H_ */
+#endif /* RING_BUFFER_H_ */
