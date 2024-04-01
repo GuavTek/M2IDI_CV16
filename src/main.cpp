@@ -3,7 +3,7 @@
 #include "pico/multicore.h"
 #include <hardware/spi.h>
 #include <hardware/irq.h>
-#include <hardware/timer.h>
+#include <hardware/pwm.h>
 #include "midi_config.h"
 #include "SPI_RP2040.h"
 #include "MCP2517.h"
@@ -11,6 +11,14 @@
 #include "led_matrix.h"
 
 void main1(void);
+void dac_pwm_handler();
+void CAN_Receive_Header(CAN_Rx_msg_t* data);
+void CAN_Receive_Data(char* data, uint8_t length);
+
+SPI_RP2040_C SPI_CAN = SPI_RP2040_C(spi0);
+SPI_RP2040_C SPI = SPI_RP2040_C(spi1);
+MCP2517_C CAN = MCP2517_C(&SPI_CAN);
+//MIDI_C MIDI(2);
 
 uint8_t dac_processed;
 uint8_t dac_output;
@@ -21,6 +29,11 @@ int main(void){
 	// Board init
 	set_sys_clock_khz(120000, true);
 
+    SPI_CAN.Init(SPI_CAN_CONF);
+    CAN.Init(CAN_CONF);
+    CAN.Set_Rx_Header_Callback(CAN_Receive_Header);
+    CAN.Set_Rx_Data_Callback(CAN_Receive_Data);
+
     // Start core1
     multicore_reset_core1();
     sleep_ms(500);
@@ -30,10 +43,49 @@ int main(void){
     }
 }
 
+// Handle MIDI CAN data
+void CAN_Receive_Header(CAN_Rx_msg_t* data){
+	// Detect CAN id, and MIDI muid collisions
+	// TODO
+}
+
+// Handle MIDI CAN data
+void CAN_Receive_Data(char* data, uint8_t length){
+	// Receive MIDI payload from CAN
+	//MIDI_CAN.Decode(data, length);
+}
+
 // Core1 main
 void main1(void) {
     LM_Init();
+
+    // Set up PWM for DAC multiplexing
+    gpio_set_function(M2IDI_MUXINH_PIN, GPIO_FUNC_PWM);
+    pwm_config pwm_conf = pwm_get_default_config();
+    pwm_config_set_clkdiv_mode(&pwm_conf, PWM_DIV_FREE_RUNNING);
+    pwm_config_set_clkdiv(&pwm_conf, 120000.0/(176.4 * 16));
+    pwm_config_set_wrap(&pwm_conf, 15);
+    pwm_set_chan_level(pwm_gpio_to_slice_num(M2IDI_MUXINH_PIN), PWM_CHAN_A, 1);
+    pwm_clear_irq(pwm_gpio_to_slice_num(M2IDI_MUXINH_PIN));
+    pwm_set_irq_enabled(pwm_gpio_to_slice_num(M2IDI_MUXINH_PIN), true);
+    pwm_init(pwm_gpio_to_slice_num(M2IDI_MUXINH_PIN), &pwm_conf, true);
+    
+    gpio_init(M2IDI_MUXA_PIN);
+    gpio_init(M2IDI_MUXB_PIN);
+    gpio_set_dir(M2IDI_MUXA_PIN, GPIO_OUT);
+    gpio_set_dir(M2IDI_MUXB_PIN, GPIO_OUT);
+    irq_set_exclusive_handler(PWM_IRQ_WRAP, dac_pwm_handler);
+    irq_set_enabled(PWM_IRQ_WRAP, true);
+
     while (true){
+        uint8_t next_dac = dac_processed +1;
+        next_dac &= 0b11;
+        if (next_dac != dac_output){
+            for (uint8_t i = 0; i < 4; i++){
+                // TODO: Calculate value
+            }
+            dac_processed++;
+        }
         if(!dac_valid){
             static int32_t dac_count;   // Counts DAC iterations
             dac_valid = 1;
@@ -45,6 +97,39 @@ void main1(void) {
 
             // DAC multiplexing, 44,1kHz * 4 channels = 176400Hz
             dac_count++;
+            // TODO: write next set of values to DAC
         }
     }
+}
+
+
+void dac_pwm_handler(){
+    static uint8_t out_num;
+    pwm_clear_irq(pwm_gpio_to_slice_num(M2IDI_MUXINH_PIN));
+    dac_valid = 0;
+    dac_output++;
+    dac_output &= 0b11;
+
+    // Switch mux pin
+	switch(out_num){
+		case 0:
+            gpio_put(M2IDI_MUXA_PIN, 0);
+            gpio_put(M2IDI_MUXB_PIN, 0);
+			break;
+		case 1:
+            gpio_put(M2IDI_MUXA_PIN, 1);
+            gpio_put(M2IDI_MUXB_PIN, 0);
+			break;
+		case 2:
+            gpio_put(M2IDI_MUXA_PIN, 0);
+            gpio_put(M2IDI_MUXB_PIN, 1);
+			break;
+		case 3:
+            gpio_put(M2IDI_MUXA_PIN, 1);
+            gpio_put(M2IDI_MUXB_PIN, 1);
+			break;
+	}
+
+    out_num++;
+    out_num &= 0b11;
 }

@@ -27,7 +27,7 @@ target_link_options(M2IDI_CV16 PUBLIC -Xlinker --print-memory-usage)
 target_compile_options(M2IDI_CV16 PRIVATE -Wall -Wextra)
 
 # Add pico_stdlib library which aggregates commonly used features
-target_link_libraries(M2IDI_CV16 pico_stdlib hardware_timer hardware_spi hardware_dma pico_multicore libmidi2 mcp2517_driver )
+target_link_libraries(M2IDI_CV16 pico_stdlib hardware_pwm hardware_spi hardware_dma pico_multicore libmidi2 mcp2517_driver )
 
 # create map/bin/hex/uf2 file in addition to ELF.
 pico_add_extra_outputs(M2IDI_CV16)

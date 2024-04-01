@@ -68,7 +68,7 @@ const CAN_FIFO_t CAN_FIFO2 = {
 };
 
 
-const spi_config_t SPI_CONF = {
+const spi_config_t SPI_CAN_CONF = {
 	.dma_irq_num = 1,
 	.phase = SPI_CPHA_0,
 	.polarity = SPI_CPOL_0,
