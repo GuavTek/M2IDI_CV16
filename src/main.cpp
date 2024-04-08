@@ -20,16 +20,21 @@ void CAN_Receive_Header(CAN_Rx_msg_t* data);
 void CAN_Receive_Data(char* data, uint8_t length);
 void dma1_irq_handler ();
 
+void midi_cvm_handler(struct umpCVM msg);
+void midi_com_handler(struct umpGeneric msg);
+void midi_stream_discovery(uint8_t majVer, uint8_t minVer, uint8_t filter);
+void midi_data_handler(struct umpData msg);
 
 SPI_RP2040_C SPI_CAN = SPI_RP2040_C(spi0);
 SPI_RP2040_C SPI = SPI_RP2040_C(spi1);
 MCP2517_C CAN = MCP2517_C(&SPI_CAN);
-//MIDI_C MIDI(2);
+umpProcessor MIDI;
 
+uint8_t current_group;
 uint8_t dac_processed;
 uint8_t dac_output;
 bool dac_valid;
-uint16_t dacLevel[4][4];
+uint16_t dac_level[4][4];
 
 // Core0 main
 int main(void){
@@ -44,6 +49,11 @@ int main(void){
     CAN.Init(CAN_CONF);
     CAN.Set_Rx_Header_Callback(CAN_Receive_Header);
     CAN.Set_Rx_Data_Callback(CAN_Receive_Data);
+
+    MIDI.setSystem(midi_com_handler);
+	MIDI.setCVM(midi_cvm_handler);
+	MIDI.setSysEx(midi_data_handler);
+	MIDI.setMidiEndpoint(midi_stream_discovery);
 
     menu_init();
 
@@ -91,9 +101,68 @@ void CAN_Receive_Data(char* data, uint8_t length){
 	}
 }
 
+void midi_cvm_handler(struct umpCVM msg){
+	if (msg.umpGroup != current_group){
+		return;
+	}
+	menu_midi(&msg);
+	GO_MIDI_Voice(&msg);
+}
+
+void midi_com_handler(struct umpGeneric msg){
+	if (msg.umpGroup != current_group){
+		return;
+	}
+    GO_MIDI_Realtime(&msg);
+}
+
+void midi_stream_discovery(uint8_t majVer, uint8_t minVer, uint8_t filter){
+	//Upon Recieving the filter it is important to return the information requested
+	if(filter & 0x1){ //Endpoint Info Notification
+		//std::array<uint32_t, 4> ump = UMPMessage::mtFMidiEndpointInfoNotify(1, true, true, false, false);
+		//sendUMP(ump.data(),4);
+	}
+
+	if(filter & 0x2) {
+		//std::array<uint32_t, 4> ump = UMPMessage::mtFMidiEndpointDeviceInfoNotify(
+		//{MIDI_MFRID & 0xff, (MIDI_MFRID >> 8) & 0xff, (MIDI_MFRID >> 16) & 0xff},
+		//{MIDI_FAMID & 0xff, (MIDI_FAMID >> 8) & 0xff}, 
+		//{DEVICE_MODELID & 0xff, (DEVICE_MODELID >> 8) & 0xff}, 
+		//{DEVICE_VERSIONID & 0xff, (DEVICE_VERSIONID >> 8) & 0xff, (DEVICE_VERSIONID >> 16) & 0xff, (DEVICE_VERSIONID >> 24) & 0xff});
+		//sendUMP( ump.data(), 4);
+	}
+
+	if(filter & 0x4) {
+		//uint8_t friendlyNameLength = sizeof(DEVICE_NAME);
+		//for(uint8_t offset=0; offset<friendlyNameLength; offset+=14) {
+		//	std::array<uint32_t, 4> ump = UMPMessage::mtFMidiEndpointTextNotify(MIDIENDPOINT_NAME_NOTIFICATION, offset, (uint8_t *) DEVICE_NAME,friendlyNameLength);
+			//sendUMP(ump.data(),4);
+		//}
+	}
+	
+	if(filter & 0x8) {
+		// TODO: read MCU unique ID
+		//int8_t piiLength = sizeof(PRODUCT_INSTANCE_ID);
+		//for(uint8_t offset=0; offset<piiLength; offset+=14) {
+		//	std::array<uint32_t, 4> ump = UMPMessage::mtFMidiEndpointTextNotify(PRODUCT_INSTANCE_ID, offset, (uint8_t *) buff,piiLength);
+		//	//sendUMP(ump.data(),4);
+		//}
+	}
+	
+	if(filter & 0x10){
+		//std::array<uint32_t, 4> ump = UMPMessage::mtFNotifyProtocol(0x2,false,false);
+		//sendUMP(ump.data(),4);
+	}
+}
+
+void midi_data_handler(struct umpData msg){
+	// TODO: implement Capability exchange features
+}
+
 // Core1 main
 void main1(void) {
     LM_Init();
+    GO_Init();
 
     // Set up PWM for DAC multiplexing
     gpio_set_function(M2IDI_MUXINH_PIN, GPIO_FUNC_PWM);
