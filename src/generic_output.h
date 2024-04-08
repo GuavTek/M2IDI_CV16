@@ -6,11 +6,12 @@
  */ 
 
 
-#ifndef GENERICOUTPUT_H_
-#define GENERICOUTPUT_H_
+#ifndef GENERIC_OUTPUT_H_
+#define GENERIC_OUTPUT_H_
 
-#include "samd21.h"
-#include "MIDI_Driver.h"
+#include <stdio.h>
+#include "pico/stdlib.h"
+#include "umpProcessor.h"
 
 enum class GOType_t : uint8_t {
 	DC = 0,
@@ -23,10 +24,10 @@ enum class GOType_t : uint8_t {
 };
 
 enum class ctrlType_t : uint8_t {
-	None,
-	Key,
-	CC,
-	PC
+	none,
+	key,
+	controller,
+	program
 };
 
 struct ctrlSource_t {
@@ -144,10 +145,10 @@ void GO_Init();
 void GO_Service();
 void GO_Service(uint8_t x);
 
-void GO_MIDI_Voice(MIDI2_voice_t* msg);
+void GO_MIDI_Voice(struct umpCVM* msg);
 
-void GO_MIDI_Realtime(MIDI2_com_t* msg);
+void GO_MIDI_Realtime(struct umpGeneric* msg);
 
 uint16_t TriSine(uint16_t in);
 
-#endif /* GENERICOUTPUT_H_ */
+#endif /* GENERIC_OUTPUT_H_ */

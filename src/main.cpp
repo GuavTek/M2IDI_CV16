@@ -7,8 +7,10 @@
 #include "midi_config.h"
 #include "SPI_RP2040.h"
 #include "MCP2517.h"
-// #include "AM_MIDI2"
+#include "umpProcessor.h"
+#include "utils.h"
 #include "led_matrix.h"
+#include "generic_output.h"
 
 void main1(void);
 void dac_pwm_handler();
@@ -23,6 +25,7 @@ MCP2517_C CAN = MCP2517_C(&SPI_CAN);
 uint8_t dac_processed;
 uint8_t dac_output;
 bool dac_valid;
+uint16_t dacLevel[4][4];
 
 // Core0 main
 int main(void){
@@ -81,10 +84,9 @@ void main1(void) {
         uint8_t next_dac = dac_processed +1;
         next_dac &= 0b11;
         if (next_dac != dac_output){
-            for (uint8_t i = 0; i < 4; i++){
-                // TODO: Calculate value
-            }
-            dac_processed++;
+            // Calculate a set of four values
+            GO_Service(next_dac);
+            dac_processed = next_dac;
         }
         if(!dac_valid){
             static int32_t dac_count;   // Counts DAC iterations

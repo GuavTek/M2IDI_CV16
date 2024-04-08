@@ -1,14 +1,14 @@
 /*
- * GenericOutput.cpp
+ * generic_output.cpp
  *
  * Created: 19/07/2021 18:09:51
  *  Author: GuavTek
  */ 
 
-#include "GenericOutput.h"
-#include "LEDMatrix.h"
-#include "PWM.h"
-#include "MIDI_Driver.h"
+#include "generic_output.h"
+#include "led_matrix.h"
+#include "umpProcessor.h"
+#include "utils.h"
 
 bool needScan = false;
 
@@ -36,7 +36,6 @@ uint16_t minBend;
 uint8_t queueIndex;
 struct {
 	uint8_t note;
-	
 } noteQueue[32];
 
 // hasCC[4] is for envelopes
@@ -61,7 +60,7 @@ void Scan_Matrix(){
 	bool foundChannel = false;
 	for(uint8_t x = 0; x < 4; x++){
 		for (uint8_t y = 0; y < 4; y++){
-			if (outMatrix[x][y].gen_source.sourceType == ctrlType_t::Key){
+			if (outMatrix[x][y].gen_source.sourceType == ctrlType_t::key){
 				if (outMatrix[x][y].gen_source.channel != 9){
 					keyChannel = outMatrix[x][y].gen_source.channel;
 					foundChannel = true;
@@ -80,7 +79,7 @@ void Scan_Matrix(){
 		lane_conf[x] = 0;
 		for (uint8_t y = 0; y < 4; y++){
 			// Get Keylane configuration
-			if (outMatrix[x][y].gen_source.sourceType == ctrlType_t::Key){
+			if (outMatrix[x][y].gen_source.sourceType == ctrlType_t::key){
 				if (outMatrix[x][y].gen_source.channel == keyChannel){
 					lane_conf[x] |= 1 << (4 * ((uint8_t) outMatrix[x][y].type) + y);
 				}
@@ -116,7 +115,7 @@ void Scan_Matrix(){
 	// Find common outputs
 	keyParaNum = 0;
 	keyMask = 0;
-	uint16_t matKey = (uint16_t) ctrlType_t::Key | (keyChannel << 8);
+	uint16_t matKey = (uint16_t) ctrlType_t::key | (keyChannel << 8);
 	for (uint8_t x = 0; x < 4; x++){
 		uint8_t hasLane = 0;
 		// Has key outputs?
@@ -146,10 +145,10 @@ void Scan_Matrix(){
 		}
 	}
 	
-	// Find CC bound to outputs
+	// Find controller bound to outputs
 	for (uint8_t x = 0; x < 4; x++){
 		for (uint8_t y = 0; y < 4; y++){
-			if (outMatrix[x][y].gen_source.sourceType == ctrlType_t::None){
+			if (outMatrix[x][y].gen_source.sourceType == ctrlType_t::none){
 				hasCC[x][y] = 0;
 			} else {
 				hasCC[x][y] = 1;
@@ -157,22 +156,22 @@ void Scan_Matrix(){
 		}
 	}
 	
-	// Detect CC in envelopes
+	// Detect controller in envelopes
 	for (uint8_t i = 0; i < 4; i++){
 		hasCC[4][i] = 0;
-		if (envelopes[i].att_source.sourceType != ctrlType_t::None){
+		if (envelopes[i].att_source.sourceType != ctrlType_t::none){
 			hasCC[4][i] = 1;
 			continue;
 		}
-		if (envelopes[i].dec_source.sourceType != ctrlType_t::None){
+		if (envelopes[i].dec_source.sourceType != ctrlType_t::none){
 			hasCC[4][i] = 1;
 			continue;
 		}
-		if (envelopes[i].sus_source.sourceType != ctrlType_t::None){
+		if (envelopes[i].sus_source.sourceType != ctrlType_t::none){
 			hasCC[4][i] = 1;
 			continue;
 		}
-		if (envelopes[i].rel_source.sourceType != ctrlType_t::None){
+		if (envelopes[i].rel_source.sourceType != ctrlType_t::none){
 			hasCC[4][i] = 1;
 			continue;
 		}
@@ -386,7 +385,7 @@ inline void Reset_All_Controllers(){
 	for(uint8_t x = 0; x < 4; x++){
 		for (uint8_t y = 0; y < 4; y++){
 			uint32_t src_current = ( uint8_t(outMatrix[x][y].type) << 0 ) | ( uint8_t(outMatrix[x][y].gen_source.sourceType) << 8 );
-			uint32_t criteria = ( uint8_t(GOType_t::DC) << 0 ) | ( uint8_t(ctrlType_t::CC) << 8 );
+			uint32_t criteria = ( uint8_t(GOType_t::DC) << 0 ) | ( uint8_t(ctrlType_t::controller) << 8 );
 			if ( src_current == criteria ){
 				outMatrix[x][y].currentOut = outMatrix[x][y].min_range;
 			}
@@ -422,7 +421,7 @@ void GO_Init(){
 	outMatrix[1][2].freq_min = 0x00001000;
 	outMatrix[1][2].gen_source.channel = 1;
 	outMatrix[1][2].gen_source.sourceNum = 10;
-	outMatrix[1][2].gen_source.sourceType = ctrlType_t::CC;
+	outMatrix[1][2].gen_source.sourceType = ctrlType_t::controller;
 	hasCC[1][2] = 1;
 	
 	outMatrix[0][1].type = GOType_t::LFO;
@@ -446,13 +445,13 @@ void GO_Init(){
 	keyLanes[3].state = keyLanes_t::KeyIdle;
 	
 	outMatrix[3][0].type = GOType_t::DC;
-	outMatrix[3][0].gen_source.sourceType = ctrlType_t::Key;
+	outMatrix[3][0].gen_source.sourceType = ctrlType_t::key;
 	outMatrix[3][0].gen_source.channel = 0;
 	outMatrix[3][0].max_range = 0xffff;
 	outMatrix[3][0].min_range = 0;
 	
 	outMatrix[3][1].type = GOType_t::Gate;
-	outMatrix[3][1].gen_source.sourceType = ctrlType_t::Key;
+	outMatrix[3][1].gen_source.sourceType = ctrlType_t::key;
 	outMatrix[3][1].gen_source.channel = 0;
 	outMatrix[3][1].max_range = 0xffff;
 	outMatrix[3][1].min_range = 0;
@@ -462,7 +461,7 @@ void GO_Init(){
 	outMatrix[3][2].max_range = 0xffff;
 	outMatrix[3][2].min_range = 0;
 	outMatrix[3][2].envelope_stage = 0;
-	outMatrix[3][2].gen_source.sourceType = ctrlType_t::Key;
+	outMatrix[3][2].gen_source.sourceType = ctrlType_t::key;
 	outMatrix[3][2].gen_source.channel = 0;
 	
 	outMatrix[3][3].type = GOType_t::CLK;
@@ -471,13 +470,13 @@ void GO_Init(){
 	outMatrix[3][3].freq_current = 23;
 	
 	outMatrix[2][0].type = GOType_t::DC;
-	outMatrix[2][0].gen_source.sourceType = ctrlType_t::Key;
+	outMatrix[2][0].gen_source.sourceType = ctrlType_t::key;
 	outMatrix[2][0].gen_source.channel = 0;
 	outMatrix[2][0].max_range = 0xffff;
 	outMatrix[2][0].min_range = 0;
 	
 	outMatrix[2][1].type = GOType_t::Gate;
-	outMatrix[2][1].gen_source.sourceType = ctrlType_t::Key;
+	outMatrix[2][1].gen_source.sourceType = ctrlType_t::key;
 	outMatrix[2][1].gen_source.channel = 0;
 	outMatrix[2][1].max_range = 0xffff;
 	outMatrix[2][1].min_range = 0;
@@ -487,11 +486,11 @@ void GO_Init(){
 	outMatrix[2][2].max_range = 0xffff;
 	outMatrix[2][2].min_range = 0;
 	outMatrix[2][2].envelope_stage = 0;
-	outMatrix[2][2].gen_source.sourceType = ctrlType_t::Key;
+	outMatrix[2][2].gen_source.sourceType = ctrlType_t::key;
 	outMatrix[2][2].gen_source.channel = 0;
 	
 	outMatrix[1][3].type = GOType_t::DC;
-	outMatrix[1][3].gen_source.sourceType = ctrlType_t::CC;
+	outMatrix[1][3].gen_source.sourceType = ctrlType_t::controller;
 	outMatrix[1][3].gen_source.channel = 0;
 	outMatrix[1][3].gen_source.sourceNum = 20;
 	outMatrix[1][3].max_range = 0xffff;
@@ -500,25 +499,25 @@ void GO_Init(){
 	envelopes[0].att_current = 0x3000'0000;
 	envelopes[0].att_max = 0x3000'0000;
 	envelopes[0].att_min = 255;
-	envelopes[0].att_source.sourceType = ctrlType_t::CC;
+	envelopes[0].att_source.sourceType = ctrlType_t::controller;
 	envelopes[0].att_source.channel = 0;
 	envelopes[0].att_source.sourceNum = 24;
 	envelopes[0].dec_current = 0x0080'0000;
 	envelopes[0].dec_max = 0x0800'0000;
 	envelopes[0].dec_min = 0x0000'8000;
-	envelopes[0].dec_source.sourceType = ctrlType_t::CC;
+	envelopes[0].dec_source.sourceType = ctrlType_t::controller;
 	envelopes[0].dec_source.channel = 0;
 	envelopes[0].dec_source.sourceNum = 25;
 	envelopes[0].sus_current = 0xA000;
 	envelopes[0].sus_max = 0xffff;
 	envelopes[0].sus_min = 0;
-	envelopes[0].sus_source.sourceType = ctrlType_t::CC;
+	envelopes[0].sus_source.sourceType = ctrlType_t::controller;
 	envelopes[0].sus_source.channel = 0;
 	envelopes[0].sus_source.sourceNum = 26;
 	envelopes[0].rel_current = 0x1000'0000;
 	envelopes[0].rel_max = 0x3fff'ffff;
 	envelopes[0].rel_min = 1;
-	envelopes[0].rel_source.sourceType = ctrlType_t::CC;
+	envelopes[0].rel_source.sourceType = ctrlType_t::controller;
 	envelopes[0].rel_source.channel = 0;
 	envelopes[0].rel_source.sourceNum = 27;
 	hasCC[4][0] = 1;
@@ -621,40 +620,40 @@ void GO_ENV(GenOut_t* go){
 
 // TODO: Fix stuck notes
 // TODO: Optimize pitchbend
-void GO_MIDI_Voice(MIDI2_voice_t* msg){
-	if(msg->group != midi_group){
+void GO_MIDI_Voice(struct umpCVM* msg){
+	if(msg->umpGroup != midi_group){
 		return;
 	}
 	
 	enum ctrlType_t msgType;
 	uint16_t controlNum = 0;
 	switch(msg->status){
-		case MIDI2_VOICE_E::AssControl:
-			controlNum = msg->bankCtrl << 8;
-		case MIDI2_VOICE_E::CControl:
+		case NRPN:
+			controlNum = msg->bank << 8;
+		case CC:
 			controlNum |= msg->index;
-			msgType = ctrlType_t::CC;
+			msgType = ctrlType_t::controller;
 			break;
-		case MIDI2_VOICE_E::Aftertouch:
-		case MIDI2_VOICE_E::ChanPressure:
-		case MIDI2_VOICE_E::NoteOff:
-		case MIDI2_VOICE_E::NoteOn:
-		case MIDI2_VOICE_E::Pitchbend:
-			msgType = ctrlType_t::Key;
+		case KEY_PRESSURE:
+		case CHANNEL_PRESSURE:
+		case NOTE_OFF:
+		case NOTE_ON:
+		case PITCH_BEND:
+			msgType = ctrlType_t::key;
 			break;
-		case MIDI2_VOICE_E::ProgChange:
-			msgType = ctrlType_t::PC;
+		case PROGRAM_CHANGE:
+			msgType = ctrlType_t::program;
 			break;
 		default:
 			return;
 	};
 	
-	if (msgType == ctrlType_t::CC){
-		if (msg->status == MIDI2_VOICE_E::CControl){
-			if ((msg->controller == 120)||(msg->controller == 123)){
+	if (msgType == ctrlType_t::controller){
+		if (msg->status == CC){
+			if ((msg->index == 120)||(msg->index == 123)){
 				Stop_All_Notes();
 				return;
-			} else if (msg->controller == 121){
+			} else if (msg->index == 121){
 				Reset_All_Controllers();
 				return;
 			}
@@ -663,7 +662,7 @@ void GO_MIDI_Voice(MIDI2_voice_t* msg){
 		// Search outputs
 		for (uint8_t x = 0; x < 4; x++){
 			for (uint8_t y = 0; y < 4; y++){
-				// Skip if no CC is mapped
+				// Skip if no controller is mapped
 				if (!hasCC[x][y]){
 					continue;
 				}
@@ -673,7 +672,7 @@ void GO_MIDI_Voice(MIDI2_voice_t* msg){
 				if ( src_current == criteria ){
 					// CV generation
 					uint32_t span = (outMatrix[x][y].max_range - outMatrix[x][y].min_range) + 1;
-					uint32_t scaled = (msg->data >> 16) * span;
+					uint32_t scaled = (msg->value >> 16) * span;
 					outMatrix[x][y].currentOut = (scaled >> 16) + outMatrix[x][y].min_range;
 					continue;
 				}
@@ -682,7 +681,7 @@ void GO_MIDI_Voice(MIDI2_voice_t* msg){
 				if ( src_current == criteria ){
 					// Wave generation
 					uint64_t span = outMatrix[x][y].freq_max - outMatrix[x][y].freq_min + 1;
-					uint64_t scaled = msg->data * span;
+					uint64_t scaled = msg->value * span;
 					outMatrix[x][y].freq_current = (scaled >> 32) + outMatrix[x][y].freq_min;
 					continue;					
 				}	
@@ -690,7 +689,7 @@ void GO_MIDI_Voice(MIDI2_voice_t* msg){
 		}
 		
 		// Search envelopes
-		uint32_t criteria = ( uint8_t(ctrlType_t::CC) << 0 ) | ( msg->channel << 8 ) | ( controlNum << 16 );
+		uint32_t criteria = ( uint8_t(ctrlType_t::controller) << 0 ) | ( msg->channel << 8 ) | ( controlNum << 16 );
 		for (uint8_t i = 0; i < 4; i++){
 			if (!hasCC[4][i]){
 				continue;
@@ -706,12 +705,12 @@ void GO_MIDI_Voice(MIDI2_voice_t* msg){
 				if (envelopes[i].att_max > envelopes[i].att_min){
 					uint32_t diff = envelopes[i].att_max - envelopes[i].att_min;
 					uint32_t span = diff * 0x0101 + 1;
-					uint32_t scaled = (msg->data >> 16) * span;
+					uint32_t scaled = (msg->value >> 16) * span;
 					envelopes[i].att_current = 0x0101 * envelopes[i].att_min + (scaled >> 16);
 				} else {
 					uint32_t diff = envelopes[i].att_min - envelopes[i].att_max;
 					uint32_t span = diff * 0x0101 + 1;
-					uint32_t scaled = (msg->data >> 16) * span;
+					uint32_t scaled = (msg->value >> 16) * span;
 					envelopes[i].att_current = 0x0101 * envelopes[i].att_min - (scaled >> 16);
 				}
 			}
@@ -725,12 +724,12 @@ void GO_MIDI_Voice(MIDI2_voice_t* msg){
 				if (envelopes[i].dec_max > envelopes[i].dec_min){
 					uint32_t diff = envelopes[i].dec_max - envelopes[i].dec_min;
 					uint32_t span = diff * 0x0101 + 1;
-					uint32_t scaled = (msg->data >> 16) * span;
+					uint32_t scaled = (msg->value >> 16) * span;
 					envelopes[i].dec_current = 0x0101 * envelopes[i].dec_min + (scaled >> 16);
 				} else {
 					uint32_t diff = envelopes[i].dec_min - envelopes[i].dec_max;
 					uint32_t span = diff * 0x0101 + 1;
-					uint32_t scaled = (msg->data >> 16) * span;
+					uint32_t scaled = (msg->value >> 16) * span;
 					envelopes[i].dec_current = 0x0101 * envelopes[i].dec_min - (scaled >> 16);
 				}	
 			}
@@ -744,12 +743,12 @@ void GO_MIDI_Voice(MIDI2_voice_t* msg){
 				if (envelopes[i].sus_max > envelopes[i].sus_min){
 					uint32_t diff = envelopes[i].sus_max - envelopes[i].sus_min;
 					uint32_t span = diff * 0x0101 + 1;
-					uint32_t scaled = (msg->data >> 16) * span;
+					uint32_t scaled = (msg->value >> 16) * span;
 					envelopes[i].sus_current = 0x0101 * envelopes[i].sus_min + (scaled >> 16);
 				} else {
 					uint32_t diff = envelopes[i].sus_min - envelopes[i].sus_max;
 					uint32_t span = diff * 0x0101 + 1;
-					uint32_t scaled = (msg->data >> 16) * span;
+					uint32_t scaled = (msg->value >> 16) * span;
 					envelopes[i].sus_current = 0x0101 * envelopes[i].sus_min - (scaled >> 16);
 				}
 			}
@@ -763,18 +762,18 @@ void GO_MIDI_Voice(MIDI2_voice_t* msg){
 				if (envelopes[i].rel_max > envelopes[i].rel_min){
 					uint32_t diff = envelopes[i].rel_max - envelopes[i].rel_min;
 					uint32_t span = diff * 0x0101 + 1;
-					uint32_t scaled = (msg->data >> 16) * span;
+					uint32_t scaled = (msg->value >> 16) * span;
 					envelopes[i].rel_current = 0x0101 * envelopes[i].rel_min + (scaled >> 16);
 				} else {
 					uint32_t diff = envelopes[i].rel_min - envelopes[i].rel_max;
 					uint32_t span = diff * 0x0101 + 1;
-					uint32_t scaled = (msg->data >> 16) * span;
+					uint32_t scaled = (msg->value >> 16) * span;
 					envelopes[i].rel_current = 0x0101 * envelopes[i].rel_min - (scaled >> 16);
 				}				
 			}
 		}
-	} else if(msgType == ctrlType_t::PC){
-		uint32_t criteria = (uint8_t(GOType_t::DC)) | ( msg->channel << 8 ) | ( msg->program << 16 );
+	} else if(msgType == ctrlType_t::program){
+		uint32_t criteria = (uint8_t(GOType_t::DC)) | ( msg->channel << 8 ) | ( msg->value << 16 );
 		for (uint8_t x = 0; x < 4; x++){
 			for (uint8_t y = 0; y < 4; y++){
 				uint32_t src_current =
@@ -795,7 +794,7 @@ void GO_MIDI_Voice(MIDI2_voice_t* msg){
 		if (msg->channel == 9){
 			// Drum channel
 			uint32_t criteria = ( msg->channel << 8 ) | ( msg->note << 16 );
-			if (msg->status == MIDI2_VOICE_E::NoteOn){
+			if (msg->status == NOTE_ON){
 				bool foundLane = false;
 				for (uint8_t x = 0; x < 4; x++){
 					for (uint8_t y = 0; y < 4; y++){
@@ -816,7 +815,7 @@ void GO_MIDI_Voice(MIDI2_voice_t* msg){
 						} 
 						if ( src_current == ( criteria | uint8_t(GOType_t::Velocity) ) ){
 							foundLane = true;
-							outMatrix[x][y].currentOut = Rescale_16bit(msg->velocity, outMatrix[x][y].min_range, outMatrix[x][y].max_range);
+							outMatrix[x][y].currentOut = Rescale_16bit(msg->value, outMatrix[x][y].min_range, outMatrix[x][y].max_range);
 							continue;
 						}
 					}
@@ -825,7 +824,7 @@ void GO_MIDI_Voice(MIDI2_voice_t* msg){
 						break;
 					}
 				}
-			} else if (msg->status == MIDI2_VOICE_E::NoteOff){
+			} else if (msg->status == NOTE_OFF){
 				bool foundLane = false;
 				for (uint8_t x = 0; x < 4; x++){
 					for (uint8_t y = 0; y < 4; y++){
@@ -851,7 +850,7 @@ void GO_MIDI_Voice(MIDI2_voice_t* msg){
 				}
 			}
 		} else if(keyChannel == msg->channel) {
-			if (msg->status == MIDI2_VOICE_E::NoteOn){
+			if (msg->status == NOTE_ON){
 				uint8_t tempLane = 250;
 				for (uint8_t x = 0; x < 4; x++){
 					uint8_t lane = (currentKeyLane + x) & 0b11;
@@ -886,9 +885,9 @@ void GO_MIDI_Voice(MIDI2_voice_t* msg){
 					noteQueue[queueIndex++].note = keyLanes[tempLane].note;
 				}
 				
-				Start_Note(tempLane, msg->note, msg->velocity);
+				Start_Note(tempLane, msg->note, msg->value);
 				
-			} else if (msg->status == MIDI2_VOICE_E::NoteOff){
+			} else if (msg->status == NOTE_OFF){
 				// Find the used lane
 				uint8_t tempLane = 250;
 				for (uint8_t x = 0; x < 4; x++){
@@ -917,18 +916,18 @@ void GO_MIDI_Voice(MIDI2_voice_t* msg){
 					if (queueIndex > 0){
 						// Start last note which was put in queue
 						uint8_t tempNote = noteQueue[--queueIndex].note;
-						Start_Note(tempLane, tempNote, msg->velocity);
+						Start_Note(tempLane, tempNote, msg->value);
 					} else {
 						// Stop note
 						Stop_Note(tempLane);
 					}
 				}
-			} else if (msg->status == MIDI2_VOICE_E::Pitchbend){
-				uint16_t tempBend = Rescale_16bit(msg->data >> 16, minBend, maxBend);
+			} else if (msg->status == PITCH_BEND){
+				uint16_t tempBend = Rescale_16bit(msg->value >> 16, minBend, maxBend);
 				currentBend = tempBend - 0x7fff;
 				
 				// update v/oct outputs
-				uint32_t criteria = ( uint8_t(GOType_t::DC) << 0 ) | ( keyChannel << 8 ) | ( uint8_t(ctrlType_t::Key) << 16 );
+				uint32_t criteria = ( uint8_t(GOType_t::DC) << 0 ) | ( keyChannel << 8 ) | ( uint8_t(ctrlType_t::key) << 16 );
 				for (uint8_t x = 0; x < 4; x++){
 					if (keyLanes[x].state != keyLanes_t::KeyPlaying){
 						continue;
@@ -944,8 +943,8 @@ void GO_MIDI_Voice(MIDI2_voice_t* msg){
 						}
 					}
 				}
-			} else if (msg->status == MIDI2_VOICE_E::ChanPressure){
-				uint32_t criteria = ( uint8_t(GOType_t::Pressure) << 0 ) | ( keyChannel << 8 ) | ( uint8_t(ctrlType_t::Key) << 16 );
+			} else if (msg->status == CHANNEL_PRESSURE){
+				uint32_t criteria = ( uint8_t(GOType_t::Pressure) << 0 ) | ( keyChannel << 8 ) | ( uint8_t(ctrlType_t::key) << 16 );
 				for (uint8_t x = 0; x < 4; x++){
 					for (uint8_t y = 0; y < 4; y++){
 						uint32_t src_current = 
@@ -953,13 +952,13 @@ void GO_MIDI_Voice(MIDI2_voice_t* msg){
 							( outMatrix[x][y].gen_source.channel << 8 ) | 
 							( uint8_t(outMatrix[x][y].gen_source.sourceType) << 16 );
 						if ( src_current == criteria ){
-							outMatrix[x][y].currentOut = Rescale_16bit(msg->data >> 16, outMatrix[x][y].min_range, outMatrix[x][y].max_range);
+							outMatrix[x][y].currentOut = Rescale_16bit(msg->value >> 16, outMatrix[x][y].min_range, outMatrix[x][y].max_range);
 							break;
 						}
 					}
 				}
-			} else if (msg->status == MIDI2_VOICE_E::Aftertouch){
-				uint32_t criteria = ( uint8_t(GOType_t::Pressure) << 0 ) | ( keyChannel << 8 ) | ( uint8_t(ctrlType_t::Key) << 16 ) | ( msg->note << 24 );
+			} else if (msg->status == KEY_PRESSURE){
+				uint32_t criteria = ( uint8_t(GOType_t::Pressure) << 0 ) | ( keyChannel << 8 ) | ( uint8_t(ctrlType_t::key) << 16 ) | ( msg->note << 24 );
 				for (uint8_t x = 0; x < 4; x++){
 					for (uint8_t y = 0; y < 4; y++){
 						uint32_t src_current = 
@@ -968,7 +967,7 @@ void GO_MIDI_Voice(MIDI2_voice_t* msg){
 							( uint8_t(outMatrix[x][y].gen_source.sourceType) << 16 ) |
 							( keyLanes[x].note << 24 );
 						if ( src_current == criteria ){
-							outMatrix[x][y].currentOut = Rescale_16bit(msg->data >> 16, outMatrix[x][y].min_range, outMatrix[x][y].max_range);
+							outMatrix[x][y].currentOut = Rescale_16bit(msg->value >> 16, outMatrix[x][y].min_range, outMatrix[x][y].max_range);
 							break;
 						}
 					}
@@ -979,8 +978,8 @@ void GO_MIDI_Voice(MIDI2_voice_t* msg){
 	return;
 }
 
-void GO_MIDI_Realtime(MIDI2_com_t* msg){
-	if(msg->status == MIDI2_COM_E::TimingClock){
+void GO_MIDI_Realtime(struct umpGeneric* msg){
+	if(msg->status == TIMINGCLOCK){
 		for (uint8_t x = 0; x < 4; x++){
 			for (uint8_t y = 0; y < 4; y++){
 				GenOut_t* tempOut = &outMatrix[x][y];
@@ -1012,7 +1011,7 @@ void GO_Service(){
 				default:
 					break;
 			}
-			PWM_Set(x,y,outMatrix[x][y].currentOut);
+			//PWM_Set(x,y,outMatrix[x][y].currentOut);
 		}
 	}
 }
@@ -1032,7 +1031,7 @@ void GO_Service(uint8_t x){
 		default:
 			break;
 		}
-		PWM_Set(x,y,outMatrix[x][y].currentOut);
+		//PWM_Set(x,y,outMatrix[x][y].currentOut);
 	}
 }
 
