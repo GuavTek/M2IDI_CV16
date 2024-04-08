@@ -4,6 +4,7 @@
 #include <hardware/spi.h>
 #include <hardware/irq.h>
 #include <hardware/pwm.h>
+#include <hardware/timer.h>
 #include "midi_config.h"
 #include "SPI_RP2040.h"
 #include "MCP2517.h"
@@ -11,6 +12,7 @@
 #include "utils.h"
 #include "led_matrix.h"
 #include "generic_output.h"
+#include "menu.h"
 
 void main1(void);
 void dac_pwm_handler();
@@ -37,12 +39,29 @@ int main(void){
     CAN.Set_Rx_Header_Callback(CAN_Receive_Header);
     CAN.Set_Rx_Data_Callback(CAN_Receive_Data);
 
+    menu_init();
+
     // Start core1
     multicore_reset_core1();
     sleep_ms(500);
     multicore_launch_core1(main1);
     while (true){
         sleep_ms(1);
+        static uint32_t smiley_timer = 0;
+        if (menu_service())	{
+			// Inactivity timeout
+			smiley_timer = time_us_32() + 30000000;
+		}
+		if (smiley_timer < time_us_32()) {  // TODO: handle timer wrapping
+			smiley_timer = time_us_32() + 1000000;
+
+			LM_WriteRow(0, 0b00100100);
+			LM_WriteRow(1, 0b00100100);
+			LM_WriteRow(2, 0b00000000);
+			LM_WriteRow(3, 0b01000010);
+			LM_WriteRow(4, 0b00111100);
+
+		}
     }
 }
 
@@ -56,6 +75,14 @@ void CAN_Receive_Header(CAN_Rx_msg_t* data){
 void CAN_Receive_Data(char* data, uint8_t length){
 	// Receive MIDI payload from CAN
 	//MIDI_CAN.Decode(data, length);
+
+    if (get_menu_state() == menu_status_t::Navigate){
+		LM_WriteRow(0, 0b00100100);
+		LM_WriteRow(1, 0b00000000);
+		LM_WriteRow(2, 0b00111100);
+		LM_WriteRow(3, 0b01000010);
+		LM_WriteRow(4, 0b00111100);		// TODO: update to new ledmatrix format
+	}
 }
 
 // Core1 main

@@ -9,14 +9,18 @@
 #ifndef MENU_H_
 #define MENU_H_
 
-#include "MIDI_Driver.h"
+#include <stdio.h>
+#include "pico/stdlib.h"
+#include "umpProcessor.h"
+#include "utils.h"
 
+typedef void (*void_function)();
 struct menuNode {
 	const uint8_t graphic[5];
 	menuNode* const kid;
 	menuNode* const previous;
 	menuNode* const next;
-	void const (*function)();
+	const void_function function;
 };
 
 enum menu_status_t {
@@ -29,11 +33,11 @@ enum menu_status_t {
 	Wait_MIDI
 };
 
-void Menu_Init();
-uint8_t Menu_Service();
-uint8_t Menu_MIDI(MIDI2_voice_t* msg);
+void menu_init();
+uint8_t menu_service();
+uint8_t menu_midi(struct umpCVM* msg);
 
-menu_status_t Get_Menu_State();
+menu_status_t get_menu_state();
 
 
 #endif /* MENU_H_ */

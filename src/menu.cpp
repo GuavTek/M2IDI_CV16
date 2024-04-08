@@ -5,11 +5,14 @@
  *  Author: GuavTek
  */ 
 
-#include "samd21.h"
-#include "LEDMatrix.h"
-#include "GenericOutput.h"
+#include <stdio.h>
+#include "pico/stdlib.h"
+#include <hardware/timer.h>
+#include "umpProcessor.h"
+#include "utils.h"
+#include "led_matrix.h"
+#include "generic_output.h"
 #include "menu.h"
-#include "system_interrupt.h"
 
 menu_status_t menuStatus;
 menuNode* currentNode;
@@ -30,6 +33,18 @@ bool needSave = false;
 bool needLoad = false;
 uint8_t confSlot;
 ctrlSource_t confPC;
+
+void butt_right_handler(){
+	buttRight = true;
+}
+
+void butt_up_handler(){	
+	buttUp = true;
+}
+
+void butt_down_handler(){	
+	buttDown = true;
+}
 
 inline uint32_t extrapolate_num (uint32_t in, uint8_t pos){
 	uint32_t tempResult = in & (0xffff'ffff << pos);
@@ -116,72 +131,72 @@ extern struct menuNode load_slot_n;
 extern struct menuNode load_back_n;
 extern struct menuNode edit_group;
 
-const void Enter_Kid()			{ currentNode = currentNode->kid; }
-const void Enter_Env0()			{ chanSel = 0; Enter_Kid(); }
-const void Enter_Env1()			{ chanSel = 1; Enter_Kid(); }
-const void Enter_Env2()			{ chanSel = 2; Enter_Kid(); }
-const void Enter_Env3()			{ chanSel = 3; Enter_Kid(); }
-const void Exit_Env()			{ chanSel = 0; Enter_Kid(); }
-const void Edit_Bend()			{ menuStatus = Edit_int; var_edit = &bendRange; max_edit = 8; }
-const void Select_Pressure()	{ outMatrix[chanSel & 0b11][chanSel >> 2].type = GOType_t::Pressure; needScan = true; Enter_Kid(); }
-const void Select_CV()			{ outMatrix[chanSel & 0b11][chanSel >> 2].type = GOType_t::DC; needScan = true; Enter_Kid(); }
-const void Select_Gate()		{ outMatrix[chanSel & 0b11][chanSel >> 2].type = GOType_t::Gate; needScan = true; Enter_Kid(); }
-const void Select_Envelope()	{ menuStatus = Edit_int; var_edit = &outMatrix[chanSel & 0b11][chanSel >> 2].env_num; max_edit = 4; outMatrix[chanSel & 0b11][chanSel >> 2].type = GOType_t::Envelope; }
-const void Select_Velocity()	{ outMatrix[chanSel & 0b11][chanSel >> 2].type = GOType_t::Velocity; needScan = true; Enter_Kid(); }
-const void Select_Clk()			{ menuStatus = Edit_int; var_edit = &outMatrix[chanSel & 0b11][chanSel >> 2].freq_current; outMatrix[chanSel & 0b11][chanSel >> 2].freq_current=12; max_edit = 128; outMatrix[chanSel & 0b11][chanSel >> 2].type = GOType_t::CLK; }
-const void Select_LFO()			{ outMatrix[chanSel & 0b11][chanSel >> 2].type = GOType_t::LFO; needScan = true; Enter_Kid(); }
-const void Select_LFO_Shape()	{ menuStatus = SetLFO; var_edit = &outMatrix[chanSel & 0b11][chanSel >> 2].shape; }
-const void Select_LFO_Freq_Max(){ menuStatus = Edit_32bit; var_edit = &outMatrix[chanSel & 0b11][chanSel >> 2].freq_max; var_monitor = &outMatrix[chanSel & 0b11][chanSel >> 2].freq_current; }
-const void Select_LFO_Freq_Min(){ menuStatus = Edit_32bit; var_edit = &outMatrix[chanSel & 0b11][chanSel >> 2].freq_min; var_monitor = &outMatrix[chanSel & 0b11][chanSel >> 2].freq_current; }
-const void Set_GO_MIDI()		{ menuStatus = Wait_MIDI; var_edit = &outMatrix[chanSel & 0b11][chanSel >> 2].gen_source; midiTypeMask = 0b111; }
-const void Set_Max_Range()		{ menuStatus = Edit_16bit; var_edit = &outMatrix[chanSel & 0b11][chanSel >> 2].max_range; var_monitor = &outMatrix[chanSel & 0b11][chanSel >> 2].currentOut; }
-const void Set_Min_Range()		{ menuStatus = Edit_16bit; var_edit = &outMatrix[chanSel & 0b11][chanSel >> 2].min_range; var_monitor = &outMatrix[chanSel & 0b11][chanSel >> 2].currentOut; }
-const void Set_Conf_Slot()		{ menuStatus = Edit_int; var_edit = &confSlot; max_edit = MAX_SLOTS; }
-const void Set_Save_PC()		{ menuStatus = Wait_MIDI; var_edit = &confPC; midiTypeMask = 0b100; }
-const void Save_Config()		{ needSave = true; Enter_Kid(); }
-const void Load_Config()		{ needLoad = true; Enter_Kid(); }
-const void Set_Group()			{ menuStatus = Edit_int; var_edit = &midi_group; max_edit = 16; }
-const void Set_Env_Atk_Max()	{ menuStatus = Edit_32bit; var_edit = &envelopes[chanSel].att_max; var_monitor = &envelopes[chanSel].att_current; }
-const void Set_Env_Atk_Min()	{ menuStatus = Edit_32bit; var_edit = &envelopes[chanSel].att_min; var_monitor = &envelopes[chanSel].att_current; }
-const void Set_Env_Atk_Bind()	{ menuStatus = Wait_MIDI; var_edit = &envelopes[chanSel].att_source; midiTypeMask = 0b001; }
-const void Set_Env_Dec_Max()	{ menuStatus = Edit_32bit; var_edit = &envelopes[chanSel].dec_max; var_monitor = &envelopes[chanSel].dec_current; }
-const void Set_Env_Dec_Min()	{ menuStatus = Edit_32bit; var_edit = &envelopes[chanSel].dec_min; var_monitor = &envelopes[chanSel].dec_current; }
-const void Set_Env_Dec_Bind()	{ menuStatus = Wait_MIDI; var_edit = &envelopes[chanSel].dec_source; midiTypeMask = 0b001; }
-const void Set_Env_Sus_Max()	{ menuStatus = Edit_16bit; var_edit = &envelopes[chanSel].sus_max; var_monitor = &envelopes[chanSel].sus_current; }
-const void Set_Env_Sus_Min()	{ menuStatus = Edit_16bit; var_edit = &envelopes[chanSel].sus_min; var_monitor = &envelopes[chanSel].sus_current; }
-const void Set_Env_Sus_Bind()	{ menuStatus = Wait_MIDI; var_edit = &envelopes[chanSel].sus_source; midiTypeMask = 0b001; }
-const void Set_Env_Rel_Max()	{ menuStatus = Edit_32bit; var_edit = &envelopes[chanSel].rel_max; var_monitor = &envelopes[chanSel].rel_current; }
-const void Set_Env_Rel_Min()	{ menuStatus = Edit_32bit; var_edit = &envelopes[chanSel].rel_min; var_monitor = &envelopes[chanSel].rel_current; }
-const void Set_Env_Rel_Bind()	{ menuStatus = Wait_MIDI; var_edit = &envelopes[chanSel].rel_source; midiTypeMask = 0b001; }
+void Enter_Kid()			{ currentNode = currentNode->kid; }
+void Enter_Env0()			{ chanSel = 0; Enter_Kid(); }
+void Enter_Env1()			{ chanSel = 1; Enter_Kid(); }
+void Enter_Env2()			{ chanSel = 2; Enter_Kid(); }
+void Enter_Env3()			{ chanSel = 3; Enter_Kid(); }
+void Exit_Env()			{ chanSel = 0; Enter_Kid(); }
+void Edit_Bend()			{ menuStatus = Edit_int; var_edit = &bendRange; max_edit = 8; }
+void Select_Pressure()	{ outMatrix[chanSel & 0b11][chanSel >> 2].type = GOType_t::Pressure; needScan = true; Enter_Kid(); }
+void Select_CV()			{ outMatrix[chanSel & 0b11][chanSel >> 2].type = GOType_t::DC; needScan = true; Enter_Kid(); }
+void Select_Gate()		{ outMatrix[chanSel & 0b11][chanSel >> 2].type = GOType_t::Gate; needScan = true; Enter_Kid(); }
+void Select_Envelope()	{ menuStatus = Edit_int; var_edit = &outMatrix[chanSel & 0b11][chanSel >> 2].env_num; max_edit = 4; outMatrix[chanSel & 0b11][chanSel >> 2].type = GOType_t::Envelope; }
+void Select_Velocity()	{ outMatrix[chanSel & 0b11][chanSel >> 2].type = GOType_t::Velocity; needScan = true; Enter_Kid(); }
+void Select_Clk()			{ menuStatus = Edit_int; var_edit = &outMatrix[chanSel & 0b11][chanSel >> 2].freq_current; outMatrix[chanSel & 0b11][chanSel >> 2].freq_current=12; max_edit = 128; outMatrix[chanSel & 0b11][chanSel >> 2].type = GOType_t::CLK; }
+void Select_LFO()			{ outMatrix[chanSel & 0b11][chanSel >> 2].type = GOType_t::LFO; needScan = true; Enter_Kid(); }
+void Select_LFO_Shape()	{ menuStatus = SetLFO; var_edit = &outMatrix[chanSel & 0b11][chanSel >> 2].shape; }
+void Select_LFO_Freq_Max(){ menuStatus = Edit_32bit; var_edit = &outMatrix[chanSel & 0b11][chanSel >> 2].freq_max; var_monitor = &outMatrix[chanSel & 0b11][chanSel >> 2].freq_current; }
+void Select_LFO_Freq_Min(){ menuStatus = Edit_32bit; var_edit = &outMatrix[chanSel & 0b11][chanSel >> 2].freq_min; var_monitor = &outMatrix[chanSel & 0b11][chanSel >> 2].freq_current; }
+void Set_GO_MIDI()		{ menuStatus = Wait_MIDI; var_edit = &outMatrix[chanSel & 0b11][chanSel >> 2].gen_source; midiTypeMask = 0b111; }
+void Set_Max_Range()		{ menuStatus = Edit_16bit; var_edit = &outMatrix[chanSel & 0b11][chanSel >> 2].max_range; var_monitor = &outMatrix[chanSel & 0b11][chanSel >> 2].currentOut; }
+void Set_Min_Range()		{ menuStatus = Edit_16bit; var_edit = &outMatrix[chanSel & 0b11][chanSel >> 2].min_range; var_monitor = &outMatrix[chanSel & 0b11][chanSel >> 2].currentOut; }
+void Set_Conf_Slot()		{ menuStatus = Edit_int; var_edit = &confSlot; max_edit = MAX_SLOTS; }
+void Set_Save_PC()		{ menuStatus = Wait_MIDI; var_edit = &confPC; midiTypeMask = 0b100; }
+void Save_Config()		{ needSave = true; Enter_Kid(); }
+void Load_Config()		{ needLoad = true; Enter_Kid(); }
+void Set_Group()			{ menuStatus = Edit_int; var_edit = &midi_group; max_edit = 16; }
+void Set_Env_Atk_Max()	{ menuStatus = Edit_32bit; var_edit = &envelopes[chanSel].att_max; var_monitor = &envelopes[chanSel].att_current; }
+void Set_Env_Atk_Min()	{ menuStatus = Edit_32bit; var_edit = &envelopes[chanSel].att_min; var_monitor = &envelopes[chanSel].att_current; }
+void Set_Env_Atk_Bind()	{ menuStatus = Wait_MIDI; var_edit = &envelopes[chanSel].att_source; midiTypeMask = 0b001; }
+void Set_Env_Dec_Max()	{ menuStatus = Edit_32bit; var_edit = &envelopes[chanSel].dec_max; var_monitor = &envelopes[chanSel].dec_current; }
+void Set_Env_Dec_Min()	{ menuStatus = Edit_32bit; var_edit = &envelopes[chanSel].dec_min; var_monitor = &envelopes[chanSel].dec_current; }
+void Set_Env_Dec_Bind()	{ menuStatus = Wait_MIDI; var_edit = &envelopes[chanSel].dec_source; midiTypeMask = 0b001; }
+void Set_Env_Sus_Max()	{ menuStatus = Edit_16bit; var_edit = &envelopes[chanSel].sus_max; var_monitor = &envelopes[chanSel].sus_current; }
+void Set_Env_Sus_Min()	{ menuStatus = Edit_16bit; var_edit = &envelopes[chanSel].sus_min; var_monitor = &envelopes[chanSel].sus_current; }
+void Set_Env_Sus_Bind()	{ menuStatus = Wait_MIDI; var_edit = &envelopes[chanSel].sus_source; midiTypeMask = 0b001; }
+void Set_Env_Rel_Max()	{ menuStatus = Edit_32bit; var_edit = &envelopes[chanSel].rel_max; var_monitor = &envelopes[chanSel].rel_current; }
+void Set_Env_Rel_Min()	{ menuStatus = Edit_32bit; var_edit = &envelopes[chanSel].rel_min; var_monitor = &envelopes[chanSel].rel_current; }
+void Set_Env_Rel_Bind()	{ menuStatus = Wait_MIDI; var_edit = &envelopes[chanSel].rel_source; midiTypeMask = 0b001; }
 
 // Used to bind MIDI sources in configuration
-uint8_t Menu_MIDI(MIDI2_voice_t* msg){
+uint8_t menu_midi(struct umpCVM* msg){
 	if (menuStatus == menu_status_t::Wait_MIDI){
 		ctrlSource_t* tempSource = (ctrlSource_t*) var_edit;
 		
 		switch(msg->status){
-			case MIDI2_VOICE_E::ProgChange:
+			case PROGRAM_CHANGE:
 				if (!(midiTypeMask & 0b100)){
 					return 0;
 				}
 				// TODO: Set global bank?
-				tempSource->sourceType = ctrlType_t::PC;
-				tempSource->sourceNum = msg->program;
+				tempSource->sourceType = ctrlType_t::program;
+				tempSource->sourceNum = msg->value;
 				break;
-			case MIDI2_VOICE_E::NoteOn:
-			case MIDI2_VOICE_E::NoteOff:
+			case NOTE_ON:
+			case NOTE_OFF:
 				if (!(midiTypeMask & 0b010)){
 					return 0;
 				}
-				tempSource->sourceType = ctrlType_t::Key;
+				tempSource->sourceType = ctrlType_t::key;
 				tempSource->sourceNum = msg->note;
 				break;
-			case MIDI2_VOICE_E::CControl:
+			case CC:
 				if (!(midiTypeMask & 0b001)){
 					return 0;
 				}
-				tempSource->sourceType = ctrlType_t::CC;
-				tempSource->sourceNum = msg->controller;
+				tempSource->sourceType = ctrlType_t::controller;
+				tempSource->sourceNum = msg->index;
 				break;
 			default:
 				return 0;
@@ -196,31 +211,15 @@ uint8_t Menu_MIDI(MIDI2_voice_t* msg){
 	return 0;
 }
 
-void Menu_Init(){
+void menu_init(){
 	currentNode = &edit_n;
 	menuStatus = Navigate;
 	
-	// Enable EIC clock
-	GCLK->CLKCTRL.reg = GCLK_CLKCTRL_CLKEN | GCLK_CLKCTRL_GEN_GCLK2 | GCLK_CLKCTRL_ID_EIC;
-	
-	// Initialize buttons PA27(exint 15), PB22 (exint 6), PB23 (exint 7)
-	PORT->Group[0].PINCFG[27].reg = PORT_PINCFG_PULLEN | PORT_PINCFG_PMUXEN;
-	PORT->Group[0].PMUX[13].bit.PMUXO = PORT_PMUX_PMUXO_A_Val;
-	PORT->Group[0].OUTSET.reg = 1 << 27;
-	PORT->Group[1].PINCFG[22].reg = PORT_PINCFG_PULLEN | PORT_PINCFG_PMUXEN;
-	PORT->Group[1].PMUX[11].bit.PMUXE = PORT_PMUX_PMUXE_A_Val;
-	PORT->Group[1].PINCFG[23].reg = PORT_PINCFG_PULLEN | PORT_PINCFG_PMUXEN;
-	PORT->Group[1].PMUX[11].bit.PMUXO = PORT_PMUX_PMUXO_A_Val;
-	PORT->Group[1].OUTSET.reg = (1 << 22) | (1 << 23);
-	EIC->INTENSET.reg = EIC_INTENSET_EXTINT6 | EIC_INTENSET_EXTINT7 | EIC_INTENSET_EXTINT15;
-	EIC->CONFIG[0].reg |= EIC_CONFIG_FILTEN6 | EIC_CONFIG_SENSE6_FALL | EIC_CONFIG_FILTEN7 | EIC_CONFIG_SENSE7_FALL;
-	EIC->CONFIG[1].reg |= EIC_CONFIG_FILTEN7 | EIC_CONFIG_SENSE7_FALL;
-	EIC->CTRL.bit.ENABLE = 1;
-	
-	NVIC_EnableIRQ(EIC_IRQn);
+	// TODO: Enable pin interrupts on buttons
+
 }
 
-uint8_t Menu_Service(){
+uint8_t menu_service(){
 	bool screenChange = false;
 	switch(menuStatus){
 		case menu_status_t::Navigate:
@@ -273,7 +272,7 @@ uint8_t Menu_Service(){
 			if (buttRight){
 				buttRight = false;
 				ctrlSource_t* tempSrc = (ctrlSource_t*) var_edit;
-				tempSrc->sourceType = ctrlType_t::None;
+				tempSrc->sourceType = ctrlType_t::none;
 				menuStatus = menu_status_t::Navigate;
 				needScan = true;
 				Enter_Kid();
@@ -524,7 +523,7 @@ uint8_t Menu_Service(){
 			break;
 		default:
 			// Invalid state, reset menu
-			Menu_Init();
+			menu_init();
 			break;
 	}
 	
@@ -546,8 +545,8 @@ uint8_t Menu_Service(){
 			LM_WriteRow(1,0);
 			LM_WriteRow(2,0);
 			LM_WriteRow(4,0);
-			uint8_t timer = (RTC->MODE0.COUNT.reg >> 14) & 0b111;
-			LM_WriteRow(3, 0b01010101 & ~(1 << timer));
+			uint8_t timer = (time_us_32() >> 18) & 0b1111;
+			LM_WriteRow(3, 0b0011001100110011 & ~(0b11 << timer));
 		} else if (menuStatus == menu_status_t::SetLFO){
 			WavShape_t* tempPoint = (WavShape_t*) var_edit;
 			WavShape_t tempShape = *tempPoint;
@@ -626,45 +625,8 @@ uint8_t Menu_Service(){
 	}
 }
 
-menu_status_t Get_Menu_State(){
+menu_status_t get_menu_state(){
 	return menuStatus;
-}
-
-/*
-// Butt1 right, Butt2 up, Butt3 down
-void EIC_Handler(){
-	if (EIC->INTFLAG.reg & EIC_INTFLAG_EXTINT6)	{
-		EIC->INTFLAG.reg = EIC_INTFLAG_EXTINT6;
-		buttRight = true;
-	}
-	
-	if (EIC->INTFLAG.reg & EIC_INTFLAG_EXTINT7)	{
-		EIC->INTFLAG.reg = EIC_INTFLAG_EXTINT7;
-		buttUp = true;
-	}
-	
-	if (EIC->INTFLAG.reg & EIC_INTFLAG_EXTINT15)	{
-		EIC->INTFLAG.reg = EIC_INTFLAG_EXTINT15;
-		buttDown = true;
-	}
-} */
-
-// EIC Interrupt leads to WDT handler???!?
-void WDT_Handler(){
-	if (EIC->INTFLAG.reg & EIC_INTFLAG_EXTINT6)	{
-		EIC->INTFLAG.reg = EIC_INTFLAG_EXTINT6;
-		buttRight = true;
-	}
-	
-	if (EIC->INTFLAG.reg & EIC_INTFLAG_EXTINT7)	{
-		EIC->INTFLAG.reg = EIC_INTFLAG_EXTINT7;
-		buttUp = true;
-	}
-	
-	if (EIC->INTFLAG.reg & EIC_INTFLAG_EXTINT15)	{
-		EIC->INTFLAG.reg = EIC_INTFLAG_EXTINT15;
-		buttDown = true;
-	}
 }
 
 // TODO: Improve node linking ( going down a level should lead to the first node at that level )
