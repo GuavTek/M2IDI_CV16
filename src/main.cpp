@@ -18,6 +18,8 @@ void main1(void);
 void dac_pwm_handler();
 void CAN_Receive_Header(CAN_Rx_msg_t* data);
 void CAN_Receive_Data(char* data, uint8_t length);
+void dma1_irq_handler ();
+
 
 SPI_RP2040_C SPI_CAN = SPI_RP2040_C(spi0);
 SPI_RP2040_C SPI = SPI_RP2040_C(spi1);
@@ -34,7 +36,11 @@ int main(void){
 	// Board init
 	set_sys_clock_khz(120000, true);
 
+    SPI.Init(SPI_CONF);
     SPI_CAN.Init(SPI_CAN_CONF);
+	irq_set_exclusive_handler(DMA_IRQ_1, dma1_irq_handler);
+	irq_set_enabled(DMA_IRQ_1, true);
+
     CAN.Init(CAN_CONF);
     CAN.Set_Rx_Header_Callback(CAN_Receive_Header);
     CAN.Set_Rx_Data_Callback(CAN_Receive_Data);
@@ -161,4 +167,9 @@ void dac_pwm_handler(){
 
     out_num++;
     out_num &= 0b11;
+}
+
+void dma1_irq_handler (){
+	SPI_CAN.Handler();
+	SPI.Handler();
 }
