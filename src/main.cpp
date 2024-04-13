@@ -8,6 +8,7 @@
 #include "midi_config.h"
 #include "SPI_RP2040.h"
 #include "MCP2517.h"
+#include "eeprom_cat.h"
 #include "umpProcessor.h"
 #include "utils.h"
 #include "led_matrix.h"
@@ -19,6 +20,7 @@ void dac_pwm_handler();
 void CAN_Receive_Header(CAN_Rx_msg_t* data);
 void CAN_Receive_Data(char* data, uint8_t length);
 void dma1_irq_handler ();
+void eeprom_handler();
 
 void midi_cvm_handler(struct umpCVM msg);
 void midi_com_handler(struct umpGeneric msg);
@@ -26,8 +28,9 @@ void midi_stream_discovery(uint8_t majVer, uint8_t minVer, uint8_t filter);
 void midi_data_handler(struct umpData msg);
 
 SPI_RP2040_C SPI_CAN = SPI_RP2040_C(spi0);
-SPI_RP2040_C SPI = SPI_RP2040_C(spi1);
 MCP2517_C CAN = MCP2517_C(&SPI_CAN);
+SPI_RP2040_C SPI = SPI_RP2040_C(spi1);
+eeprom_cat_c EEPROM = eeprom_cat_c(&SPI);
 umpProcessor MIDI;
 
 uint8_t current_group;
@@ -49,6 +52,9 @@ int main(void){
     CAN.Init(CAN_CONF);
     CAN.Set_Rx_Header_Callback(CAN_Receive_Header);
     CAN.Set_Rx_Data_Callback(CAN_Receive_Data);
+
+	EEPROM.init(EEPROM_CONF, EEPROM_SECTIONS, 2);
+	EEPROM.set_callback(eeprom_handler);
 
     MIDI.setSystem(midi_com_handler);
 	MIDI.setCVM(midi_cvm_handler);

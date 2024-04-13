@@ -12,6 +12,31 @@
 
 #include "SPI_RP2040.h"
 #include "MCP2517.h"
+#include "eeprom_cat.h"
+
+// Define EEPROM layout
+const eeprom_cat_conf_t EEPROM_CONF = {
+	.comSlaveNum = 0,
+	.maxAddr = 0x1fff
+};
+
+// TODO: finalize layout
+const eeprom_cat_section_t EEPROM_SECTIONS[2] = {
+	{	// Header, 320 byte
+		.offset = 0x0000,
+		.objectSize = 8 // Contains 40 chunks
+	},
+	{	// Main
+		.offset = 0x0140,
+		.objectSize = 3 // sizeof(muxstate)
+	}
+};
+
+// TODO: add DAC driver
+// const dac_conf_t DAC_CONF = {
+//	.comSlaveNum = 1
+//};
+
 
 // Define CAN filters
 const CAN_Filter_t CAN_FLT0 = {
