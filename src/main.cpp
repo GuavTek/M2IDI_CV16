@@ -74,7 +74,7 @@ int main(void){
 			// Inactivity timeout
 			smiley_timer = time_us_32() + 30000000;
 		}
-		if (smiley_timer < time_us_32()) {  // TODO: handle timer wrapping
+		if (smiley_timer < time_us_32()) {
 			smiley_timer = time_us_32() + 1000000;
 
 			LM_WriteRow(0, 0b0000110000110000);
@@ -83,6 +83,9 @@ int main(void){
 			LM_WriteRow(3, 0b0010000000001000);
 			LM_WriteRow(4, 0b0001111111110100);
 
+		} else if (smiley_timer > time_us_32() + 2000000) {
+			// Reset timer if timer wrapped
+			smiley_timer = 0;
 		}
     }
 }
