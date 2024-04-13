@@ -71,11 +71,11 @@ int main(void){
 		if (smiley_timer < time_us_32()) {  // TODO: handle timer wrapping
 			smiley_timer = time_us_32() + 1000000;
 
-			LM_WriteRow(0, 0b00100100);
-			LM_WriteRow(1, 0b00100100);
-			LM_WriteRow(2, 0b00000000);
-			LM_WriteRow(3, 0b01000010);
-			LM_WriteRow(4, 0b00111100);
+			LM_WriteRow(0, 0b0000110000110000);
+			LM_WriteRow(1, 0b0000100000100000);
+			LM_WriteRow(2, 0b0000000000000000);
+			LM_WriteRow(3, 0b0010000000001000);
+			LM_WriteRow(4, 0b0001111111110100);
 
 		}
     }
@@ -93,11 +93,11 @@ void CAN_Receive_Data(char* data, uint8_t length){
 	//MIDI_CAN.Decode(data, length);
 
     if (get_menu_state() == menu_status_t::Navigate){
-		LM_WriteRow(0, 0b00100100);
-		LM_WriteRow(1, 0b00000000);
-		LM_WriteRow(2, 0b00111100);
-		LM_WriteRow(3, 0b01000010);
-		LM_WriteRow(4, 0b00111100);		// TODO: update to new ledmatrix format
+		LM_WriteRow(0, 0b0000110000110000);
+		LM_WriteRow(1, 0b0000100000100000);
+		LM_WriteRow(2, 0b0000001111000000);
+		LM_WriteRow(3, 0b0000110000110000);
+		LM_WriteRow(4, 0b0000011111010000);
 	}
 }
 

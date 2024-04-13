@@ -531,9 +531,9 @@ uint8_t menu_service(){
 		if (menuStatus == menu_status_t::Navigate){
 			// Channel select screen override
 			if (currentNode == &edit_select_n){
-				LM_WriteRow(0, 0xff);
+				LM_WriteRow(4, 0xffff);
 				for (uint8_t i = 0; i < 4; i++){
-					LM_WriteRow(i+1, 0b11000011 | (((chanSel % 4) == i) << (5 - chanSel/4)));
+					LM_WriteRow(i, 0b1111000000001111 | (((chanSel % 4) == i) ? 0b10 << (2*(5 - chanSel/4)) : 0));
 				}
 			} else {
 				for (uint8_t i = 0; i < 5; i++)	{
@@ -541,7 +541,7 @@ uint8_t menu_service(){
 				}
 			}
 		} else if (menuStatus == menu_status_t::Wait_MIDI){
-			LM_WriteRow(0,0xff);
+			LM_WriteRow(0,0xffff);
 			LM_WriteRow(1,0);
 			LM_WriteRow(2,0);
 			LM_WriteRow(4,0);
@@ -552,39 +552,39 @@ uint8_t menu_service(){
 			WavShape_t tempShape = *tempPoint;
 			switch(tempShape){
 				case WavShape_t::Square:
-					LM_WriteRow(0, 0b01111001);
-					LM_WriteRow(1, 0b01001001);
-					LM_WriteRow(2, 0b01001001);
-					LM_WriteRow(3, 0b01001001);
-					LM_WriteRow(4, 0b11001111);
+					LM_WriteRow(0, 0b0011111111000011);
+					LM_WriteRow(1, 0b0011000011000011);
+					LM_WriteRow(2, 0b0011000011000011);
+					LM_WriteRow(3, 0b0011000011000011);
+					LM_WriteRow(4, 0b1111000011111111);
 					break;
 				case WavShape_t::Triangle:
-					LM_WriteRow(0, 0b00001000);
-					LM_WriteRow(1, 0b00010100);
-					LM_WriteRow(2, 0b00100010);
-					LM_WriteRow(3, 0b01000001);
-					LM_WriteRow(4, 0b10000000);
+					LM_WriteRow(0, 0b0000000011000000);
+					LM_WriteRow(1, 0b0000001100110000);
+					LM_WriteRow(2, 0b0000110000001100);
+					LM_WriteRow(3, 0b0011000000000011);
+					LM_WriteRow(4, 0b1100000000000000);
 					break;
 				case WavShape_t::Sawtooth:
-					LM_WriteRow(0, 0b10001000);
-					LM_WriteRow(1, 0b11001100);
-					LM_WriteRow(2, 0b10101010);
-					LM_WriteRow(3, 0b10011001);
-					LM_WriteRow(4, 0b10001000);
+					LM_WriteRow(0, 0b1100000011000000);
+					LM_WriteRow(1, 0b1111000011110000);
+					LM_WriteRow(2, 0b1100110011001100);
+					LM_WriteRow(3, 0b1100001111000011);
+					LM_WriteRow(4, 0b1100000011000000);
 					break;
 				case WavShape_t::Sine:
-					LM_WriteRow(0, 0b00000001);
-					LM_WriteRow(1, 0b00000110);
-					LM_WriteRow(2, 0b00000100);
-					LM_WriteRow(3, 0b10001100);
-					LM_WriteRow(4, 0b01110000);
+					LM_WriteRow(0, 0b0000000000000011);
+					LM_WriteRow(1, 0b0000000000111100);
+					LM_WriteRow(2, 0b0000000000110000);
+					LM_WriteRow(3, 0b1100000011110000);
+					LM_WriteRow(4, 0b0011111100000000);
 					break;
 				case WavShape_t::SinSaw:
-					LM_WriteRow(0, 0b11000110);
-					LM_WriteRow(1, 0b10100101);
-					LM_WriteRow(2, 0b10100100);
-					LM_WriteRow(3, 0b10010100);
-					LM_WriteRow(4, 0b10001100);
+					LM_WriteRow(0, 0b1111000000111100);
+					LM_WriteRow(1, 0b1100110000110011);
+					LM_WriteRow(2, 0b1100110000110000);
+					LM_WriteRow(3, 0b1100001100110000);
+					LM_WriteRow(4, 0b1100000011110000);
 					break;
 			}
 		} else if (menuStatus == menu_status_t::Edit_int){
@@ -593,11 +593,11 @@ uint8_t menu_service(){
 			uint8_t lo = tempNum & 0b111;
 			uint8_t mid = (tempNum >> 3) & 0b111;
 			uint8_t hi = tempNum >> 6;
-			LM_WriteRow(0, 0xff);
+			LM_WriteRow(0, 0xffff);
 			LM_WriteRow(1, 0);
-			LM_WriteRow(2, 0xff >> (8-hi));
-			LM_WriteRow(3, 0xff >> (8-mid));
-			LM_WriteRow(4, 0xff >> (7-lo));
+			LM_WriteRow(2, 0xffff >> (16-2*hi));
+			LM_WriteRow(3, 0xffff >> (16-2*mid));
+			LM_WriteRow(4, 0xffff >> (14-2*lo));
 		} else {
 			uint32_t tempNum;
 			if (menuStatus == menu_status_t::Edit_8bit){
@@ -610,14 +610,21 @@ uint8_t menu_service(){
 				uint32_t* tempPoint = (uint32_t*) var_edit;
 				tempNum = *tempPoint;
 			}
-			LM_WriteRow(4, 0xff);
-			LM_WriteRow(3, tempNum & 0xff);
-			tempNum >>= 8;
-			LM_WriteRow(2, tempNum & 0xff);
-			tempNum >>= 8;
-			LM_WriteRow(1, tempNum & 0xff);
-			tempNum >>= 8;
-			LM_WriteRow(0, tempNum & 0xff);
+			uint64_t tempNum2 = 0;
+			for (uint8_t n = 0; n < 32; n++){
+				uint8_t temp = tempNum & 1;
+				temp |= temp << 1;
+				tempNum >>= 1;
+				tempNum2 |= temp << 2*n;
+			}
+			LM_WriteRow(4, 0xffff);
+			LM_WriteRow(3, tempNum & 0xffff);
+			tempNum >>= 16;
+			LM_WriteRow(2, tempNum & 0xffff);
+			tempNum >>= 16;
+			LM_WriteRow(1, tempNum & 0xffff);
+			tempNum >>= 16;
+			LM_WriteRow(0, tempNum & 0xffff);
 		}
 		return 1;
 	} else {
@@ -633,11 +640,11 @@ menu_status_t get_menu_state(){
 
 // lvl0
 struct menuNode edit_n = {
-	graphic :{	0b11101100, 
-				0b10001010, 
-				0b11001010, 
-				0b10001010, 
-				0b11101100},
+	graphic :{	0b1111110011110000, 
+				0b1100000011001100, 
+				0b1111000011001100, 
+				0b1100000011001100, 
+				0b1111110011110000},
 	kid :		&edit_bend_n,
 	previous :	&load_n,
 	next :		&save_n,
@@ -646,11 +653,11 @@ struct menuNode edit_n = {
 
 // lvl1
 struct menuNode edit_bend_n = {
-	graphic :{	0b11001001, 
-				0b10101101, 
-				0b11001101, 
-				0b10101011, 
-				0b11001001},
+	graphic :{	0b1111000011000011, 
+				0b1100110011110011, 
+				0b1111000011110011, 
+				0b1100110011001111, 
+				0b1111000011000011},
 	kid :		&edit_n,
 	previous :	&edit_back_n,
 	next :		&edit_group,
@@ -658,11 +665,11 @@ struct menuNode edit_bend_n = {
 };
 
 struct menuNode edit_group = {
-	graphic :{	0b11011011,
-				0b11011011,
-				0b00000000,
-				0b00011011,
-				0b00011011},
+	graphic :{	0b1111001111001111,
+				0b1111001111001111,
+				0b0000000000000000,
+				0b0101001111001111,
+				0b0101001111001111},
 	kid :		&edit_group,
 	previous :	&edit_bend_n,
 	next :		&edit_select_n,
@@ -670,11 +677,11 @@ struct menuNode edit_group = {
 };
 
 struct menuNode edit_select_n = {
-	graphic :{	0b11111111, 
-				0b11100011, 
-				0b11000011, 
-				0b11000011, 
-				0b11000011},
+	graphic :{	0b1111111111111111, 
+				0b1111110000001111, 
+				0b1111000000001111, 
+				0b1111000000001111, 
+				0b1111000000001111},
 	kid :		&edit_sel_type_n,
 	previous :	&edit_group,
 	next :		&edit_envelope,
@@ -683,11 +690,11 @@ struct menuNode edit_select_n = {
 
 // lvl2
 struct menuNode edit_sel_max_range_n = {
-	graphic :{	0b11000100,
-				0b10101110,
-				0b11010101,
-				0b10100100,
-				0b10100100},
+	graphic :{	0b1111000000110000,
+				0b1100110011111100,
+				0b1111001100110011,
+				0b1100110000110000,
+				0b1100110000110000},
 	kid :		&edit_sel_max_range_n,
 	previous :	&edit_sel_back_n,
 	next :		&edit_sel_min_range_n,
@@ -695,11 +702,11 @@ struct menuNode edit_sel_max_range_n = {
 };
 
 struct menuNode edit_sel_min_range_n = {
-	graphic :{	0b11000100,
-				0b10100100,
-				0b11010101,
-				0b10101110,
-				0b10100100},
+	graphic :{	0b1111000000110000,
+				0b1100110000110000,
+				0b1111001100110011,
+				0b1100110011111100,
+				0b1100110000110000},
 	kid :		&edit_sel_min_range_n,
 	previous :	&edit_sel_max_range_n,
 	next :		&edit_sel_bind_n,
@@ -707,11 +714,11 @@ struct menuNode edit_sel_min_range_n = {
 };
 
 struct menuNode edit_sel_bind_n = {
-	graphic :{	0b10001100,
-				0b10001010,
-				0b10001100,
-				0b10001010,
-				0b11101010},
+	graphic :{	0b1100000011110000,
+				0b1100000011001100,
+				0b1100000011110000,
+				0b1100000011001100,
+				0b1111110011001100},
 	kid :		&edit_sel_bind_n,
 	previous :	&edit_sel_min_range_n,
 	next :		&edit_sel_type_n,
@@ -719,11 +726,11 @@ struct menuNode edit_sel_bind_n = {
 };
 
 struct menuNode edit_sel_type_n = {
-	graphic :{	0b11101100,
-				0b01001010,
-				0b01001100,
-				0b01001000,
-				0b01001000},
+	graphic :{	0b1111110011110000,
+				0b0011000011001100,
+				0b0011000011110000,
+				0b0011000011000000,
+				0b0011000011000000},
 	kid :		&edit_sel_type_CV_n,
 	previous :	&edit_sel_bind_n,
 	next :		&edit_sel_back_n,
@@ -732,11 +739,11 @@ struct menuNode edit_sel_type_n = {
 
 // lvl3
 struct menuNode edit_sel_type_CV_n = {
-	graphic :{	0b01101010,
-				0b10001010,
-				0b10001010,
-				0b10000100,
-				0b01100100},
+	graphic :{	0b0011110011001100,
+				0b1100000011001100,
+				0b1100000011001100,
+				0b1100000000110000,
+				0b0011110000110000},
 	kid :		&edit_sel_type_n,
 	previous :	&edit_sel_type_back_n,
 	next :		&edit_sel_type_gate_n,
@@ -744,11 +751,11 @@ struct menuNode edit_sel_type_CV_n = {
 };
 
 struct menuNode edit_sel_type_gate_n = {
-	graphic :{	0b01100111,
-				0b10000010,
-				0b10110010,
-				0b10010010,
-				0b01100010},
+	graphic :{	0b0011110000111111,
+				0b1100000000001100,
+				0b1100111100001100,
+				0b1100001100001100,
+				0b0011110000001100},
 	kid :		&edit_sel_type_n,
 	previous :	&edit_sel_type_CV_n,
 	next :		&edit_sel_type_envelope_n,
@@ -756,11 +763,11 @@ struct menuNode edit_sel_type_gate_n = {
 };
 
 struct menuNode edit_sel_type_envelope_n = {
-	graphic :{	0b00100000,
-				0b01010000,
-				0b01001100,
-				0b10000010,
-				0b10000001},
+	graphic :{	0b0000110000000000,
+				0b0011001100000000,
+				0b0011000011110000,
+				0b1100000000001100,
+				0b1100000000000011},
 	kid :		&edit_sel_type_n,
 	previous :	&edit_sel_type_gate_n,
 	next :		&edit_sel_type_lfo_n,
@@ -768,11 +775,11 @@ struct menuNode edit_sel_type_envelope_n = {
 };
 
 struct menuNode edit_sel_type_lfo_n = {
-	graphic :{	0b01110111,
-				0b01010101,
-				0b01010101,
-				0b01010101,
-				0b11011101},
+	graphic :{	0b0011111100111111,
+				0b0011001100110011,
+				0b0011001100110011,
+				0b0011001100110011,
+				0b1111001111110011},
 	kid :		&edit_sel_type_lfo_shape_n,
 	previous :	&edit_sel_type_envelope_n,
 	next :		&edit_sel_type_clk_n,
@@ -781,11 +788,11 @@ struct menuNode edit_sel_type_lfo_n = {
 
 // lvl4
 struct menuNode edit_sel_type_lfo_shape_n = {
-	graphic :{	0b11000100,
-				0b01001010,
-				0b01010001,
-				0b01100000,
-				0b01000000},
+	graphic :{	0b1111000000110000,
+				0b0011000011001100,
+				0b0011001100000011,
+				0b0011110000000000,
+				0b0011000000000000},
 	kid :		&edit_sel_type_lfo_fmax_n,
 	previous :	&edit_sel_type_lfo_back_n,
 	next :		&edit_sel_type_lfo_fmax_n,
@@ -793,11 +800,11 @@ struct menuNode edit_sel_type_lfo_shape_n = {
 };
 
 struct menuNode edit_sel_type_lfo_fmax_n = {
-	graphic :{	0b11100100,
-				0b10001110,
-				0b11010101,
-				0b10000100,
-				0b10000100},
+	graphic :{	0b1111110000110000,
+				0b1100000011111100,
+				0b1111001100110011,
+				0b1100000000110000,
+				0b1100000000110000},
 	kid :		&edit_sel_type_lfo_fmin_n,
 	previous :	&edit_sel_type_lfo_shape_n,
 	next :		&edit_sel_type_lfo_fmin_n,
@@ -805,11 +812,11 @@ struct menuNode edit_sel_type_lfo_fmax_n = {
 };
 
 struct menuNode edit_sel_type_lfo_fmin_n = {
-	graphic :{	0b11100100,
-				0b10000100,
-				0b11010101,
-				0b10001110,
-				0b10000100},
+	graphic :{	0b1111110000110000,
+				0b1100000000110000,
+				0b1111001100110011,
+				0b1100000011111100,
+				0b1100000000110000},
 	kid :		&edit_sel_type_lfo_back_n,
 	previous :	&edit_sel_type_lfo_fmax_n,
 	next :		&edit_sel_type_lfo_back_n,
@@ -817,11 +824,11 @@ struct menuNode edit_sel_type_lfo_fmin_n = {
 };
 
 struct menuNode edit_sel_type_lfo_back_n = {
-	graphic :{	0b00001000,
-				0b00011100,
-				0b00101010,
-				0b10001000,
-				0b00001111},
+	graphic :{	0b0000000011000000,
+				0b0000001111110000,
+				0b0000110011001100,
+				0b1100000011000000,
+				0b0000000011111111},
 	kid :		&edit_sel_type_n,
 	previous :	&edit_sel_type_lfo_fmin_n,
 	next :		&edit_sel_type_lfo_shape_n,
@@ -830,11 +837,11 @@ struct menuNode edit_sel_type_lfo_back_n = {
 
 // lvl3
 struct menuNode edit_sel_type_clk_n = {
-	graphic :{	0b01110101,
-				0b10010101,
-				0b10010110,
-				0b10010101,
-				0b01111101},
+	graphic :{	0b0011111100110011,
+				0b1100001100110011,
+				0b1100001100111100,
+				0b1100001100110011,
+				0b0011111111110011},
 	kid :		&edit_sel_type_n,
 	previous :	&edit_sel_type_lfo_n,
 	next :		&edit_sel_type_velocity_n,
@@ -842,11 +849,11 @@ struct menuNode edit_sel_type_clk_n = {
 };
 
 struct menuNode edit_sel_type_velocity_n = {
-	graphic :{	0b10111010,
-				0b10110010,
-				0b10111010,
-				0b01010010,
-				0b01011011},
+	graphic :{	0b1100111111001100,
+				0b1100111100001100,
+				0b1100111111001100,
+				0b0011001100001100,
+				0b0011001111001111},
 	kid :		&edit_sel_type_n,
 	previous :	&edit_sel_type_clk_n,
 	next :		&edit_sel_type_pressure_n,
@@ -854,11 +861,11 @@ struct menuNode edit_sel_type_velocity_n = {
 };
 
 struct menuNode edit_sel_type_pressure_n = {
-	graphic :{	0b11011001,
-				0b10110110,
-				0b11011001,
-				0b10010101,
-				0b10010110},
+	graphic :{	0b1111001111000011,
+				0b1100111100111100,
+				0b1111001111000011,
+				0b1100001100110011,
+				0b1100001100111100},
 	kid :		&edit_sel_type_n,
 	previous :	&edit_sel_type_velocity_n,
 	next :		&edit_sel_type_back_n,
@@ -866,11 +873,11 @@ struct menuNode edit_sel_type_pressure_n = {
 };
 
 struct menuNode edit_sel_type_back_n = {
-	graphic :{	0b00001000,
-				0b00011100,
-				0b10101010,
-				0b00001000,
-				0b00001111},
+	graphic :{	0b0000000011000000,
+				0b0000001111110000,
+				0b1100110011001100,
+				0b0000000011000000,
+				0b0000000011111111},
 	kid :		&edit_sel_type_n,
 	previous :	&edit_sel_type_pressure_n,
 	next :		&edit_sel_type_CV_n,
@@ -879,11 +886,11 @@ struct menuNode edit_sel_type_back_n = {
 
 // lvl2
 struct menuNode edit_sel_back_n = {
-	graphic :{	0b00001000,
-				0b10011100,
-				0b00101010,
-				0b00001000,
-				0b00001111},
+	graphic :{	0b0000000011000000,
+				0b1100001111110000,
+				0b0000110011001100,
+				0b0000000011000000,
+				0b0000000011111111},
 	kid :		&edit_select_n,
 	previous :	&edit_sel_type_n,
 	next :		&edit_sel_max_range_n,
@@ -892,11 +899,11 @@ struct menuNode edit_sel_back_n = {
 
 // lvl1
 struct menuNode edit_envelope = {
-	graphic :{	0b00100000,
-				0b01011000,
-				0b01000100,
-				0b10000010,
-				0b10000001},
+	graphic :{	0b0000110000000000,
+				0b0011001111000000,
+				0b0011000000110000,
+				0b1100000000001100,
+				0b1100000000000011},
 	kid :		&edit_env_0,
 	previous :	&edit_select_n,
 	next :		&edit_back_n,
@@ -905,11 +912,11 @@ struct menuNode edit_envelope = {
 
 // lvl2
 struct menuNode edit_env_0 = {
-	graphic :{	0b11100010,
-				0b10000101,
-				0b11000101,
-				0b10000101,
-				0b11100010},
+	graphic :{	0b1111110000001100,
+				0b1100000000110011,
+				0b1111000000110011,
+				0b1100000000110011,
+				0b1111110000001100},
 	kid :		&edit_env_atk_n,
 	previous :	&edit_env_back,
 	next :		&edit_env_1,
@@ -917,11 +924,11 @@ struct menuNode edit_env_0 = {
 };
 
 struct menuNode edit_env_1 = {
-	graphic :{	0b11100010,
-				0b10000010,
-				0b11000010,
-				0b10000010,
-				0b11100010},
+	graphic :{	0b1111110000001100,
+				0b1100000000001100,
+				0b1111000000001100,
+				0b1100000000001100,
+				0b1111110000001100},
 	kid :		&edit_env_atk_n,
 	previous :	&edit_env_0,
 	next :		&edit_env_2,
@@ -929,11 +936,11 @@ struct menuNode edit_env_1 = {
 };
 
 struct menuNode edit_env_2 = {
-	graphic :{	0b11100110,
-				0b10000001,
-				0b11000010,
-				0b10000100,
-				0b11100111},
+	graphic :{	0b1111110000111100,
+				0b1100000000000011,
+				0b1111000000001100,
+				0b1100000000110000,
+				0b1111110000111111},
 	kid :		&edit_env_atk_n,
 	previous :	&edit_env_1,
 	next :		&edit_env_3,
@@ -941,11 +948,11 @@ struct menuNode edit_env_2 = {
 };
 
 struct menuNode edit_env_3 = {
-	graphic :{	0b11100110,
-				0b10000001,
-				0b11000110,
-				0b10000001,
-				0b11100110},
+	graphic :{	0b1111110000111100,
+				0b1100000000000011,
+				0b1111000000111100,
+				0b1100000000000011,
+				0b1111110000111100},
 	kid :		&edit_env_atk_n,
 	previous :	&edit_env_2,
 	next :		&edit_env_back,
@@ -954,11 +961,11 @@ struct menuNode edit_env_3 = {
 
 // lvl3
 struct menuNode edit_env_atk_n = {
-	graphic :{	0b00000010,
-				0b00000101,
-				0b00001000,
-				0b00010000,
-				0b00100000},
+	graphic :{	0b0000000000001100,
+				0b0000000000110011,
+				0b0000000011000000,
+				0b0000001100000000,
+				0b0000110000000000},
 	kid :		&edit_env_atk_max_n,
 	previous :	&edit_env_back_n,
 	next :		&edit_env_dec_n,
@@ -967,11 +974,11 @@ struct menuNode edit_env_atk_n = {
 
 // lvl4
 struct menuNode edit_env_atk_max_n = {
-	graphic :{	0b10101010,
-				0b11101010,
-				0b10100100,
-				0b10101010,
-				0b10101010},
+	graphic :{	0b1100110011001100,
+				0b1111110011001100,
+				0b1100110000110000,
+				0b1100110011001100,
+				0b1100110011001100},
 	kid :		&edit_env_atk_max_n,
 	previous :	&edit_env_atk_back_n,
 	next :		&edit_env_atk_min_n,
@@ -979,11 +986,11 @@ struct menuNode edit_env_atk_max_n = {
 };
 
 struct menuNode edit_env_atk_min_n = {
-	graphic :{	0b10100000,
-				0b11100000,
-				0b10101100,
-				0b10101010,
-				0b10101010},
+	graphic :{	0b1100110000000000,
+				0b1111110000000000,
+				0b1100110011110000,
+				0b1100110011001100,
+				0b1100110011001100},
 	kid :		&edit_env_atk_min_n,
 	previous :	&edit_env_atk_max_n,
 	next :		&edit_env_atk_bind_n,
@@ -991,11 +998,11 @@ struct menuNode edit_env_atk_min_n = {
 };
 
 struct menuNode edit_env_atk_bind_n = {
-	graphic :{	0b11001000,
-				0b10100000,
-				0b11001110,
-				0b10101101,
-				0b11001101},
+	graphic :{	0b1111000011000000,
+				0b1100110000000000,
+				0b1111000011111100,
+				0b1100110011110011,
+				0b1111000011110011},
 	kid :		&edit_env_atk_bind_n,
 	previous :	&edit_env_atk_min_n,
 	next :		&edit_env_atk_back_n,
@@ -1003,11 +1010,11 @@ struct menuNode edit_env_atk_bind_n = {
 };
 
 struct menuNode edit_env_atk_back_n = {
-	graphic :{	0b00001000,
-				0b00011100,
-				0b00101010,
-				0b10001000,
-				0b00001111},
+	graphic :{	0b0000000011000000,
+				0b0000001111110000,
+				0b0000110011001100,
+				0b1100000011000000,
+				0b0000000011111111},
 	kid :		&edit_env_atk_n,
 	previous :	&edit_env_atk_bind_n,
 	next :		&edit_env_atk_max_n,
@@ -1016,11 +1023,11 @@ struct menuNode edit_env_atk_back_n = {
 
 // lvl3
 struct menuNode edit_env_dec_n = {
-	graphic :{	0b01000000,
-				0b10100000,
-				0b10010000,
-				0b00001000,
-				0b00000111},
+	graphic :{	0b0011000000000000,
+				0b1100110000000000,
+				0b1100001100000000,
+				0b0000000011000000,
+				0b0000000000111111},
 	kid :		&edit_env_dec_max_n,
 	previous :	&edit_env_atk_n,
 	next :		&edit_env_sus_n,
@@ -1029,11 +1036,11 @@ struct menuNode edit_env_dec_n = {
 
 // lvl4
 struct menuNode edit_env_dec_max_n = {
-	graphic :{	0b10101010,
-				0b11101010,
-				0b10100100,
-				0b10101010,
-				0b10101010},
+	graphic :{	0b1100110011001100,
+				0b1111110011001100,
+				0b1100110000110000,
+				0b1100110011001100,
+				0b1100110011001100},
 	kid :		&edit_env_dec_max_n,
 	previous :	&edit_env_dec_back_n,
 	next :		&edit_env_dec_min_n,
@@ -1041,11 +1048,11 @@ struct menuNode edit_env_dec_max_n = {
 };
 
 struct menuNode edit_env_dec_min_n = {
-	graphic :{	0b10100000,
-				0b11100000,
-				0b10101100,
-				0b10101010,
-				0b10101010},
+	graphic :{	0b1100110000000000,
+				0b1111110000000000,
+				0b1100110011110000,
+				0b1100110011001100,
+				0b1100110011001100},
 	kid :		&edit_env_dec_min_n,
 	previous :	&edit_env_dec_max_n,
 	next :		&edit_env_dec_bind_n,
@@ -1053,11 +1060,11 @@ struct menuNode edit_env_dec_min_n = {
 };
 
 struct menuNode edit_env_dec_bind_n = {
-	graphic :{	0b11001000,
-				0b10100000,
-				0b11001110,
-				0b10101101,
-				0b11001101},
+	graphic :{	0b1111000011000000,
+				0b1100110000000000,
+				0b1111000011111100,
+				0b1100110011110011,
+				0b1111000011110011},
 	kid :		&edit_env_dec_bind_n,
 	previous :	&edit_env_dec_min_n,
 	next :		&edit_env_dec_back_n,
@@ -1065,11 +1072,11 @@ struct menuNode edit_env_dec_bind_n = {
 };
 
 struct menuNode edit_env_dec_back_n = {
-	graphic :{	0b00001000,
-				0b00011100,
-				0b00101010,
-				0b10001000,
-				0b00001111},
+	graphic :{	0b0000000011000000,
+				0b0000001111110000,
+				0b0000110011001100,
+				0b1100000011000000,
+				0b0000000011111111},
 	kid :		&edit_env_dec_n,
 	previous :	&edit_env_dec_bind_n,
 	next :		&edit_env_dec_max_n,
@@ -1078,11 +1085,11 @@ struct menuNode edit_env_dec_back_n = {
 
 // lvl3
 struct menuNode edit_env_sus_n = {
-	graphic :{	0b10000000,
-				0b01000000,
-				0b00111100,
-				0b00000010,
-				0b00000001},
+	graphic :{	0b1100000000000000,
+				0b0011000000000000,
+				0b0000111111110000,
+				0b0000000000001100,
+				0b0000000000000011},
 	kid :		&edit_env_sus_max_n,
 	previous :	&edit_env_dec_n,
 	next :		&edit_env_rel_n,
@@ -1091,11 +1098,11 @@ struct menuNode edit_env_sus_n = {
 
 // lvl4
 struct menuNode edit_env_sus_max_n = {
-	graphic :{	0b10101010,
-				0b11101010,
-				0b10100100,
-				0b10101010,
-				0b10101010},
+	graphic :{	0b1100110011001100,
+				0b1111110011001100,
+				0b1100110000110000,
+				0b1100110011001100,
+				0b1100110011001100},
 	kid :		&edit_env_sus_max_n,
 	previous :	&edit_env_sus_back_n,
 	next :		&edit_env_sus_min_n,
@@ -1103,11 +1110,11 @@ struct menuNode edit_env_sus_max_n = {
 };
 
 struct menuNode edit_env_sus_min_n = {
-	graphic :{	0b10100000,
-				0b11100000,
-				0b10101100,
-				0b10101010,
-				0b10101010},
+	graphic :{	0b1100110000000000,
+				0b1111110000000000,
+				0b1100110011110000,
+				0b1100110011001100,
+				0b1100110011001100},
 	kid :		&edit_env_sus_min_n,
 	previous :	&edit_env_sus_max_n,
 	next :		&edit_env_sus_bind_n,
@@ -1115,11 +1122,11 @@ struct menuNode edit_env_sus_min_n = {
 };
 
 struct menuNode edit_env_sus_bind_n = {
-	graphic :{	0b11001000,
-				0b10100000,
-				0b11001110,
-				0b10101101,
-				0b11001101},
+	graphic :{	0b1111000011000000,
+				0b1100110000000000,
+				0b1111000011111100,
+				0b1100110011110011,
+				0b1111000011110011},
 	kid :		&edit_env_sus_bind_n,
 	previous :	&edit_env_sus_min_n,
 	next :		&edit_env_sus_back_n,
@@ -1127,11 +1134,11 @@ struct menuNode edit_env_sus_bind_n = {
 };
 
 struct menuNode edit_env_sus_back_n = {
-	graphic :{	0b00001000,
-				0b00011100,
-				0b00101010,
-				0b10001000,
-				0b00001111},
+	graphic :{	0b0000000011000000,
+				0b0000001111110000,
+				0b0000110011001100,
+				0b1100000011000000,
+				0b0000000011111111},
 	kid :		&edit_env_sus_n,
 	previous :	&edit_env_sus_bind_n,
 	next :		&edit_env_sus_max_n,
@@ -1140,11 +1147,11 @@ struct menuNode edit_env_sus_back_n = {
 
 // lvl3
 struct menuNode edit_env_rel_n = {
-	graphic :{	0b00000000,
-				0b11100000,
-				0b00010000,
-				0b00001000,
-				0b00000100},
+	graphic :{	0b0000000000000000,
+				0b1111110000000000,
+				0b0000001100000000,
+				0b0000000011000000,
+				0b0000000000110000},
 	kid :		&edit_env_rel_max_n,
 	previous :	&edit_env_sus_n,
 	next :		&edit_env_back_n,
@@ -1153,11 +1160,11 @@ struct menuNode edit_env_rel_n = {
 
 // lvl4
 struct menuNode edit_env_rel_max_n = {
-	graphic :{	0b10101010,
-				0b11101010,
-				0b10100100,
-				0b10101010,
-				0b10101010},
+	graphic :{	0b1100110011001100,
+				0b1111110011001100,
+				0b1100110000110000,
+				0b1100110011001100,
+				0b1100110011001100},
 	kid :		&edit_env_rel_max_n,
 	previous :	&edit_env_rel_back_n,
 	next :		&edit_env_rel_min_n,
@@ -1165,11 +1172,11 @@ struct menuNode edit_env_rel_max_n = {
 };
 
 struct menuNode edit_env_rel_min_n = {
-	graphic :{	0b10100000,
-				0b11100000,
-				0b10101100,
-				0b10101010,
-				0b10101010},
+	graphic :{	0b1100110000000000,
+				0b1111110000000000,
+				0b1100110011110000,
+				0b1100110011001100,
+				0b1100110011001100},
 	kid :		&edit_env_rel_min_n,
 	previous :	&edit_env_rel_max_n,
 	next :		&edit_env_rel_bind_n,
@@ -1177,11 +1184,11 @@ struct menuNode edit_env_rel_min_n = {
 };
 
 struct menuNode edit_env_rel_bind_n = {
-	graphic :{	0b11001000,
-				0b10100000,
-				0b11001110,
-				0b10101101,
-				0b11001101},
+	graphic :{	0b1111000011000000,
+				0b1100110000000000,
+				0b1111000011111100,
+				0b1100110011110011,
+				0b1111000011110011},
 	kid :		&edit_env_rel_bind_n,
 	previous :	&edit_env_rel_min_n,
 	next :		&edit_env_rel_back_n,
@@ -1189,11 +1196,11 @@ struct menuNode edit_env_rel_bind_n = {
 };
 
 struct menuNode edit_env_rel_back_n = {
-	graphic :{	0b00001000,
-				0b00011100,
-				0b00101010,
-				0b10001000,
-				0b00001111},
+	graphic :{	0b0000000011000000,
+				0b0000001111110000,
+				0b0000110011001100,
+				0b1100000011000000,
+				0b0000000011111111},
 	kid :		&edit_env_rel_n,
 	previous :	&edit_env_rel_bind_n,
 	next :		&edit_env_rel_max_n,
@@ -1202,11 +1209,11 @@ struct menuNode edit_env_rel_back_n = {
 
 // lvl3
 struct menuNode edit_env_back_n = {
-	graphic :{	0b00001000,
-				0b00011100,
-				0b10101010,
-				0b00001000,
-				0b00001111},
+	graphic :{	0b0000000011000000,
+				0b0000001111110000,
+				0b1100110011001100,
+				0b0000000011000000,
+				0b0000000011111111},
 	kid :		&edit_env_back,
 	previous :	&edit_env_rel_n,
 	next :		&edit_env_atk_n,
@@ -1215,11 +1222,11 @@ struct menuNode edit_env_back_n = {
 
 // lvl2
 struct menuNode edit_env_back = {
-	graphic :{	0b00001000,
-				0b10011100,
-				0b00101010,
-				0b00001000,
-				0b00001111},
+	graphic :{	0b0000000011000000,
+				0b1100001111110000,
+				0b0000110011001100,
+				0b0000000011000000,
+				0b0000000011111111},
 	kid :		&edit_envelope,
 	previous :	&edit_env_3,
 	next :		&edit_env_0,
@@ -1228,11 +1235,11 @@ struct menuNode edit_env_back = {
 
 // lvl1
 struct menuNode edit_back_n = {
-	graphic :{	0b10001000,
-				0b00011100,
-				0b00101010,
-				0b00001000,
-				0b00001111},
+	graphic :{	0b1100000011000000,
+				0b0000001111110000,
+				0b0000110011001100,
+				0b0000000011000000,
+				0b0000000011111111},
 	kid :		&edit_n,
 	previous :	&edit_envelope,
 	next :		&edit_bend_n,
@@ -1241,11 +1248,11 @@ struct menuNode edit_back_n = {
 
 // lvl0
 struct menuNode save_n = {
-	graphic :{	0b01110001,
-				0b10010001,
-				0b01001010,
-				0b00101010,
-				0b11000100},
+	graphic :{	0b0011111100000011,
+				0b1100001100000011,
+				0b0011000011001100,
+				0b0000110011001100,
+				0b1111000000110000},
 	kid :		&save_bind_pc_n,
 	previous :	&edit_n,
 	next :		&load_n,
@@ -1254,11 +1261,11 @@ struct menuNode save_n = {
 
 // lvl1
 struct menuNode save_bind_pc_n = {
-	graphic :{	0b11000110,
-				0b10101000,
-				0b11001000,
-				0b10001000,
-				0b10000110},
+	graphic :{	0b1111000000111100,
+				0b1100110011000000,
+				0b1111000011000000,
+				0b1100000011000000,
+				0b1100000000111100},
 	kid :		&save_slot_n,
 	previous :	&save_back_n,
 	next :		&save_slot_n,
@@ -1266,11 +1273,11 @@ struct menuNode save_bind_pc_n = {
 };
 
 struct menuNode save_slot_n = {
-	graphic :{	0b00001111,
-				0b00001111,
-				0b00000001,
-				0b00001111,
-				0b00001111},
+	graphic :{	0b0000000011111111,
+				0b0000000011111111,
+				0b0000000000000011,
+				0b0000000011111111,
+				0b0000000011111111},
 	kid :		&save_back_n,
 	previous :	&save_bind_pc_n,
 	next :		&save_back_n,
@@ -1278,11 +1285,11 @@ struct menuNode save_slot_n = {
 };
 
 struct menuNode save_back_n = {
-	graphic :{	0b10001000,
-				0b00011100,
-				0b00101010,
-				0b00001000,
-				0b00001111},
+	graphic :{	0b1100000011000000,
+				0b0000001111110000,
+				0b0000110011001100,
+				0b0000000011000000,
+				0b0000000011111111},
 	kid :		&save_back_abort_n,
 	previous :	&save_slot_n,
 	next :		&save_bind_pc_n,
@@ -1291,11 +1298,11 @@ struct menuNode save_back_n = {
 
 // lvl2
 struct menuNode save_back_accept_n = {
-	graphic :{	0b00000001,
-				0b00000010,
-				0b01000100,
-				0b00101000,
-				0b00010000},
+	graphic :{	0b0000000000000011,
+				0b0000000000001100,
+				0b0011000000110000,
+				0b0000110011000000,
+				0b0000001100000000},
 	kid :		&save_n,
 	previous :	&save_back_abort_n,
 	next :		&save_back_abort_n,
@@ -1303,11 +1310,11 @@ struct menuNode save_back_accept_n = {
 };
 
 struct menuNode save_back_abort_n = {
-	graphic :{	0b00100010,
-				0b00010100,
-				0b00001000,
-				0b00010100,
-				0b00100010},
+	graphic :{	0b0000110000001100,
+				0b0000001100110000,
+				0b0000000011000000,
+				0b0000001100110000,
+				0b0000110000001100},
 	kid :		&save_n,
 	previous :	&save_back_accept_n,
 	next :		&save_back_accept_n,
@@ -1316,11 +1323,11 @@ struct menuNode save_back_abort_n = {
 
 // lvl0
 struct menuNode load_n = {
-	graphic :{	0b10001100,
-				0b10001010,
-				0b10001010,
-				0b10001010,
-				0b11101100},
+	graphic :{	0b1100000011110000,
+				0b1100000011001100,
+				0b1100000011001100,
+				0b1100000011001100,
+				0b1111110011110000},
 	kid :		&load_slot_n,
 	previous :	&save_n,
 	next :		&edit_n,
@@ -1329,11 +1336,11 @@ struct menuNode load_n = {
 
 // lvl1
 struct menuNode load_slot_n = {
-	graphic :{	0b00001111,
-				0b00001111,
-				0b00000001,
-				0b00001111,
-				0b00001111},
+	graphic :{	0b0000000011111111,
+				0b0000000011111111,
+				0b0000000000000011,
+				0b0000000011111111,
+				0b0000000011111111},
 	kid :		&load_back_n,
 	previous :	&load_back_n,
 	next :		&load_back_n,
@@ -1341,11 +1348,11 @@ struct menuNode load_slot_n = {
 };
 
 struct menuNode load_back_n = {
-	graphic :{	0b10001000,
-				0b00011100,
-				0b00101010,
-				0b00001000,
-				0b00001111},
+	graphic :{	0b1100000011000000,
+				0b0000001111110000,
+				0b0000110011001100,
+				0b0000000011000000,
+				0b0000000011111111},
 	kid :		&load_n,
 	previous :	&load_slot_n,
 	next :		&load_slot_n,

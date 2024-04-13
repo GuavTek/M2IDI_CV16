@@ -16,7 +16,7 @@
 
 typedef void (*void_function)();
 struct menuNode {
-	const uint8_t graphic[5];
+	const uint16_t graphic[5];
 	menuNode* const kid;
 	menuNode* const previous;
 	menuNode* const next;
