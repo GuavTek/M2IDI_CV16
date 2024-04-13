@@ -34,16 +34,22 @@ bool needLoad = false;
 uint8_t confSlot;
 ctrlSource_t confPC;
 
-void butt_right_handler(){
-	buttRight = true;
-}
-
-void butt_up_handler(){	
-	buttUp = true;
-}
-
-void butt_down_handler(){	
-	buttDown = true;
+void butt_handler(uint gpio, uint32_t event_mask){
+	if (!(event_mask & gpio_irq_level::GPIO_IRQ_EDGE_FALL)){
+		return;
+	}
+	if (gpio ==  BUTT1){
+		gpio_acknowledge_irq(BUTT1, gpio_irq_level::GPIO_IRQ_EDGE_FALL);
+		buttRight = true;
+	}
+	if (gpio == BUTT2){
+		gpio_acknowledge_irq(BUTT2, gpio_irq_level::GPIO_IRQ_EDGE_FALL);
+		buttUp = true;
+	}
+	if (gpio == BUTT3){
+		gpio_acknowledge_irq(BUTT3, gpio_irq_level::GPIO_IRQ_EDGE_FALL);
+		buttDown = true;
+	}
 }
 
 inline uint32_t extrapolate_num (uint32_t in, uint8_t pos){
@@ -215,8 +221,15 @@ void menu_init(){
 	currentNode = &edit_n;
 	menuStatus = Navigate;
 	
-	// TODO: Enable pin interrupts on buttons
-
+	// Enable pin interrupts on buttons
+	gpio_init(BUTT1);
+	gpio_init(BUTT2);
+	gpio_init(BUTT3);
+	gpio_set_irq_enabled(BUTT1, gpio_irq_level::GPIO_IRQ_EDGE_FALL, 1);
+	gpio_set_irq_enabled(BUTT2, gpio_irq_level::GPIO_IRQ_EDGE_FALL, 1);
+	gpio_set_irq_enabled(BUTT3, gpio_irq_level::GPIO_IRQ_EDGE_FALL, 1);
+	gpio_set_irq_callback(butt_handler);
+	irq_set_enabled(IO_IRQ_BANK0, true);
 }
 
 uint8_t menu_service(){
