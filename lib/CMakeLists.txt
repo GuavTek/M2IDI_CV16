@@ -1,5 +1,6 @@
 
 add_subdirectory(mcp2517_driver)
+add_subdirectory(max5134_driver)
 add_subdirectory(memory_driver)
 add_subdirectory(am_midi2)
-target_include_directories(M2IDI_CV16 PRIVATE mcp2517_driver libmidi2 memory_driver)
+target_include_directories(M2IDI_CV16 PRIVATE mcp2517_driver max5134_driver libmidi2 memory_driver)

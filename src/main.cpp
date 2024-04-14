@@ -8,6 +8,7 @@
 #include "midi_config.h"
 #include "SPI_RP2040.h"
 #include "MCP2517.h"
+#include "max5134.h"
 #include "eeprom_cat.h"
 #include "umpProcessor.h"
 #include "utils.h"
@@ -31,13 +32,13 @@ SPI_RP2040_C SPI_CAN = SPI_RP2040_C(spi0);
 MCP2517_C CAN = MCP2517_C(&SPI_CAN);
 SPI_RP2040_C SPI = SPI_RP2040_C(spi1);
 eeprom_cat_c EEPROM = eeprom_cat_c(&SPI);
+max5134_c DAC = max5134_c(&SPI);
 umpProcessor MIDI;
 
 uint8_t current_group;
 uint8_t dac_processed;
 uint8_t dac_output;
 bool dac_valid;
-uint16_t dac_level[4][4];
 
 // Core0 main
 int main(void){
@@ -63,12 +64,17 @@ int main(void){
 
     menu_init();
 
+	DAC.init(1);
+	while(!DAC.optimize_linearity(1));
+	sleep_ms(10);
+	while(!DAC.optimize_linearity(0));
+
     // Start core1
     multicore_reset_core1();
     sleep_ms(500);
     multicore_launch_core1(main1);
     while (true){
-        sleep_ms(1);
+		DAC.update();
         static uint32_t smiley_timer = 0;
         if (menu_service())	{
 			// Inactivity timeout
@@ -108,6 +114,10 @@ void CAN_Receive_Data(char* data, uint8_t length){
 		LM_WriteRow(3, 0b0000110000110000);
 		LM_WriteRow(4, 0b0000011111010000);
 	}
+}
+
+void eeprom_handler(){
+
 }
 
 void midi_cvm_handler(struct umpCVM msg){
@@ -179,7 +189,7 @@ void main1(void) {
     pwm_config_set_clkdiv_mode(&pwm_conf, PWM_DIV_FREE_RUNNING);
     pwm_config_set_clkdiv(&pwm_conf, 120000.0/(176.4 * 16));
     pwm_config_set_wrap(&pwm_conf, 15);
-    pwm_set_chan_level(pwm_gpio_to_slice_num(M2IDI_MUXINH_PIN), PWM_CHAN_A, 1);
+    pwm_set_chan_level(pwm_gpio_to_slice_num(M2IDI_MUXINH_PIN), PWM_CHAN_A, 1);	// We want at least a 5µs gap to let DAC outputs settle
     pwm_clear_irq(pwm_gpio_to_slice_num(M2IDI_MUXINH_PIN));
     pwm_set_irq_enabled(pwm_gpio_to_slice_num(M2IDI_MUXINH_PIN), true);
     pwm_init(pwm_gpio_to_slice_num(M2IDI_MUXINH_PIN), &pwm_conf, true);
@@ -202,7 +212,7 @@ void main1(void) {
         if(!dac_valid){
             static int32_t dac_count;   // Counts DAC iterations
             dac_valid = 1;
-            // LED matrix, 30Hz* 5 rows * 4 levels times per second = 600Hz (=176400/294)
+            // LED matrix, 30Hz* 5 rows * 4 levels per second = 600Hz (=176400/294)
             if (dac_count >= 294){
                 dac_count = 0;
                 LM_Service();
@@ -210,21 +220,23 @@ void main1(void) {
 
             // DAC multiplexing, 44,1kHz * 4 channels = 176400Hz
             dac_count++;
-            // TODO: write next set of values to DAC
+			uint16_t values[4];
+			for (uint8_t i = 0; i < 4; i++){
+				values[i] = outMatrix[dac_output][i].currentOut;
+			}
+			// TODO: can this cause domain crossing issues since DAC is driven by the other core?
+			DAC.set(values, 0);
         }
     }
 }
 
 
 void dac_pwm_handler(){
-    static uint8_t out_num;
     pwm_clear_irq(pwm_gpio_to_slice_num(M2IDI_MUXINH_PIN));
     dac_valid = 0;
-    dac_output++;
-    dac_output &= 0b11;
 
     // Switch mux pin
-	switch(out_num){
+	switch(dac_output){
 		case 0:
             gpio_put(M2IDI_MUXA_PIN, 0);
             gpio_put(M2IDI_MUXB_PIN, 0);
@@ -243,8 +255,8 @@ void dac_pwm_handler(){
 			break;
 	}
 
-    out_num++;
-    out_num &= 0b11;
+    dac_output++;
+    dac_output &= 0b11;
 }
 
 void dma1_irq_handler (){

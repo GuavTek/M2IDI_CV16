@@ -21,6 +21,7 @@ const eeprom_cat_conf_t EEPROM_CONF = {
 };
 
 // TODO: finalize layout
+// CC lookup table?
 const eeprom_cat_section_t EEPROM_SECTIONS[2] = {
 	{	// Header, 320 byte
 		.offset = 0x0000,
@@ -31,12 +32,6 @@ const eeprom_cat_section_t EEPROM_SECTIONS[2] = {
 		.objectSize = 3 // sizeof(muxstate)
 	}
 };
-
-// TODO: add DAC driver
-// const dac_conf_t DAC_CONF = {
-//	.comSlaveNum = 1
-//};
-
 
 // Define CAN filters
 const CAN_Filter_t CAN_FLT0 = {

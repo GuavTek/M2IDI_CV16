@@ -7,3 +7,6 @@
 [submodule "lib/memory_driver"]
 	path = lib/memory_driver
 	url = https://github.com/GuavTek/memory_driver
+[submodule "lib/max5134_driver"]
+	path = lib/max5134_driver
+	url = https://github.com/GuavTek/max5134_driver
