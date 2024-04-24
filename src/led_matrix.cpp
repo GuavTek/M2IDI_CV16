@@ -9,7 +9,8 @@
 #include "pico/stdlib.h"
 #include "board_m2idi_cv16.h"
 
-uint8_t currentRow = 0b00010011;
+uint8_t currentRow = 0b00000100;
+uint8_t currentIntensity = 0;
 
 uint16_t lmData[5] = {
 	0xffff,
@@ -25,6 +26,7 @@ void LM_Init(){
 	for (uint8_t i = 0; i < 5; i++){
 		gpio_init(LEDR[i]);
 		gpio_set_dir(LEDR[i], GPIO_OUT);
+		gpio_put(LEDR[i], 0);
 	}
 	for (uint8_t i = 0; i < 8; i++){
 		gpio_init(LEDC[i]);
@@ -34,21 +36,24 @@ void LM_Init(){
 }
 
 void LM_Service(){
-	if ((currentRow & 0b11) == 0b11){
-		// Disable row
-		gpio_put(LEDR[currentRow >> 2], 0);
-	}
+	// Disable row
+	gpio_put(LEDR[currentRow], 0);
 	currentRow++;
-	if (currentRow > 0b00010011){
+	if (currentRow > 4){
 		currentRow = 0;
+		currentIntensity++;
+		currentIntensity &= 0b11;
 	}
-	uint8_t row = currentRow >> 2;
-	uint8_t intensity = currentRow & 0b11;
 	// Enable row
-	gpio_put(LEDR[row], 1);
+	gpio_put(LEDR[currentRow], 1);
 
 	for (uint8_t i = 0; i < 8; i++){
-		if (intensity > ((lmData[row] >> 2*i) & 0b11)){
+		uint8_t pix_intensity;
+		pix_intensity = (lmData[currentRow] >> 2*i) & 0b11;
+		if (!pix_intensity) {
+			// Disable column
+			gpio_put(LEDC[i], 1);
+		} else if (currentIntensity <= pix_intensity){
 			// Enable column
 			gpio_put(LEDC[i], 0);
 		} else {

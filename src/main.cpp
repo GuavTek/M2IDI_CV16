@@ -212,8 +212,8 @@ void main1(void) {
         if(!dac_valid){
             static int32_t dac_count;   // Counts DAC iterations
             dac_valid = 1;
-            // LED matrix, 30Hz* 5 rows * 4 levels per second = 600Hz (=176400/294)
-            if (dac_count >= 294){
+            // LED matrix, 60Hz* 5 rows * 4 levels per second = 1200Hz (=176400/147)
+            if (dac_count >= 147){
                 dac_count = 0;
                 LM_Service();
             }
