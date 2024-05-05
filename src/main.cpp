@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include "pico/stdlib.h"
+#include "board_m2idi_cv16.h"
 #include "pico/multicore.h"
 #include <hardware/spi.h>
 #include <hardware/irq.h>
@@ -180,19 +181,35 @@ void midi_data_handler(struct umpData msg){
 
 // Core1 main
 void main1(void) {
+	const uint32_t core_clk = 120000000;
+	const uint32_t out_rate = 44100/4;	// The rate each module output is updated
+	const uint32_t dac_rate = 4*out_rate; // The rate of DAC outputs
+	const float dac_period = 1.0 / dac_rate;
+	const float dac_delay = 1.0 / 200000;	// DAC has 5µs settling time
+	const uint32_t pwm_count = 16;
+	const float pwm_period = dac_period / pwm_count;
+	const float pwm_div = core_clk/float(dac_rate * pwm_count);
+	const uint32_t pwm_chanlvl = std::max(int(dac_delay / pwm_period), 1);	// Level needed to let DAC settle
+	const uint32_t lm_rate = 60;	// The update rate of a line in the led matrix
+	const uint32_t lm_levels = 4;	// The number of intensity levels for LEDs
+	const uint32_t lm_freq = 5*lm_rate * lm_levels;	// The frequency of matrix updates
+	const uint32_t lm_div = dac_rate / lm_freq;
     LM_Init();
     GO_Init();
 
     // Set up PWM for DAC multiplexing
+	const uint32_t PWM_INH_SLICE = pwm_gpio_to_slice_num(M2IDI_MUXINH_PIN);
+	const uint32_t PWM_INH_CHAN = pwm_gpio_to_channel(M2IDI_MUXINH_PIN);
     gpio_set_function(M2IDI_MUXINH_PIN, GPIO_FUNC_PWM);
     pwm_config pwm_conf = pwm_get_default_config();
     pwm_config_set_clkdiv_mode(&pwm_conf, PWM_DIV_FREE_RUNNING);
-    pwm_config_set_clkdiv(&pwm_conf, 120000.0/(176.4 * 16));
-    pwm_config_set_wrap(&pwm_conf, 15);
-    pwm_set_chan_level(pwm_gpio_to_slice_num(M2IDI_MUXINH_PIN), PWM_CHAN_A, 1);	// We want at least a 5µs gap to let DAC outputs settle
-    pwm_clear_irq(pwm_gpio_to_slice_num(M2IDI_MUXINH_PIN));
-    pwm_set_irq_enabled(pwm_gpio_to_slice_num(M2IDI_MUXINH_PIN), true);
-    pwm_init(pwm_gpio_to_slice_num(M2IDI_MUXINH_PIN), &pwm_conf, true);
+    pwm_config_set_clkdiv(&pwm_conf, pwm_div);
+    pwm_config_set_wrap(&pwm_conf, pwm_count-1);
+    pwm_init(PWM_INH_SLICE, &pwm_conf, false);
+    pwm_set_chan_level(PWM_INH_SLICE, PWM_INH_CHAN, pwm_chanlvl);
+    pwm_clear_irq(PWM_INH_SLICE);
+    pwm_set_irq_enabled(PWM_INH_SLICE, true);
+	pwm_set_enabled(PWM_INH_SLICE, true);
     
     gpio_init(M2IDI_MUXA_PIN);
     gpio_init(M2IDI_MUXB_PIN);
@@ -212,8 +229,7 @@ void main1(void) {
         if(!dac_valid){
             static int32_t dac_count;   // Counts DAC iterations
             dac_valid = 1;
-            // LED matrix, 60Hz* 5 rows * 4 levels per second = 1200Hz (=176400/147)
-            if (dac_count >= 147){
+            if (dac_count >= lm_div){
                 dac_count = 0;
                 LM_Service();
             }
