@@ -254,8 +254,8 @@ void dac_pwm_handler(){
     // Switch mux pin
 	switch(dac_output){
 		case 0:
-            gpio_put(M2IDI_MUXA_PIN, 0);
-            gpio_put(M2IDI_MUXB_PIN, 0);
+            gpio_put(M2IDI_MUXA_PIN, 1);
+            gpio_put(M2IDI_MUXB_PIN, 1);
 			break;
 		case 1:
             gpio_put(M2IDI_MUXA_PIN, 1);
@@ -263,10 +263,10 @@ void dac_pwm_handler(){
 			break;
 		case 2:
             gpio_put(M2IDI_MUXA_PIN, 0);
-            gpio_put(M2IDI_MUXB_PIN, 1);
+            gpio_put(M2IDI_MUXB_PIN, 0);
 			break;
 		case 3:
-            gpio_put(M2IDI_MUXA_PIN, 1);
+            gpio_put(M2IDI_MUXA_PIN, 0);
             gpio_put(M2IDI_MUXB_PIN, 1);
 			break;
 	}
