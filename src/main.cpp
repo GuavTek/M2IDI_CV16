@@ -40,6 +40,7 @@ uint8_t current_group;
 uint8_t dac_processed;
 uint8_t dac_output;
 bool dac_valid;
+uint32_t smiley_timer = 0;
 
 // Core0 main
 int main(void){
@@ -76,13 +77,12 @@ int main(void){
     multicore_launch_core1(main1);
     while (true){
 		DAC.update();
-        static uint32_t smiley_timer = 0;
         if (menu_service())	{
 			// Inactivity timeout
 			smiley_timer = time_us_32() + 30000000;
 		}
 		if (smiley_timer < time_us_32()) {
-			smiley_timer = time_us_32() + 1000000;
+			smiley_timer = -1;
 
 			LM_WriteRow(0, 0b0000110000110000);
 			LM_WriteRow(1, 0b0000100000100000);
@@ -90,9 +90,6 @@ int main(void){
 			LM_WriteRow(3, 0b0010000000001000);
 			LM_WriteRow(4, 0b0001111111110100);
 
-		} else if (smiley_timer > time_us_32() + 2000000) {
-			// Reset timer if timer wrapped
-			smiley_timer = 0;
 		}
     }
 }
@@ -109,6 +106,7 @@ void CAN_Receive_Data(char* data, uint8_t length){
 	//MIDI_CAN.Decode(data, length);
 
     if (get_menu_state() == menu_status_t::Navigate){
+		smiley_timer = time_us_32() + 500000;
 		LM_WriteRow(0, 0b0000110000110000);
 		LM_WriteRow(1, 0b0000100000100000);
 		LM_WriteRow(2, 0b0000001111000000);
