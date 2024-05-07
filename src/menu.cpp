@@ -33,24 +33,10 @@ bool needSave = false;
 bool needLoad = false;
 uint8_t confSlot;
 ctrlSource_t confPC;
-
-void butt_handler(uint gpio, uint32_t event_mask){
-	if (!(event_mask & gpio_irq_level::GPIO_IRQ_EDGE_FALL)){
-		return;
-	}
-	if (gpio ==  BUTT1){
-		gpio_acknowledge_irq(BUTT1, gpio_irq_level::GPIO_IRQ_EDGE_FALL);
-		buttRight = true;
-	}
-	if (gpio == BUTT2){
-		gpio_acknowledge_irq(BUTT2, gpio_irq_level::GPIO_IRQ_EDGE_FALL);
-		buttUp = true;
-	}
-	if (gpio == BUTT3){
-		gpio_acknowledge_irq(BUTT3, gpio_irq_level::GPIO_IRQ_EDGE_FALL);
-		buttDown = true;
-	}
-}
+uint8_t butt_state;
+uint8_t butt_state_debounced;
+uint32_t butt_timer;
+const uint32_t butt_timeout = 20000;	// 20ms timeout
 
 inline uint32_t extrapolate_num (uint32_t in, uint8_t pos){
 	uint32_t tempResult = in & (0xffff'ffff << pos);
@@ -225,15 +211,41 @@ void menu_init(){
 	gpio_init(BUTT1);
 	gpio_init(BUTT2);
 	gpio_init(BUTT3);
-	gpio_set_irq_enabled(BUTT1, gpio_irq_level::GPIO_IRQ_EDGE_FALL, 1);
-	gpio_set_irq_enabled(BUTT2, gpio_irq_level::GPIO_IRQ_EDGE_FALL, 1);
-	gpio_set_irq_enabled(BUTT3, gpio_irq_level::GPIO_IRQ_EDGE_FALL, 1);
-	gpio_set_irq_callback(butt_handler);
+	gpio_pull_up(BUTT1);
+	gpio_pull_up(BUTT2);
+	gpio_pull_up(BUTT3);
 	irq_set_enabled(IO_IRQ_BANK0, true);
+}
+
+void check_buttons(){
+	uint8_t temp_state;
+	temp_state = gpio_get(BUTT1) | (gpio_get(BUTT2) << 1) | (gpio_get(BUTT3) << 2);
+	if (temp_state == butt_state) {
+		// inputs are debounced
+		uint8_t butt_edge = butt_state_debounced & ~temp_state;
+		if (butt_edge & 0b001){
+			// BUTT1
+			buttRight = true;
+		}
+		if (butt_edge & 0b010){
+			// BUTT2
+			buttUp = true;
+		}
+		if (butt_edge & 0b100){
+			// BUTT3
+			buttDown = true;
+		}
+		butt_state_debounced = temp_state;
+	}
+	butt_timer = time_us_32() + butt_timeout;
+	butt_state = temp_state;
 }
 
 uint8_t menu_service(){
 	bool screenChange = false;
+	if (time_us_32() > butt_timer) {
+		check_buttons();
+	}
 	switch(menuStatus){
 		case menu_status_t::Navigate:
 			if (currentNode == &edit_select_n){
