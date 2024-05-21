@@ -236,7 +236,7 @@ void main1(void) {
             dac_count++;
 			uint16_t values[4];
 			for (uint8_t i = 0; i < 4; i++){
-				values[i] = outMatrix[dac_output][i].currentOut;
+				values[i] = out_handler[dac_output][i].get();
 			}
 			// TODO: can this cause domain crossing issues since DAC is driven by the other core?
 			DAC.set(values, 0);

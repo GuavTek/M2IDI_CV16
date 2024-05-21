@@ -130,19 +130,19 @@ void Enter_Env2()			{ chanSel = 2; Enter_Kid(); }
 void Enter_Env3()			{ chanSel = 3; Enter_Kid(); }
 void Exit_Env()			{ chanSel = 0; Enter_Kid(); }
 void Edit_Bend()			{ menuStatus = Edit_int; var_edit = &bendRange; max_edit = 8; }
-void Select_Pressure()	{ outMatrix[chanSel & 0b11][chanSel >> 2].type = GOType_t::Pressure; needScan = true; Enter_Kid(); }
-void Select_CV()			{ outMatrix[chanSel & 0b11][chanSel >> 2].type = GOType_t::DC; needScan = true; Enter_Kid(); }
-void Select_Gate()		{ outMatrix[chanSel & 0b11][chanSel >> 2].type = GOType_t::Gate; needScan = true; Enter_Kid(); }
-void Select_Envelope()	{ menuStatus = Edit_int; var_edit = &outMatrix[chanSel & 0b11][chanSel >> 2].env_num; max_edit = 4; outMatrix[chanSel & 0b11][chanSel >> 2].type = GOType_t::Envelope; }
-void Select_Velocity()	{ outMatrix[chanSel & 0b11][chanSel >> 2].type = GOType_t::Velocity; needScan = true; Enter_Kid(); }
-void Select_Clk()			{ menuStatus = Edit_int; var_edit = &outMatrix[chanSel & 0b11][chanSel >> 2].freq_current; outMatrix[chanSel & 0b11][chanSel >> 2].freq_current=12; max_edit = 128; outMatrix[chanSel & 0b11][chanSel >> 2].type = GOType_t::CLK; }
-void Select_LFO()			{ outMatrix[chanSel & 0b11][chanSel >> 2].type = GOType_t::LFO; needScan = true; Enter_Kid(); }
-void Select_LFO_Shape()	{ menuStatus = SetLFO; var_edit = &outMatrix[chanSel & 0b11][chanSel >> 2].shape; }
-void Select_LFO_Freq_Max(){ menuStatus = Edit_32bit; var_edit = &outMatrix[chanSel & 0b11][chanSel >> 2].freq_max; var_monitor = &outMatrix[chanSel & 0b11][chanSel >> 2].freq_current; }
-void Select_LFO_Freq_Min(){ menuStatus = Edit_32bit; var_edit = &outMatrix[chanSel & 0b11][chanSel >> 2].freq_min; var_monitor = &outMatrix[chanSel & 0b11][chanSel >> 2].freq_current; }
-void Set_GO_MIDI()		{ menuStatus = Wait_MIDI; var_edit = &outMatrix[chanSel & 0b11][chanSel >> 2].gen_source; midiTypeMask = 0b111; }
-void Set_Max_Range()		{ menuStatus = Edit_16bit; var_edit = &outMatrix[chanSel & 0b11][chanSel >> 2].max_range; var_monitor = &outMatrix[chanSel & 0b11][chanSel >> 2].currentOut; }
-void Set_Min_Range()		{ menuStatus = Edit_16bit; var_edit = &outMatrix[chanSel & 0b11][chanSel >> 2].min_range; var_monitor = &outMatrix[chanSel & 0b11][chanSel >> 2].currentOut; }
+void Select_Pressure()	{ out_handler[chanSel & 0b11][chanSel >> 2].state.type = GOType_t::Pressure; needScan = true; Enter_Kid(); }
+void Select_CV()			{ out_handler[chanSel & 0b11][chanSel >> 2].state.type = GOType_t::DC; needScan = true; Enter_Kid(); }
+void Select_Gate()		{ out_handler[chanSel & 0b11][chanSel >> 2].state.type = GOType_t::Gate; needScan = true; Enter_Kid(); }
+void Select_Envelope()	{ menuStatus = Edit_int; var_edit = &out_handler[chanSel & 0b11][chanSel >> 2].state.env_num; max_edit = 4; out_handler[chanSel & 0b11][chanSel >> 2].state.type = GOType_t::Envelope; }
+void Select_Velocity()	{ out_handler[chanSel & 0b11][chanSel >> 2].state.type = GOType_t::Velocity; needScan = true; Enter_Kid(); }
+void Select_Clk()			{ menuStatus = Edit_int; var_edit = &out_handler[chanSel & 0b11][chanSel >> 2].state.freq_current; out_handler[chanSel & 0b11][chanSel >> 2].state.freq_current=12; max_edit = 128; out_handler[chanSel & 0b11][chanSel >> 2].state.type = GOType_t::CLK; }
+void Select_LFO()			{ out_handler[chanSel & 0b11][chanSel >> 2].state.type = GOType_t::LFO; needScan = true; Enter_Kid(); }
+void Select_LFO_Shape()	{ menuStatus = SetLFO; var_edit = &out_handler[chanSel & 0b11][chanSel >> 2].state.shape; }
+void Select_LFO_Freq_Max(){ menuStatus = Edit_32bit; var_edit = &out_handler[chanSel & 0b11][chanSel >> 2].state.freq_max; var_monitor = &out_handler[chanSel & 0b11][chanSel >> 2].state.freq_current; }
+void Select_LFO_Freq_Min(){ menuStatus = Edit_32bit; var_edit = &out_handler[chanSel & 0b11][chanSel >> 2].state.freq_min; var_monitor = &out_handler[chanSel & 0b11][chanSel >> 2].state.freq_current; }
+void Set_GO_MIDI()		{ menuStatus = Wait_MIDI; var_edit = &out_handler[chanSel & 0b11][chanSel >> 2].state.gen_source; midiTypeMask = 0b111; }
+void Set_Max_Range()		{ menuStatus = Edit_16bit; var_edit = &out_handler[chanSel & 0b11][chanSel >> 2].state.max_range; var_monitor = &out_handler[chanSel & 0b11][chanSel >> 2].state.currentOut; }
+void Set_Min_Range()		{ menuStatus = Edit_16bit; var_edit = &out_handler[chanSel & 0b11][chanSel >> 2].state.min_range; var_monitor = &out_handler[chanSel & 0b11][chanSel >> 2].state.currentOut; }
 void Set_Conf_Slot()		{ menuStatus = Edit_int; var_edit = &confSlot; max_edit = MAX_SLOTS; }
 void Set_Save_PC()		{ menuStatus = Wait_MIDI; var_edit = &confPC; midiTypeMask = 0b100; }
 void Save_Config()		{ needSave = true; Enter_Kid(); }
