@@ -29,9 +29,9 @@ void midi_com_handler(struct umpGeneric msg);
 void midi_stream_discovery(uint8_t majVer, uint8_t minVer, uint8_t filter);
 void midi_data_handler(struct umpData msg);
 
-SPI_RP2040_C SPI_CAN = SPI_RP2040_C(spi0);
+SPI_RP2040_C SPI_CAN = SPI_RP2040_C(spi0,1);
 MCP2517_C CAN = MCP2517_C(&SPI_CAN, 0);
-SPI_RP2040_C SPI = SPI_RP2040_C(spi1);
+SPI_RP2040_C SPI = SPI_RP2040_C(spi1,2);
 eeprom_cat_c EEPROM = eeprom_cat_c(&SPI, 0);
 max5134_c DAC = max5134_c(&SPI, 1);
 umpProcessor MIDI;

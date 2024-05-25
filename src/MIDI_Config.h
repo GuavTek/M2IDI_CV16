@@ -96,7 +96,6 @@ const spi_config_t SPI_CONF = {
 	.pin_tx = M2IDI_SPI_TX_PIN,
 	.pin_rx = M2IDI_SPI_RX_PIN,
 	.pin_ck = M2IDI_SPI_SCK_PIN,
-	.num_cs = 2,
 	.pin_cs = {M2IDI_SPI_CSN_EEPROM_PIN, M2IDI_SPI_CSN_DAC_PIN}
 };
 
@@ -109,7 +108,6 @@ const spi_config_t SPI_CAN_CONF = {
 	.pin_tx = M2IDI_CAN_SPI_TX_PIN,
 	.pin_rx = M2IDI_CAN_SPI_RX_PIN,
 	.pin_ck = M2IDI_CAN_SPI_SCK_PIN,
-	.num_cs = 1,
 	.pin_cs = {M2IDI_CAN_SPI_CSN_PIN}
 };
 
