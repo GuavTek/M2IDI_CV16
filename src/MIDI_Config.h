@@ -16,7 +16,6 @@
 
 // Define EEPROM layout
 const eeprom_cat_conf_t EEPROM_CONF = {
-	.comSlaveNum = 0,
 	.maxAddr = 0x1fff
 };
 
@@ -115,7 +114,6 @@ const spi_config_t SPI_CAN_CONF = {
 };
 
 const CAN_Config_t CAN_CONF = {
-	.comSlaveNum = 0,
 	.clkOutDiv = CAN_Config_t::clkOutDiv1,
 	.sysClkDiv = false,
 	.clkDisable = false,

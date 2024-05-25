@@ -30,10 +30,10 @@ void midi_stream_discovery(uint8_t majVer, uint8_t minVer, uint8_t filter);
 void midi_data_handler(struct umpData msg);
 
 SPI_RP2040_C SPI_CAN = SPI_RP2040_C(spi0);
-MCP2517_C CAN = MCP2517_C(&SPI_CAN);
+MCP2517_C CAN = MCP2517_C(&SPI_CAN, 0);
 SPI_RP2040_C SPI = SPI_RP2040_C(spi1);
-eeprom_cat_c EEPROM = eeprom_cat_c(&SPI);
-max5134_c DAC = max5134_c(&SPI);
+eeprom_cat_c EEPROM = eeprom_cat_c(&SPI, 0);
+max5134_c DAC = max5134_c(&SPI, 1);
 umpProcessor MIDI;
 
 uint8_t current_group;
@@ -66,7 +66,6 @@ int main(void){
 
     menu_init();
 
-	DAC.init(1);
 	while(!DAC.optimize_linearity(1));
 	sleep_ms(10);
 	while(!DAC.optimize_linearity(0));
