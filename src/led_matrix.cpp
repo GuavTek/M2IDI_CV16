@@ -26,12 +26,12 @@ void LM_Init(){
 	for (uint8_t i = 0; i < 5; i++){
 		gpio_init(LEDR[i]);
 		gpio_set_dir(LEDR[i], GPIO_OUT);
-		gpio_put(LEDR[i], 0);
+		gpio_put(LEDR[i], 1);
 	}
 	for (uint8_t i = 0; i < 8; i++){
 		gpio_init(LEDC[i]);
 		gpio_set_dir(LEDC[i], GPIO_OUT);
-		gpio_put(LEDC[i], 1);
+		gpio_put(LEDC[i], 0);
 	}
 }
 

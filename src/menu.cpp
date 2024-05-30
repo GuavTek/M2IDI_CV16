@@ -214,7 +214,6 @@ void menu_init(){
 	gpio_pull_up(BUTT1);
 	gpio_pull_up(BUTT2);
 	gpio_pull_up(BUTT3);
-	irq_set_enabled(IO_IRQ_BANK0, true);
 }
 
 void check_buttons(){

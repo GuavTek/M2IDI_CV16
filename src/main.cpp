@@ -182,11 +182,11 @@ void main1(void) {
 	const uint32_t out_rate = 44100/4;	// The rate each module output is updated
 	const uint32_t dac_rate = 4*out_rate; // The rate of DAC outputs
 	const float dac_period = 1.0 / dac_rate;
-	const float dac_delay = 1.0 / 200000;	// DAC has 5µs settling time
-	const uint32_t pwm_count = 16;
+	const float dac_delay = 0.000008; //0.000005;	// DAC has 5µs settling time (7µs for 5v range)
+	const uint16_t pwm_count = 64;
 	const float pwm_period = dac_period / pwm_count;
-	const float pwm_div = core_clk/float(dac_rate * pwm_count);
-	const uint32_t pwm_chanlvl = std::max(int(dac_delay / pwm_period), 1);	// Level needed to let DAC settle
+	const float pwm_div = core_clk/float(dac_rate * pwm_count);	// Max divider value is ~255.9
+	const uint32_t pwm_chanlvl = int(dac_delay / pwm_period) +1;	// Level needed to let DAC settle
 	const uint32_t lm_rate = 60;	// The update rate of a line in the led matrix
 	const uint32_t lm_levels = 4;	// The number of intensity levels for LEDs
 	const uint32_t lm_freq = 5*lm_rate * lm_levels;	// The frequency of matrix updates
@@ -199,7 +199,6 @@ void main1(void) {
 	const uint32_t PWM_INH_CHAN = pwm_gpio_to_channel(M2IDI_MUXINH_PIN);
     gpio_set_function(M2IDI_MUXINH_PIN, GPIO_FUNC_PWM);
     pwm_config pwm_conf = pwm_get_default_config();
-    pwm_config_set_clkdiv_mode(&pwm_conf, PWM_DIV_FREE_RUNNING);
     pwm_config_set_clkdiv(&pwm_conf, pwm_div);
     pwm_config_set_wrap(&pwm_conf, pwm_count-1);
     pwm_init(PWM_INH_SLICE, &pwm_conf, false);
@@ -224,7 +223,7 @@ void main1(void) {
             dac_processed = next_dac;
         }
         if(!dac_valid){
-            static int32_t dac_count;   // Counts DAC iterations
+            static uint32_t dac_count;   // Counts DAC iterations
             dac_valid = 1;
             if (dac_count >= lm_div){
                 dac_count = 0;
@@ -242,7 +241,6 @@ void main1(void) {
         }
     }
 }
-
 
 void dac_pwm_handler(){
     pwm_clear_irq(pwm_gpio_to_slice_num(M2IDI_MUXINH_PIN));
