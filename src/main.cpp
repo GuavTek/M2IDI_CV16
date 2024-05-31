@@ -199,6 +199,10 @@ void main1(void) {
     LM_Init();
     GO_Init();
 
+	// Set core1 as high priority in AHB bus fabric to reduce delays
+	uint32_t* busctrl_priority = (uint32_t*) BUSCTRL_BASE + 0;
+	*busctrl_priority = 1 << 4;
+
     // Set up PWM for DAC multiplexing
 	const uint32_t PWM_INH_SLICE = pwm_gpio_to_slice_num(M2IDI_MUXINH_PIN);
 	const uint32_t PWM_INH_CHAN = pwm_gpio_to_channel(M2IDI_MUXINH_PIN);
@@ -226,19 +230,11 @@ void main1(void) {
         if(!dac_valid){
             static uint32_t dac_count;   // Counts DAC iterations
             dac_valid = 1;
+            dac_count++;
             if (dac_count >= lm_div){
                 dac_count = 0;
                 LM_Service();
             }
-
-            // DAC multiplexing, 44,1kHz * 4 channels = 176400Hz
-            dac_count++;
-			uint16_t values[4];
-			for (uint8_t i = 0; i < 4; i++){
-				values[i] = outMatrix[dac_output][i].currentOut;
-			}
-			// TODO: can this cause domain crossing issues since DAC is driven by the other core?
-			DAC.set(values, 0);
 		}
         if (next_dac != dac_output){
             // Calculate a set of four values
@@ -272,6 +268,11 @@ void dac_pwm_handler(){
 			break;
 	}
 
+	uint16_t values[4];
+	for (uint8_t i = 0; i < 4; i++){
+		values[i] = outMatrix[dac_output][i].currentOut;
+	}
+	DAC.set(values, 0);
     dac_output++;
     dac_output &= 0b11;
 }
