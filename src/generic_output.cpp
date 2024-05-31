@@ -55,7 +55,7 @@ uint8_t midi_group = 1;
 #define ENV_MANTISSA 7
 
 // TODO: update gain if switching to DACs
-#define OUTPUT_GAIN 1.0453		// Nominal gain
+#define OUTPUT_GAIN 1		// Nominal gain
 #define INT_PER_VOLT 6553.6/OUTPUT_GAIN
 #define INT_PER_NOTE INT_PER_VOLT/12
 #define FIXED_POINT_POS 14
@@ -244,7 +244,7 @@ inline uint16_t Rescale_16bit(uint16_t val, uint16_t minOut, uint16_t maxOut){
 		tempResult = (maxOut-minOut+1) * val;
 		tempResult >>= 16; // Divide by input range
 		tempResult += minOut;
-	} else if (minOut > maxOut) {
+	} else if (minOut > maxOut) {	// TODO: make sure this can't happen
 		tempResult = (minOut-maxOut+1) * val;
 		tempResult >>= 16; // Divide by input range
 		tempResult = minOut - tempResult;
@@ -781,7 +781,7 @@ void GO_MIDI_Voice(struct umpCVM* msg){
 		}
 	}
 	
-	// TODO: refactor keylanes
+	// TODO: refactor keylanes, use a subscription pattern to find outputs
 	// Handle note messages
 	if (msg->status == NOTE_ON){
 		// TODO: trigger keylanes

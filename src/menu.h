@@ -15,7 +15,7 @@
 #include "utils.h"
 
 typedef void (*void_function)();
-struct menuNode {
+struct menuNode {	// TODO: use classes and move button behaviours to the classes
 	const uint16_t graphic[5];
 	menuNode* const kid;
 	menuNode* const previous;
