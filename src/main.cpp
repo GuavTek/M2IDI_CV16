@@ -270,7 +270,7 @@ void dac_pwm_handler(){
 
 	uint16_t values[4];
 	for (uint8_t i = 0; i < 4; i++){
-		values[i] = outMatrix[dac_output][i].currentOut;
+		values[i] = out_handler[dac_output][i].get();
 	}
 	DAC.set(values, 0);
     dac_output++;

@@ -14,6 +14,14 @@ bool needScan = false;
 
 Env_t envelopes[4];
 
+dc_output_c generic_output_c::dc_handler = dc_output_c();
+lfo_output_c generic_output_c::lfo_handler = lfo_output_c();
+envelope_output_c generic_output_c::envelope_handler = envelope_output_c();
+clk_output_c generic_output_c::clk_handler = clk_output_c();
+pressure_output_c generic_output_c::pressure_handler = pressure_output_c();
+velocity_output_c generic_output_c::velocity_handler = velocity_output_c();
+gate_output_c generic_output_c::gate_handler = gate_output_c();
+
 generic_output_c out_handler[4][4];
 dc_output_c 		dc_handler = dc_output_c();
 lfo_output_c 		lfo_handler = lfo_output_c();
