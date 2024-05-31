@@ -17,6 +17,7 @@ file(GLOB src_list CONFIGURE_DEPENDS "src/*.cpp")
 add_executable(M2IDI_CV16
     ${src_list}
 )
+pico_generate_pio_header(M2IDI_CV16 ${CMAKE_CURRENT_LIST_DIR}/src/dac_spi.pio)
 
 add_subdirectory(lib)
 
@@ -27,7 +28,7 @@ target_link_options(M2IDI_CV16 PUBLIC -Xlinker --print-memory-usage)
 target_compile_options(M2IDI_CV16 PRIVATE -Wall -Wextra)
 
 # Add pico_stdlib library which aggregates commonly used features
-target_link_libraries(M2IDI_CV16 pico_stdlib hardware_timer hardware_pwm hardware_spi hardware_dma pico_multicore libmidi2 mcp2517_driver max5134_driver eeprom_cat_driver)
+target_link_libraries(M2IDI_CV16 pico_stdlib hardware_timer hardware_pwm hardware_spi hardware_dma hardware_pio pico_multicore libmidi2 mcp2517_driver max5134_driver eeprom_cat_driver)
 
 # create map/bin/hex/uf2 file in addition to ELF.
 pico_add_extra_outputs(M2IDI_CV16)

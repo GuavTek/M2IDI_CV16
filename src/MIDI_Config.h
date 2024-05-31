@@ -11,6 +11,7 @@
 #define MIDI_CONFIG_H_
 
 #include "SPI_RP2040.h"
+#include "dac_spi.h"
 #include "MCP2517.h"
 #include "eeprom_cat.h"
 
@@ -87,16 +88,13 @@ const CAN_FIFO_t CAN_FIFO2 = {
 };
 
 
-const spi_config_t SPI_CONF = {
-	.dma_irq_num = 1,
-	.phase = SPI_CPHA_0,
-	.polarity = SPI_CPOL_0,
-	.order = SPI_MSB_FIRST,
-	.speed = 20000000,
+const dac_spi_config_t SPI_DAC_CONF = {
+	.dma_irq_num = 0,
+	.polarity = 0,
+	.speed = 30000000,
 	.pin_tx = M2IDI_SPI_TX_PIN,
-	.pin_rx = M2IDI_SPI_RX_PIN,
 	.pin_ck = M2IDI_SPI_SCK_PIN,
-	.pin_cs = {M2IDI_SPI_CSN_EEPROM_PIN, M2IDI_SPI_CSN_DAC_PIN}
+	.pin_cs = M2IDI_SPI_CSN_DAC_PIN
 };
 
 const spi_config_t SPI_CAN_CONF = {
@@ -108,7 +106,7 @@ const spi_config_t SPI_CAN_CONF = {
 	.pin_tx = M2IDI_CAN_SPI_TX_PIN,
 	.pin_rx = M2IDI_CAN_SPI_RX_PIN,
 	.pin_ck = M2IDI_CAN_SPI_SCK_PIN,
-	.pin_cs = {M2IDI_CAN_SPI_CSN_PIN}
+	.pin_cs = {M2IDI_CAN_SPI_CSN_PIN} // TODO: add M2IDI_SPI_CSN_EEPROM_PIN
 };
 
 const CAN_Config_t CAN_CONF = {

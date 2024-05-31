@@ -8,6 +8,7 @@
 #include <hardware/timer.h>
 #include "midi_config.h"
 #include "SPI_RP2040.h"
+#include "dac_spi.h"
 #include "MCP2517.h"
 #include "max5134.h"
 #include "eeprom_cat.h"
@@ -16,11 +17,13 @@
 #include "led_matrix.h"
 #include "generic_output.h"
 #include "menu.h"
+#include <hardware/pio.h>
 
 void main1(void);
 void dac_pwm_handler();
 void CAN_Receive_Header(CAN_Rx_msg_t* data);
 void CAN_Receive_Data(char* data, uint8_t length);
+void dma0_irq_handler ();
 void dma1_irq_handler ();
 void eeprom_handler();
 
@@ -29,11 +32,11 @@ void midi_com_handler(struct umpGeneric msg);
 void midi_stream_discovery(uint8_t majVer, uint8_t minVer, uint8_t filter);
 void midi_data_handler(struct umpData msg);
 
-SPI_RP2040_C SPI_CAN = SPI_RP2040_C(spi0,1);
+SPI_RP2040_C SPI_CAN = SPI_RP2040_C(spi0,2);
 MCP2517_C CAN = MCP2517_C(&SPI_CAN, 0);
-SPI_RP2040_C SPI = SPI_RP2040_C(spi1,2);
-eeprom_cat_c EEPROM = eeprom_cat_c(&SPI, 0);
-max5134_c DAC = max5134_c(&SPI, 1);
+//eeprom_cat_c EEPROM = eeprom_cat_c(&SPI, 1);	// TODO
+DAC_SPI_C SPI_DAC = DAC_SPI_C(pio0);
+fast_max5134_c DAC = fast_max5134_c(&SPI_DAC, 0);
 umpProcessor MIDI;
 
 uint8_t current_group;
@@ -46,8 +49,6 @@ uint32_t smiley_timer = 0;
 int main(void){
 	// Board init
 	set_sys_clock_khz(120000, true);
-
-    SPI.Init(SPI_CONF);
     SPI_CAN.Init(SPI_CAN_CONF);
 	irq_set_exclusive_handler(DMA_IRQ_1, dma1_irq_handler);
 	irq_set_enabled(DMA_IRQ_1, true);
@@ -56,8 +57,8 @@ int main(void){
     CAN.Set_Rx_Header_Callback(CAN_Receive_Header);
     CAN.Set_Rx_Data_Callback(CAN_Receive_Data);
 
-	EEPROM.init(EEPROM_CONF, EEPROM_SECTIONS, 2);
-	EEPROM.set_callback(eeprom_handler);
+	//EEPROM.init(EEPROM_CONF, EEPROM_SECTIONS, 2);
+	//EEPROM.set_callback(eeprom_handler);
 
     MIDI.setSystem(midi_com_handler);
 	MIDI.setCVM(midi_cvm_handler);
@@ -66,16 +67,11 @@ int main(void){
 
     menu_init();
 
-	while(!DAC.optimize_linearity(1));
-	sleep_ms(10);
-	while(!DAC.optimize_linearity(0));
-
     // Start core1
     multicore_reset_core1();
     sleep_ms(500);
     multicore_launch_core1(main1);
     while (true){
-		DAC.update();
         if (menu_service())	{
 			// Inactivity timeout
 			smiley_timer = time_us_32() + 30000000;
@@ -179,7 +175,7 @@ void midi_data_handler(struct umpData msg){
 // Core1 main
 void main1(void) {
 	const uint32_t core_clk = 120000000;
-	const uint32_t out_rate = 44100/4;	// The rate each module output is updated
+	const uint32_t out_rate = 22100;	// The rate each module output is updated
 	const uint32_t dac_rate = 4*out_rate; // The rate of DAC outputs
 	const float dac_period = 1.0 / dac_rate;
 	const float dac_delay = 0.000008; //0.000005;	// DAC has 5µs settling time (7µs for 5v range)
@@ -191,6 +187,15 @@ void main1(void) {
 	const uint32_t lm_levels = 4;	// The number of intensity levels for LEDs
 	const uint32_t lm_freq = 5*lm_rate * lm_levels;	// The frequency of matrix updates
 	const uint32_t lm_div = dac_rate / lm_freq;
+
+    SPI_DAC.Init(SPI_DAC_CONF);
+	irq_set_exclusive_handler(DMA_IRQ_0, dma0_irq_handler);
+	irq_set_enabled(DMA_IRQ_0, true);
+
+	while(!DAC.optimize_linearity(1));
+	sleep_ms(10);
+	while(!DAC.optimize_linearity(0));
+
     LM_Init();
     GO_Init();
 
@@ -217,11 +222,7 @@ void main1(void) {
     while (true){
         uint8_t next_dac = dac_processed +1;
         next_dac &= 0b11;
-        if (next_dac != dac_output){
-            // Calculate a set of four values
-            GO_Service(next_dac);
-            dac_processed = next_dac;
-        }
+		DAC.update();
         if(!dac_valid){
             static uint32_t dac_count;   // Counts DAC iterations
             dac_valid = 1;
@@ -238,6 +239,11 @@ void main1(void) {
 			}
 			// TODO: can this cause domain crossing issues since DAC is driven by the other core?
 			DAC.set(values, 0);
+		}
+        if (next_dac != dac_output){
+            // Calculate a set of four values
+            GO_Service(next_dac);
+            dac_processed = next_dac;
         }
     }
 }
@@ -270,7 +276,10 @@ void dac_pwm_handler(){
     dac_output &= 0b11;
 }
 
+void dma0_irq_handler (){
+	SPI_DAC.Handler();
+}
+
 void dma1_irq_handler (){
 	SPI_CAN.Handler();
-	SPI.Handler();
 }
