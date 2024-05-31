@@ -23,13 +23,6 @@ velocity_output_c generic_output_c::velocity_handler = velocity_output_c();
 gate_output_c generic_output_c::gate_handler = gate_output_c();
 
 generic_output_c out_handler[4][4];
-dc_output_c 		dc_handler = dc_output_c();
-lfo_output_c 		lfo_handler = lfo_output_c();
-envelope_output_c 	envelope_handler = envelope_output_c();
-clk_output_c 		clk_handler = clk_output_c();
-pressure_output_c 	pressure_handler = pressure_output_c();
-velocity_output_c 	velocity_handler = velocity_output_c();
-gate_output_c 		gate_handler = gate_output_c();
 
 struct keyLanes_t {
 	uint8_t note;
@@ -420,13 +413,13 @@ void GO_Init(){
 	}
 	
 	// Temporary settings
-	out_handler[0][3].state.type = GOType_t::LFO;
+	out_handler[0][3].set_type(GOType_t::LFO);
 	out_handler[0][3].state.shape = WavShape_t::Sawtooth;
 	out_handler[0][3].state.max_range = 0x3fff;
 	out_handler[0][3].state.min_range = 0;
 	out_handler[0][3].state.direction = -1;
 	out_handler[0][3].state.freq_current = 0x0008 << 16;
-	out_handler[1][2].state.type = GOType_t::LFO;
+	out_handler[1][2].set_type(GOType_t::LFO);
 	out_handler[1][2].state.shape = WavShape_t::Sawtooth;
 	out_handler[1][2].state.max_range = 0xffff;
 	out_handler[1][2].state.min_range = 0x3fff;
@@ -439,13 +432,13 @@ void GO_Init(){
 	out_handler[1][2].state.gen_source.sourceType = ctrlType_t::controller;
 	hasCC[1][2] = 1;
 	
-	out_handler[0][1].state.type = GOType_t::LFO;
+	out_handler[0][1].set_type(GOType_t::LFO);
 	out_handler[0][1].state.shape = WavShape_t::Square;
 	out_handler[0][1].state.max_range = 0xffff;
 	out_handler[0][1].state.min_range = 0;
 	out_handler[0][1].state.direction = 1;
 	out_handler[0][1].state.freq_current = 0x0040 << 16;
-	out_handler[0][2].state.type = GOType_t::LFO;
+	out_handler[0][2].set_type(GOType_t::LFO);
 	out_handler[0][2].state.shape = WavShape_t::Triangle;
 	out_handler[0][2].state.max_range = 0xffff;
 	out_handler[0][2].state.min_range = 0;
@@ -458,49 +451,50 @@ void GO_Init(){
 	keyLanes[2].state = keyLanes_t::KeyNone;
 	keyLanes[3].state = keyLanes_t::KeyIdle;
 	
-	out_handler[3][0].state.type = GOType_t::DC;
+	out_handler[3][0].set_type(GOType_t::DC);
 	out_handler[3][0].state.gen_source.sourceType = ctrlType_t::key;
 	out_handler[3][0].state.gen_source.channel = 0;
 	out_handler[3][0].state.max_range = 0xffff;
 	out_handler[3][0].state.min_range = 0;
-	out_handler[3][1].state.type = GOType_t::Gate;
+	out_handler[3][1].set_type(GOType_t::Gate);
 	out_handler[3][1].state.gen_source.sourceType = ctrlType_t::key;
 	out_handler[3][1].state.gen_source.channel = 0;
 	out_handler[3][1].state.max_range = 0xffff;
 	out_handler[3][1].state.min_range = 0;
-	out_handler[3][2].state.type = GOType_t::Envelope;
+	out_handler[3][2].set_type(GOType_t::Envelope);
 	out_handler[3][2].state.env_num = 0;
 	out_handler[3][2].state.max_range = 0xffff;
 	out_handler[3][2].state.min_range = 0;
 	out_handler[3][2].state.envelope_stage = 0;
 	out_handler[3][2].state.gen_source.sourceType = ctrlType_t::key;
 	out_handler[3][2].state.gen_source.channel = 0;
-	out_handler[3][3].state.type = GOType_t::CLK;
+	out_handler[3][3].set_type(GOType_t::CLK);
 	out_handler[3][3].state.max_range = 0xffff;
 	out_handler[3][3].state.min_range = 0;
 	out_handler[3][3].state.freq_current = 23;
-	out_handler[2][0].state.type = GOType_t::DC;
+	out_handler[2][0].set_type(GOType_t::DC);
 	out_handler[2][0].state.gen_source.sourceType = ctrlType_t::key;
 	out_handler[2][0].state.gen_source.channel = 0;
 	out_handler[2][0].state.max_range = 0xffff;
 	out_handler[2][0].state.min_range = 0;
-	out_handler[2][1].state.type = GOType_t::Gate;
+	out_handler[2][1].set_type(GOType_t::Gate);
 	out_handler[2][1].state.gen_source.sourceType = ctrlType_t::key;
 	out_handler[2][1].state.gen_source.channel = 0;
 	out_handler[2][1].state.max_range = 0xffff;
 	out_handler[2][1].state.min_range = 0;
-	out_handler[2][2].state.type = GOType_t::Envelope;
+	out_handler[2][2].set_type(GOType_t::Envelope);
 	out_handler[2][2].state.env_num = 0;
 	out_handler[2][2].state.max_range = 0xffff;
 	out_handler[2][2].state.min_range = 0;
 	out_handler[2][2].state.envelope_stage = 0;
 	out_handler[2][2].state.gen_source.sourceType = ctrlType_t::key;
 	out_handler[2][2].state.gen_source.channel = 0;
-	out_handler[1][3].state.type = GOType_t::DC;
+	out_handler[1][3].set_type(GOType_t::DC);
 	out_handler[1][3].state.gen_source.sourceType = ctrlType_t::controller;
 	out_handler[1][3].state.gen_source.channel = 0;
 	out_handler[1][3].state.gen_source.sourceNum = 20;
 	out_handler[1][3].state.max_range = 0xffff;
+	out_handler[1][3].state.currentOut = 0xffff;
 	out_handler[1][3].state.min_range = 0;
 	
 	envelopes[0].att_current = 0x3000'0000;
@@ -538,43 +532,44 @@ void GO_Init(){
 }
 
 void generic_output_c::update(){
-	current_handler.update(&state);
+	current_handler->update(&state);
 }
 
 void generic_output_c::handle_realtime(umpGeneric* msg){
-	current_handler.handle_realtime(&state, msg);
+	current_handler->handle_realtime(&state, msg);
 }
 
 void generic_output_c::handle_cvm(umpCVM* msg){
-	current_handler.handle_cvm(&state, msg);
+	current_handler->handle_cvm(&state, msg);
 }
 
 void generic_output_c::set_type(GOType_t type){
 	state.type = type;
 	switch (type){
 	case GOType_t::DC:
-		current_handler = dc_handler;
+		current_handler = &dc_handler;
 		break;
 	case GOType_t::LFO:
-		current_handler = lfo_handler;
+		current_handler = &lfo_handler;
 		break;
 	case GOType_t::Envelope:
-		current_handler = envelope_handler;
+		current_handler = &envelope_handler;
 		break;
 	case GOType_t::CLK:
-		current_handler = clk_handler;
+		current_handler = &clk_handler;
+		state.freq_current=12; 
 		break;
 	case GOType_t::Pressure:
-		current_handler = pressure_handler;
+		current_handler = &pressure_handler;
 		break;
 	case GOType_t::Velocity:
-		current_handler = velocity_handler;
+		current_handler = &velocity_handler;
 		break;
 	case GOType_t::Gate:
-		current_handler = gate_handler;
+		current_handler = &gate_handler;
 		break;
 	default:
-		current_handler = dc_handler;
+		current_handler = &dc_handler;
 		break;
 	}
 }
@@ -624,7 +619,6 @@ void lfo_output_c::update(GenOut_t* go){
 			}
 		}
 	}
-	
 }
 
 void envelope_output_c::update(GenOut_t* go){

@@ -136,59 +136,59 @@ struct ConfigNVM_t {
 
 class base_output_c{
 	public:
-		virtual void update(GenOut_t* genout){};
-		virtual void handle_realtime(GenOut_t* genout, umpGeneric* msg){};
-		virtual void handle_cvm(GenOut_t* genout, umpCVM* msg){};
+		virtual void update(GenOut_t* go){};
+		virtual void handle_realtime(GenOut_t* go, umpGeneric* msg){};
+		virtual void handle_cvm(GenOut_t* go, umpCVM* msg){};
 		static uint16_t TriSine(uint16_t in);
 };
 
 class dc_output_c : public base_output_c{
 	public:
-	void update(GenOut_t* genout);
-	void handle_realtime(GenOut_t* genout, umpGeneric* msg);
-	void handle_cvm(GenOut_t* genout, umpCVM* msg);
+	//void update(GenOut_t* go);
+	//void handle_realtime(GenOut_t* go, umpGeneric* msg);
+	void handle_cvm(GenOut_t* go, umpCVM* msg);
 };
 
 class lfo_output_c : public base_output_c{
 	public:
-	void update(GenOut_t* genout);
-	void handle_realtime(GenOut_t* genout, umpGeneric* msg);
-	void handle_cvm(GenOut_t* genout, umpCVM* msg);
+	void update(GenOut_t* go);
+	//void handle_realtime(GenOut_t* go, umpGeneric* msg);
+	void handle_cvm(GenOut_t* go, umpCVM* msg);
 };
 
 class envelope_output_c : public base_output_c{
 	public:
-	void update(GenOut_t* genout);
-	void handle_realtime(GenOut_t* genout, umpGeneric* msg);
-	void handle_cvm(GenOut_t* genout, umpCVM* msg);
+	void update(GenOut_t* go);
+	//void handle_realtime(GenOut_t* go, umpGeneric* msg);
+	void handle_cvm(GenOut_t* go, umpCVM* msg);
 };
 
 class clk_output_c : public base_output_c{
 	public:
-	void update(GenOut_t* genout);
-	void handle_realtime(GenOut_t* genout, umpGeneric* msg);
-	void handle_cvm(GenOut_t* genout, umpCVM* msg);
+	//void update(GenOut_t* go);
+	void handle_realtime(GenOut_t* go, umpGeneric* msg);
+	//void handle_cvm(GenOut_t* go, umpCVM* msg);
 };
 
 class pressure_output_c : public base_output_c{
 	public:
-	void update(GenOut_t* genout);
-	void handle_realtime(GenOut_t* genout, umpGeneric* msg);
-	void handle_cvm(GenOut_t* genout, umpCVM* msg);
+	//void update(GenOut_t* go);
+	//void handle_realtime(GenOut_t* go, umpGeneric* msg);
+	void handle_cvm(GenOut_t* go, umpCVM* msg);
 };
 
 class velocity_output_c : public base_output_c{
 	public:
-	void update(GenOut_t* genout);
-	void handle_realtime(GenOut_t* genout, umpGeneric* msg);
-	void handle_cvm(GenOut_t* genout, umpCVM* msg);
+	//void update(GenOut_t* go);
+	//void handle_realtime(GenOut_t* go, umpGeneric* msg);
+	void handle_cvm(GenOut_t* go, umpCVM* msg);
 };
 
 class gate_output_c : public base_output_c{
 	public:
-	void update(GenOut_t* genout);
-	void handle_realtime(GenOut_t* genout, umpGeneric* msg);
-	void handle_cvm(GenOut_t* genout, umpCVM* msg);
+	//void update(GenOut_t* go);
+	//void handle_realtime(GenOut_t* go, umpGeneric* msg);
+	void handle_cvm(GenOut_t* go, umpCVM* msg);
 };
 
 class generic_output_c {
@@ -199,10 +199,10 @@ class generic_output_c {
 	void set_type(GOType_t type);
 	inline uint16_t get() {return state.currentOut;};
 	GenOut_t state;
-	generic_output_c() {current_handler = dc_handler;};
+	generic_output_c() {current_handler = &dc_handler;};
 	protected:
 	uint8_t num_cc;
-	base_output_c current_handler;
+	base_output_c* current_handler;
 	static dc_output_c dc_handler;
 	static lfo_output_c lfo_handler;
 	static envelope_output_c envelope_handler;

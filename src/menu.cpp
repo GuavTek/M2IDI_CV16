@@ -130,13 +130,13 @@ void Enter_Env2()			{ chanSel = 2; Enter_Kid(); }
 void Enter_Env3()			{ chanSel = 3; Enter_Kid(); }
 void Exit_Env()			{ chanSel = 0; Enter_Kid(); }
 void Edit_Bend()			{ menuStatus = Edit_int; var_edit = &bendRange; max_edit = 8; }
-void Select_Pressure()	{ out_handler[chanSel & 0b11][chanSel >> 2].state.type = GOType_t::Pressure; needScan = true; Enter_Kid(); }
-void Select_CV()			{ out_handler[chanSel & 0b11][chanSel >> 2].state.type = GOType_t::DC; needScan = true; Enter_Kid(); }
-void Select_Gate()		{ out_handler[chanSel & 0b11][chanSel >> 2].state.type = GOType_t::Gate; needScan = true; Enter_Kid(); }
-void Select_Envelope()	{ menuStatus = Edit_int; var_edit = &out_handler[chanSel & 0b11][chanSel >> 2].state.env_num; max_edit = 4; out_handler[chanSel & 0b11][chanSel >> 2].state.type = GOType_t::Envelope; }
-void Select_Velocity()	{ out_handler[chanSel & 0b11][chanSel >> 2].state.type = GOType_t::Velocity; needScan = true; Enter_Kid(); }
-void Select_Clk()			{ menuStatus = Edit_int; var_edit = &out_handler[chanSel & 0b11][chanSel >> 2].state.freq_current; out_handler[chanSel & 0b11][chanSel >> 2].state.freq_current=12; max_edit = 128; out_handler[chanSel & 0b11][chanSel >> 2].state.type = GOType_t::CLK; }
-void Select_LFO()			{ out_handler[chanSel & 0b11][chanSel >> 2].state.type = GOType_t::LFO; needScan = true; Enter_Kid(); }
+void Select_Pressure()	{ out_handler[chanSel & 0b11][chanSel >> 2].set_type(GOType_t::Pressure); needScan = true; Enter_Kid(); }
+void Select_CV()			{ out_handler[chanSel & 0b11][chanSel >> 2].set_type(GOType_t::DC); needScan = true; Enter_Kid(); }
+void Select_Gate()		{ out_handler[chanSel & 0b11][chanSel >> 2].set_type(GOType_t::Gate); needScan = true; Enter_Kid(); }
+void Select_Envelope()	{ menuStatus = Edit_int; var_edit = &out_handler[chanSel & 0b11][chanSel >> 2].state.env_num; max_edit = 4; out_handler[chanSel & 0b11][chanSel >> 2].set_type(GOType_t::Envelope); }
+void Select_Velocity()	{ out_handler[chanSel & 0b11][chanSel >> 2].set_type(GOType_t::Velocity); needScan = true; Enter_Kid(); }
+void Select_Clk()			{ menuStatus = Edit_int; var_edit = &out_handler[chanSel & 0b11][chanSel >> 2].state.freq_current; max_edit = 128; out_handler[chanSel & 0b11][chanSel >> 2].set_type(GOType_t::CLK); }
+void Select_LFO()			{ out_handler[chanSel & 0b11][chanSel >> 2].set_type(GOType_t::LFO); needScan = true; Enter_Kid(); }
 void Select_LFO_Shape()	{ menuStatus = SetLFO; var_edit = &out_handler[chanSel & 0b11][chanSel >> 2].state.shape; }
 void Select_LFO_Freq_Max(){ menuStatus = Edit_32bit; var_edit = &out_handler[chanSel & 0b11][chanSel >> 2].state.freq_max; var_monitor = &out_handler[chanSel & 0b11][chanSel >> 2].state.freq_current; }
 void Select_LFO_Freq_Min(){ menuStatus = Edit_32bit; var_edit = &out_handler[chanSel & 0b11][chanSel >> 2].state.freq_min; var_monitor = &out_handler[chanSel & 0b11][chanSel >> 2].state.freq_current; }
