@@ -134,9 +134,95 @@ struct ConfigNVM_t {
 	Env_base env[4];
 };
 
+class base_output_c{
+	public:
+		virtual void update(GenOut_t* genout){};
+		virtual void handle_realtime(GenOut_t* genout, umpGeneric* msg){};
+		virtual void handle_cvm(GenOut_t* genout, umpCVM* msg){};
+		static uint16_t TriSine(uint16_t in);
+};
+
+class dc_output_c : public base_output_c{
+	public:
+	void update(GenOut_t* genout);
+	void handle_realtime(GenOut_t* genout, umpGeneric* msg);
+	void handle_cvm(GenOut_t* genout, umpCVM* msg);
+};
+
+class lfo_output_c : public base_output_c{
+	public:
+	void update(GenOut_t* genout);
+	void handle_realtime(GenOut_t* genout, umpGeneric* msg);
+	void handle_cvm(GenOut_t* genout, umpCVM* msg);
+};
+
+class envelope_output_c : public base_output_c{
+	public:
+	void update(GenOut_t* genout);
+	void handle_realtime(GenOut_t* genout, umpGeneric* msg);
+	void handle_cvm(GenOut_t* genout, umpCVM* msg);
+};
+
+class clk_output_c : public base_output_c{
+	public:
+	void update(GenOut_t* genout);
+	void handle_realtime(GenOut_t* genout, umpGeneric* msg);
+	void handle_cvm(GenOut_t* genout, umpCVM* msg);
+};
+
+class pressure_output_c : public base_output_c{
+	public:
+	void update(GenOut_t* genout);
+	void handle_realtime(GenOut_t* genout, umpGeneric* msg);
+	void handle_cvm(GenOut_t* genout, umpCVM* msg);
+};
+
+class velocity_output_c : public base_output_c{
+	public:
+	void update(GenOut_t* genout);
+	void handle_realtime(GenOut_t* genout, umpGeneric* msg);
+	void handle_cvm(GenOut_t* genout, umpCVM* msg);
+};
+
+class gate_output_c : public base_output_c{
+	public:
+	void update(GenOut_t* genout);
+	void handle_realtime(GenOut_t* genout, umpGeneric* msg);
+	void handle_cvm(GenOut_t* genout, umpCVM* msg);
+};
+
+class generic_output_c {
+	public:
+	void update();
+	void handle_realtime(umpGeneric* msg);
+	void handle_cvm(umpCVM* msg);
+	void set_type(GOType_t type);
+	inline uint16_t get() {return state.currentOut;};
+	GenOut_t state;
+	generic_output_c() {current_handler = dc_handler;};
+	protected:
+	uint8_t num_cc;
+	base_output_c current_handler;
+	static dc_output_c dc_handler;
+	static lfo_output_c lfo_handler;
+	static envelope_output_c envelope_handler;
+	static clk_output_c clk_handler;
+	static pressure_output_c pressure_handler;
+	static velocity_output_c velocity_handler;
+	static gate_output_c gate_handler;
+};
+
+dc_output_c generic_output_c::dc_handler = dc_output_c();
+lfo_output_c generic_output_c::lfo_handler = lfo_output_c();
+envelope_output_c generic_output_c::envelope_handler = envelope_output_c();
+clk_output_c generic_output_c::clk_handler = clk_output_c();
+pressure_output_c generic_output_c::pressure_handler = pressure_output_c();
+velocity_output_c generic_output_c::velocity_handler = velocity_output_c();
+gate_output_c generic_output_c::gate_handler = gate_output_c();
+
 extern bool needScan;
 extern uint8_t bendRange;
-extern GenOut_t outMatrix[4][4];
+extern generic_output_c out_handler[4][4];
 extern Env_t envelopes[4];
 extern uint8_t midi_group;
 
@@ -148,7 +234,5 @@ void GO_Service(uint8_t x);
 void GO_MIDI_Voice(struct umpCVM* msg);
 
 void GO_MIDI_Realtime(struct umpGeneric* msg);
-
-uint16_t TriSine(uint16_t in);
 
 #endif /* GENERIC_OUTPUT_H_ */

@@ -12,8 +12,16 @@
 
 bool needScan = false;
 
-GenOut_t outMatrix[4][4];
 Env_t envelopes[4];
+
+generic_output_c out_handler[4][4];
+dc_output_c 		dc_handler = dc_output_c();
+lfo_output_c 		lfo_handler = lfo_output_c();
+envelope_output_c 	envelope_handler = envelope_output_c();
+clk_output_c 		clk_handler = clk_output_c();
+pressure_output_c 	pressure_handler = pressure_output_c();
+velocity_output_c 	velocity_handler = velocity_output_c();
+gate_output_c 		gate_handler = gate_output_c();
 
 struct keyLanes_t {
 	uint8_t note;
@@ -60,9 +68,9 @@ void Scan_Matrix(){
 	bool foundChannel = false;
 	for(uint8_t x = 0; x < 4; x++){
 		for (uint8_t y = 0; y < 4; y++){
-			if (outMatrix[x][y].gen_source.sourceType == ctrlType_t::key){
-				if (outMatrix[x][y].gen_source.channel != 9){
-					keyChannel = outMatrix[x][y].gen_source.channel;
+			if (out_handler[x][y].state.gen_source.sourceType == ctrlType_t::key){
+				if (out_handler[x][y].state.gen_source.channel != 9){
+					keyChannel = out_handler[x][y].state.gen_source.channel;
 					foundChannel = true;
 					break;
 				}
@@ -79,9 +87,9 @@ void Scan_Matrix(){
 		lane_conf[x] = 0;
 		for (uint8_t y = 0; y < 4; y++){
 			// Get Keylane configuration
-			if (outMatrix[x][y].gen_source.sourceType == ctrlType_t::key){
-				if (outMatrix[x][y].gen_source.channel == keyChannel){
-					lane_conf[x] |= 1 << (4 * ((uint8_t) outMatrix[x][y].type) + y);
+			if (out_handler[x][y].state.gen_source.sourceType == ctrlType_t::key){
+				if (out_handler[x][y].state.gen_source.channel == keyChannel){
+					lane_conf[x] |= 1 << (4 * ((uint8_t) out_handler[x][y].state.type) + y);
 				}
 			}
 		}
@@ -121,7 +129,7 @@ void Scan_Matrix(){
 		// Has key outputs?
 		if (lane_conf[x]){
 			for (uint8_t y = 0; y < 4; y++){
-				if (comConf & (1 << (4 * ((uint8_t) outMatrix[x][y].type) + y))){
+				if (comConf & (1 << (4 * ((uint8_t) out_handler[x][y].state.type) + y))){
 					// Not a common output?
 					if ((comConf & lane_conf[x]) == comConf){
 						// Not a common output!
@@ -130,7 +138,7 @@ void Scan_Matrix(){
 						continue;
 					}
 				}
-				uint16_t tempKey = (uint16_t) outMatrix[x][y].gen_source.sourceType | (outMatrix[x][y].gen_source.channel << 8);
+				uint16_t tempKey = (uint16_t) out_handler[x][y].state.gen_source.sourceType | (out_handler[x][y].state.gen_source.channel << 8);
 				if (tempKey == matKey){
 					// Common output
 					keyPara[keyParaNum].x = x;
@@ -148,7 +156,7 @@ void Scan_Matrix(){
 	// Find controller bound to outputs
 	for (uint8_t x = 0; x < 4; x++){
 		for (uint8_t y = 0; y < 4; y++){
-			if (outMatrix[x][y].gen_source.sourceType == ctrlType_t::none){
+			if (out_handler[x][y].state.gen_source.sourceType == ctrlType_t::none){
 				hasCC[x][y] = 0;
 			} else {
 				hasCC[x][y] = 1;
@@ -248,7 +256,7 @@ inline void Start_Note(uint8_t lane, uint8_t note, uint16_t velocity){
 		if (!(keyMask & (1 << (y + 4*lane)))){
 			continue;
 		}
-		GenOut_t* tempOut = &outMatrix[lane][y];
+		GenOut_t* tempOut = &out_handler[lane][y].state;
 		
 		if ( tempOut->type == GOType_t::DC ){
 			tempOut->gen_source.sourceNum = note;
@@ -281,7 +289,7 @@ inline void Start_Note(uint8_t lane, uint8_t note, uint16_t velocity){
 	
 	// Handle shared outputs
 	for (uint8_t i = 0; i < keyParaNum; i++){
-		GenOut_t* tempOut = &outMatrix[keyPara[i].x][keyPara[i].y];
+		GenOut_t* tempOut = &out_handler[keyPara[i].x][keyPara[i].y].state;
 		
 		if ( tempOut->type == GOType_t::DC ){
 			tempOut->gen_source.sourceNum = note;
@@ -317,13 +325,13 @@ inline void Stop_Note(uint8_t lane){
 			continue;
 		}
 		
-		if ( outMatrix[lane][y].type == GOType_t::Gate ){
-			outMatrix[lane][y].currentOut = outMatrix[lane][y].min_range;
+		if ( out_handler[lane][y].state.type == GOType_t::Gate ){
+			out_handler[lane][y].state.currentOut = out_handler[lane][y].state.min_range;
 			continue;
 		} 
 		
-		if ( outMatrix[lane][y].type == GOType_t::Envelope ){
-			outMatrix[lane][y].envelope_stage = 4;
+		if ( out_handler[lane][y].state.type == GOType_t::Envelope ){
+			out_handler[lane][y].state.envelope_stage = 4;
 			continue;
 		}
 	}
@@ -341,7 +349,7 @@ inline void Stop_Note(uint8_t lane){
 	
 	// Handle shared outputs
 	for (uint8_t i = 0; i < keyParaNum; i++){
-		GenOut_t* tempOut = &outMatrix[keyPara[i].x][keyPara[i].y];
+		GenOut_t* tempOut = &out_handler[keyPara[i].x][keyPara[i].y].state;
 				
 		if ( tempOut->type == GOType_t::Gate ){
 			if (!foundActive){
@@ -370,7 +378,7 @@ inline void Stop_All_Notes(){
 			keyLanes[x].state = keyLanes_t::KeyIdle;
 		}
 		for (uint8_t y = 0; y < 4; y++){
-			GenOut_t* tempOut = &outMatrix[x][y];
+			GenOut_t* tempOut = &out_handler[x][y].state;
 			if (tempOut->type == GOType_t::Envelope){
 				tempOut->currentOut = tempOut->min_range;
 				tempOut->envelope_stage = 4;
@@ -384,10 +392,10 @@ inline void Stop_All_Notes(){
 inline void Reset_All_Controllers(){
 	for(uint8_t x = 0; x < 4; x++){
 		for (uint8_t y = 0; y < 4; y++){
-			uint32_t src_current = ( uint8_t(outMatrix[x][y].type) << 0 ) | ( uint8_t(outMatrix[x][y].gen_source.sourceType) << 8 );
+			uint32_t src_current = ( uint8_t(out_handler[x][y].state.type) << 0 ) | ( uint8_t(out_handler[x][y].state.gen_source.sourceType) << 8 );
 			uint32_t criteria = ( uint8_t(GOType_t::DC) << 0 ) | ( uint8_t(ctrlType_t::controller) << 8 );
 			if ( src_current == criteria ){
-				outMatrix[x][y].currentOut = outMatrix[x][y].min_range;
+				out_handler[x][y].state.currentOut = out_handler[x][y].state.min_range;
 			}
 		}
 	}
@@ -397,46 +405,44 @@ void GO_Init(){
 	// Set default values
 	for (uint8_t x = 0; x < 4; x++){
 		for (uint8_t y = 0; y < 4; y++){
-			outMatrix[x][y].currentOut = 0x7000;
-			outMatrix[x][y].max_range = 0xffff;
-			outMatrix[x][y].min_range = 0;
+			out_handler[x][y].state.currentOut = 0x7000;
+			out_handler[x][y].state.max_range = 0xffff;
+			out_handler[x][y].state.min_range = 0;
 		}
 	}
 	
 	// Temporary settings
-	outMatrix[0][3].type = GOType_t::LFO;
-	outMatrix[0][3].shape = WavShape_t::Sawtooth;
-	outMatrix[0][3].max_range = 0x3fff;
-	outMatrix[0][3].min_range = 0;
-	outMatrix[0][3].direction = -1;
-	outMatrix[0][3].freq_current = 0x0008 << 16;
-	
-	outMatrix[1][2].type = GOType_t::LFO;
-	outMatrix[1][2].shape = WavShape_t::Sawtooth;
-	outMatrix[1][2].max_range = 0xffff;
-	outMatrix[1][2].min_range = 0x3fff;
-	outMatrix[1][2].direction = -1;
-	outMatrix[1][2].freq_current = 0x0010 << 16;
-	outMatrix[1][2].freq_max = 0x01000000;
-	outMatrix[1][2].freq_min = 0x00001000;
-	outMatrix[1][2].gen_source.channel = 1;
-	outMatrix[1][2].gen_source.sourceNum = 10;
-	outMatrix[1][2].gen_source.sourceType = ctrlType_t::controller;
+	out_handler[0][3].state.type = GOType_t::LFO;
+	out_handler[0][3].state.shape = WavShape_t::Sawtooth;
+	out_handler[0][3].state.max_range = 0x3fff;
+	out_handler[0][3].state.min_range = 0;
+	out_handler[0][3].state.direction = -1;
+	out_handler[0][3].state.freq_current = 0x0008 << 16;
+	out_handler[1][2].state.type = GOType_t::LFO;
+	out_handler[1][2].state.shape = WavShape_t::Sawtooth;
+	out_handler[1][2].state.max_range = 0xffff;
+	out_handler[1][2].state.min_range = 0x3fff;
+	out_handler[1][2].state.direction = -1;
+	out_handler[1][2].state.freq_current = 0x0010 << 16;
+	out_handler[1][2].state.freq_max = 0x01000000;
+	out_handler[1][2].state.freq_min = 0x00001000;
+	out_handler[1][2].state.gen_source.channel = 1;
+	out_handler[1][2].state.gen_source.sourceNum = 10;
+	out_handler[1][2].state.gen_source.sourceType = ctrlType_t::controller;
 	hasCC[1][2] = 1;
 	
-	outMatrix[0][1].type = GOType_t::LFO;
-	outMatrix[0][1].shape = WavShape_t::Square;
-	outMatrix[0][1].max_range = 0xffff;
-	outMatrix[0][1].min_range = 0;
-	outMatrix[0][1].direction = 1;
-	outMatrix[0][1].freq_current = 0x0040 << 16;
-	
-	outMatrix[0][2].type = GOType_t::LFO;
-	outMatrix[0][2].shape = WavShape_t::Triangle;
-	outMatrix[0][2].max_range = 0xffff;
-	outMatrix[0][2].min_range = 0;
-	outMatrix[0][2].direction = -1;
-	outMatrix[0][2].freq_current = 0x0020 << 16;
+	out_handler[0][1].state.type = GOType_t::LFO;
+	out_handler[0][1].state.shape = WavShape_t::Square;
+	out_handler[0][1].state.max_range = 0xffff;
+	out_handler[0][1].state.min_range = 0;
+	out_handler[0][1].state.direction = 1;
+	out_handler[0][1].state.freq_current = 0x0040 << 16;
+	out_handler[0][2].state.type = GOType_t::LFO;
+	out_handler[0][2].state.shape = WavShape_t::Triangle;
+	out_handler[0][2].state.max_range = 0xffff;
+	out_handler[0][2].state.min_range = 0;
+	out_handler[0][2].state.direction = -1;
+	out_handler[0][2].state.freq_current = 0x0020 << 16;
 	
 	keyChannel = 1;
 	keyLanes[0].state = keyLanes_t::KeyNone;
@@ -444,57 +450,50 @@ void GO_Init(){
 	keyLanes[2].state = keyLanes_t::KeyNone;
 	keyLanes[3].state = keyLanes_t::KeyIdle;
 	
-	outMatrix[3][0].type = GOType_t::DC;
-	outMatrix[3][0].gen_source.sourceType = ctrlType_t::key;
-	outMatrix[3][0].gen_source.channel = 0;
-	outMatrix[3][0].max_range = 0xffff;
-	outMatrix[3][0].min_range = 0;
-	
-	outMatrix[3][1].type = GOType_t::Gate;
-	outMatrix[3][1].gen_source.sourceType = ctrlType_t::key;
-	outMatrix[3][1].gen_source.channel = 0;
-	outMatrix[3][1].max_range = 0xffff;
-	outMatrix[3][1].min_range = 0;
-	
-	outMatrix[3][2].type = GOType_t::Envelope;
-	outMatrix[3][2].env_num = 0;
-	outMatrix[3][2].max_range = 0xffff;
-	outMatrix[3][2].min_range = 0;
-	outMatrix[3][2].envelope_stage = 0;
-	outMatrix[3][2].gen_source.sourceType = ctrlType_t::key;
-	outMatrix[3][2].gen_source.channel = 0;
-	
-	outMatrix[3][3].type = GOType_t::CLK;
-	outMatrix[3][3].max_range = 0xffff;
-	outMatrix[3][3].min_range = 0;
-	outMatrix[3][3].freq_current = 23;
-	
-	outMatrix[2][0].type = GOType_t::DC;
-	outMatrix[2][0].gen_source.sourceType = ctrlType_t::key;
-	outMatrix[2][0].gen_source.channel = 0;
-	outMatrix[2][0].max_range = 0xffff;
-	outMatrix[2][0].min_range = 0;
-	
-	outMatrix[2][1].type = GOType_t::Gate;
-	outMatrix[2][1].gen_source.sourceType = ctrlType_t::key;
-	outMatrix[2][1].gen_source.channel = 0;
-	outMatrix[2][1].max_range = 0xffff;
-	outMatrix[2][1].min_range = 0;
-	
-	outMatrix[2][2].type = GOType_t::Envelope;
-	outMatrix[2][2].env_num = 0;
-	outMatrix[2][2].max_range = 0xffff;
-	outMatrix[2][2].min_range = 0;
-	outMatrix[2][2].envelope_stage = 0;
-	outMatrix[2][2].gen_source.sourceType = ctrlType_t::key;
-	outMatrix[2][2].gen_source.channel = 0;
-	
-	outMatrix[1][3].type = GOType_t::DC;
-	outMatrix[1][3].gen_source.sourceType = ctrlType_t::controller;
-	outMatrix[1][3].gen_source.channel = 0;
-	outMatrix[1][3].gen_source.sourceNum = 20;
-	outMatrix[1][3].max_range = 0xffff;
-	outMatrix[1][3].min_range = 0;
+	out_handler[3][0].state.type = GOType_t::DC;
+	out_handler[3][0].state.gen_source.sourceType = ctrlType_t::key;
+	out_handler[3][0].state.gen_source.channel = 0;
+	out_handler[3][0].state.max_range = 0xffff;
+	out_handler[3][0].state.min_range = 0;
+	out_handler[3][1].state.type = GOType_t::Gate;
+	out_handler[3][1].state.gen_source.sourceType = ctrlType_t::key;
+	out_handler[3][1].state.gen_source.channel = 0;
+	out_handler[3][1].state.max_range = 0xffff;
+	out_handler[3][1].state.min_range = 0;
+	out_handler[3][2].state.type = GOType_t::Envelope;
+	out_handler[3][2].state.env_num = 0;
+	out_handler[3][2].state.max_range = 0xffff;
+	out_handler[3][2].state.min_range = 0;
+	out_handler[3][2].state.envelope_stage = 0;
+	out_handler[3][2].state.gen_source.sourceType = ctrlType_t::key;
+	out_handler[3][2].state.gen_source.channel = 0;
+	out_handler[3][3].state.type = GOType_t::CLK;
+	out_handler[3][3].state.max_range = 0xffff;
+	out_handler[3][3].state.min_range = 0;
+	out_handler[3][3].state.freq_current = 23;
+	out_handler[2][0].state.type = GOType_t::DC;
+	out_handler[2][0].state.gen_source.sourceType = ctrlType_t::key;
+	out_handler[2][0].state.gen_source.channel = 0;
+	out_handler[2][0].state.max_range = 0xffff;
+	out_handler[2][0].state.min_range = 0;
+	out_handler[2][1].state.type = GOType_t::Gate;
+	out_handler[2][1].state.gen_source.sourceType = ctrlType_t::key;
+	out_handler[2][1].state.gen_source.channel = 0;
+	out_handler[2][1].state.max_range = 0xffff;
+	out_handler[2][1].state.min_range = 0;
+	out_handler[2][2].state.type = GOType_t::Envelope;
+	out_handler[2][2].state.env_num = 0;
+	out_handler[2][2].state.max_range = 0xffff;
+	out_handler[2][2].state.min_range = 0;
+	out_handler[2][2].state.envelope_stage = 0;
+	out_handler[2][2].state.gen_source.sourceType = ctrlType_t::key;
+	out_handler[2][2].state.gen_source.channel = 0;
+	out_handler[1][3].state.type = GOType_t::DC;
+	out_handler[1][3].state.gen_source.sourceType = ctrlType_t::controller;
+	out_handler[1][3].state.gen_source.channel = 0;
+	out_handler[1][3].state.gen_source.sourceNum = 20;
+	out_handler[1][3].state.max_range = 0xffff;
+	out_handler[1][3].state.min_range = 0;
 	
 	envelopes[0].att_current = 0x3000'0000;
 	envelopes[0].att_max = 0x3000'0000;
@@ -530,7 +529,49 @@ void GO_Init(){
 	
 }
 
-void GO_LFO(GenOut_t* go){
+void generic_output_c::update(){
+	current_handler.update(&state);
+}
+
+void generic_output_c::handle_realtime(umpGeneric* msg){
+	current_handler.handle_realtime(&state, msg);
+}
+
+void generic_output_c::handle_cvm(umpCVM* msg){
+	current_handler.handle_cvm(&state, msg);
+}
+
+void generic_output_c::set_type(GOType_t type){
+	state.type = type;
+	switch (type){
+	case GOType_t::DC:
+		current_handler = dc_handler;
+		break;
+	case GOType_t::LFO:
+		current_handler = lfo_handler;
+		break;
+	case GOType_t::Envelope:
+		current_handler = envelope_handler;
+		break;
+	case GOType_t::CLK:
+		current_handler = clk_handler;
+		break;
+	case GOType_t::Pressure:
+		current_handler = pressure_handler;
+		break;
+	case GOType_t::Velocity:
+		current_handler = velocity_handler;
+		break;
+	case GOType_t::Gate:
+		current_handler = gate_handler;
+		break;
+	default:
+		current_handler = dc_handler;
+		break;
+	}
+}
+
+void lfo_output_c::update(GenOut_t* go){
 	if (go->shape == WavShape_t::Sawtooth){
 		go->outCount -= go->freq_current;
 		go->currentOut = Rescale_16bit(go->outCount >> 16, go->min_range, go->max_range);
@@ -578,7 +619,7 @@ void GO_LFO(GenOut_t* go){
 	
 }
 
-void GO_ENV(GenOut_t* go){
+void envelope_output_c::update(GenOut_t* go){
 	Env_t* tempEnv = &envelopes[go->env_num];
 	uint32_t remain;
 	switch(go->envelope_stage){
@@ -618,6 +659,108 @@ void GO_ENV(GenOut_t* go){
 	go->currentOut = Rescale_16bit(go->outCount >> 16, go->min_range, go->max_range);
 }
 
+void dc_output_c::handle_cvm(GenOut_t* genout, umpCVM* msg){
+	uint32_t src_current;
+	uint32_t criteria;
+	switch (msg->status){
+	case NOTE_ON:
+		// Expect caller to check channel etc
+		return;
+	case NOTE_OFF:
+		// Expect caller to check channel etc
+		return;
+	case CC:
+	case NRPN:
+		criteria = ( msg->channel << 0 ) | ( msg->index << 8 ) | ( uint8_t(ctrlType_t::controller) << 24);
+		src_current = ( genout->gen_source.channel << 0 ) | ( genout->gen_source.sourceNum << 8 ) | ( uint8_t(genout->gen_source.sourceType) << 24 );
+		if ( src_current == criteria ){
+			// CV generation
+			uint32_t span = (genout->max_range - genout->min_range) + 1;
+			uint32_t scaled = (msg->value >> 16) * span;
+			genout->currentOut = (scaled >> 16) + genout->min_range;
+		}
+		break;
+	case PROGRAM_CHANGE:
+		criteria = ( msg->channel << 0 ) | ( msg->index << 8 ) | ( uint8_t(ctrlType_t::program) << 24);
+		src_current = ( genout->gen_source.channel << 0 ) | ( genout->gen_source.sourceNum << 8 ) | ( uint8_t(genout->gen_source.sourceType) << 24 );
+		if ( src_current == criteria ){
+			if (genout->currentOut == genout->max_range){
+				genout->currentOut = genout->min_range;
+			} else {
+				genout->currentOut = genout->max_range;
+			}
+			return;
+		}
+		break;
+	case PITCH_BEND:
+		break;
+	default:
+		return;
+	}
+}
+
+// TODO: use CC/NRPN lookup table
+void lfo_output_c::handle_cvm(GenOut_t* genout, umpCVM* msg){
+	uint32_t criteria;
+	uint32_t src_current;
+	if (genout->gen_source.sourceType != ctrlType_t::controller){
+		return;
+	}
+	if (msg->status == CC){
+		criteria = ( msg->channel << 0 ) | ( msg->index << 8 );
+		src_current = (genout->gen_source.channel << 0) | (genout->gen_source.sourceNum << 8);
+	} else if (msg->status == NRPN){
+		criteria = ( msg->channel << 0 ) | ( msg->index << 8 );	// TODO: handle banks?
+		src_current = (genout->gen_source.channel << 0) | (genout->gen_source.sourceNum << 8);
+
+	} else {
+		return;
+	}
+	
+	if ( src_current == criteria ){
+		// Wave generation
+		uint64_t span = genout->freq_max - genout->freq_min + 1;
+		uint64_t scaled = msg->value * span;
+		genout->freq_current = (scaled >> 32) + genout->freq_min;
+	}	
+}
+
+void envelope_output_c::handle_cvm(GenOut_t* genout, umpCVM* msg){
+	
+}
+
+// TODO: fix keylanes, maybe split handle cc from handle note and add a subscriber mechanism?
+// TODO: determine if channel or poly pressure is used (msg->note is only needed for poly pressure)
+void pressure_output_c::handle_cvm(GenOut_t* genout, umpCVM* msg){
+	uint32_t criteria;
+	uint32_t src_current;
+	if (msg->status == CHANNEL_PRESSURE){
+		criteria = ( keyChannel << 0 ) | ( uint8_t(ctrlType_t::key) << 8 );
+		src_current = 
+			( genout->gen_source.channel << 0 ) | 
+			( uint8_t(genout->gen_source.sourceType) << 8 );
+	} else if (msg->status == KEY_PRESSURE){
+		criteria = ( keyChannel << 0 ) | ( uint8_t(ctrlType_t::key) << 8 );// | ( msg->note << 16 );
+		src_current = 
+			( genout->gen_source.channel << 0 ) | 
+			( uint8_t(genout->gen_source.sourceType) << 8 );// |
+			//( keyLanes[x].note << 16 );
+	} else {
+		return;
+	}
+	if ( src_current == criteria ){
+		genout->currentOut = Rescale_16bit(msg->value >> 16, genout->min_range, genout->max_range);
+	}
+}
+
+void velocity_output_c::handle_cvm(GenOut_t* genout, umpCVM* msg){
+	
+}
+
+void gate_output_c::handle_cvm(GenOut_t* genout, umpCVM* msg){
+	
+}
+
 // TODO: Fix stuck notes
 // TODO: Optimize pitchbend
 void GO_MIDI_Voice(struct umpCVM* msg){
@@ -625,69 +768,191 @@ void GO_MIDI_Voice(struct umpCVM* msg){
 		return;
 	}
 	
-	enum ctrlType_t msgType;
-	uint16_t controlNum = 0;
-	switch(msg->status){
-		case NRPN:
-			controlNum = msg->bank << 8;
-		case CC:
-			controlNum |= msg->index;
-			msgType = ctrlType_t::controller;
-			break;
-		case KEY_PRESSURE:
-		case CHANNEL_PRESSURE:
-		case NOTE_OFF:
-		case NOTE_ON:
-		case PITCH_BEND:
-			msgType = ctrlType_t::key;
-			break;
-		case PROGRAM_CHANGE:
-			msgType = ctrlType_t::program;
-			break;
-		default:
+	// Handle special messages
+	if (msg->status == CC){
+		if ((msg->index == 120)||(msg->index == 123)){
+			Stop_All_Notes();
 			return;
-	};
+		} else if (msg->index == 121){
+			Reset_All_Controllers();
+			return;
+		}
+	}
 	
-	if (msgType == ctrlType_t::controller){
-		if (msg->status == CC){
-			if ((msg->index == 120)||(msg->index == 123)){
-				Stop_All_Notes();
-				return;
-			} else if (msg->index == 121){
-				Reset_All_Controllers();
+	// TODO: refactor keylanes
+	// Handle note messages
+	if (msg->status == NOTE_ON){
+		// TODO: trigger keylanes
+		if (msg->channel == 9){
+			// Drum channel
+			uint32_t criteria = ( msg->channel << 8 ) | ( msg->note << 16 );
+			bool foundLane = false;
+			for (uint8_t x = 0; x < 4; x++){
+				for (uint8_t y = 0; y < 4; y++){
+					uint32_t src_current = 
+						( uint8_t(out_handler[x][y].state.type) << 0 ) |
+						( out_handler[x][y].state.gen_source.channel << 8 ) |
+						( out_handler[x][y].state.gen_source.sourceNum << 16 );
+					if ( src_current == ( criteria | uint8_t(GOType_t::Envelope) ) ){
+						foundLane = true;
+						out_handler[x][y].state.envelope_stage = 1;
+						out_handler[x][y].state.currentOut = out_handler[x][y].state.min_range;
+						continue;
+					}
+					if ( src_current == ( criteria | uint8_t(GOType_t::Gate) ) ){
+						foundLane = true;
+						out_handler[x][y].state.currentOut = out_handler[x][y].state.max_range;
+						continue;
+					} 
+					if ( src_current == ( criteria | uint8_t(GOType_t::Velocity) ) ){
+						foundLane = true;
+						out_handler[x][y].state.currentOut = Rescale_16bit(msg->value, out_handler[x][y].state.min_range, out_handler[x][y].state.max_range);
+						continue;
+					}
+				}
+				if (foundLane){
+					// Assume all controls are on single lane
+					break;
+				}
+			}
+		} else if(keyChannel == msg->channel) {
+			uint8_t tempLane = 250;
+			for (uint8_t x = 0; x < 4; x++){
+				uint8_t lane = (currentKeyLane + x) & 0b11;
+				if (keyLanes[lane].state == keyLanes_t::KeyPlaying && keyLanes[lane].note == msg->note){
+					// Note is already playing
+					return;
+				}
+				if (tempLane & 0x80){
+					if (keyLanes[lane].state == keyLanes_t::KeyIdle){
+						// Found an unused lane
+						tempLane = lane;
+						//break;
+					} else if ((tempLane == 250) && (keyLanes[lane].state == keyLanes_t::KeyPlaying)){
+						// Next lane in round-robin
+						tempLane = lane | 0x80;
+					}
+				}
+			}
+				
+			tempLane &= 0x7f;
+				
+			if (tempLane == 250){
+				// No keys configured
 				return;
 			}
-		}
-		
-		// Search outputs
+				
+			// Update starting lane for Round-robin arbitration
+			currentKeyLane = (tempLane + 1) & 0b11;
+				
+			if (keyLanes[tempLane].state == keyLanes_t::KeyPlaying){
+				// Note already playing in lane. Push to queue
+				noteQueue[queueIndex++].note = keyLanes[tempLane].note;
+			}
+				
+			Start_Note(tempLane, msg->note, msg->value);
+		}	
+		return;
+	} else if (msg->status == NOTE_OFF){
+		// TODO: Trigger keylanes
+		if (msg->channel == 9){
+			// Drum channel
+			uint32_t criteria = ( msg->channel << 8 ) | ( msg->note << 16 );
+			bool foundLane = false;
+			for (uint8_t x = 0; x < 4; x++){
+				for (uint8_t y = 0; y < 4; y++){
+					uint32_t src_current =
+						( uint8_t(out_handler[x][y].state.type) << 0 ) |
+						( out_handler[x][y].state.gen_source.channel << 8 ) |
+						( out_handler[x][y].state.gen_source.sourceNum << 16 );
+					if ( src_current == ( criteria | uint8_t(GOType_t::Envelope) ) ){
+						foundLane = true;
+						out_handler[x][y].state.envelope_stage = 4;
+						continue;
+					} 
+					if ( src_current == ( criteria | uint8_t(GOType_t::Gate) ) ){
+						foundLane = true;
+						out_handler[x][y].state.currentOut = out_handler[x][y].state.min_range;
+						continue;
+					}
+				}
+				if (foundLane){
+					// Assume all controls are on single lane
+					break;
+				}
+			}
+		} else if(keyChannel == msg->channel) {
+			// Find the used lane
+			uint8_t tempLane = 250;
+			for (uint8_t x = 0; x < 4; x++){
+				if (keyLanes[x].state == keyLanes_t::KeyPlaying){
+					if (keyLanes[x].note == msg->note){
+						tempLane = x;
+						break;
+					}
+				}
+			}
+				
+			// Look for note in queue
+			uint8_t i;
+			for (i = 0; i < queueIndex; i++){
+				if (noteQueue[i].note == msg->note){
+					queueIndex--;
+					break;
+				}
+			}
+			// Overwrite that note
+			for (; i < queueIndex; i++){
+				noteQueue[i] = noteQueue[i+1];
+			}
+				
+			if (tempLane != 250){
+				if (queueIndex > 0){
+					// Start last note which was put in queue
+					uint8_t tempNote = noteQueue[--queueIndex].note;
+					Start_Note(tempLane, tempNote, msg->value);
+				} else {
+					// Stop note
+					Stop_Note(tempLane);
+				}
+			}
+		}	
+		return;
+	} else if (msg->status == PITCH_BEND){
+		uint16_t tempBend = Rescale_16bit(msg->value >> 16, minBend, maxBend);
+		currentBend = tempBend - 0x7fff;
+				
+		// update v/oct outputs
+		uint32_t criteria = ( uint8_t(GOType_t::DC) << 0 ) | ( keyChannel << 8 ) | ( uint8_t(ctrlType_t::key) << 16 );
 		for (uint8_t x = 0; x < 4; x++){
+			if (keyLanes[x].state != keyLanes_t::KeyPlaying){
+				continue;
+			}
 			for (uint8_t y = 0; y < 4; y++){
-				// Skip if no controller is mapped
-				if (!hasCC[x][y]){
-					continue;
-				}
-				
-				uint32_t src_current = ( uint8_t(outMatrix[x][y].type) << 0 ) | ( outMatrix[x][y].gen_source.channel << 8 ) | ( outMatrix[x][y].gen_source.sourceNum << 16 );
-				uint32_t criteria = ( uint8_t(GOType_t::DC) << 0 ) | ( msg->channel << 8 ) | ( controlNum << 16 );
+				uint32_t src_current = 
+					( uint8_t(out_handler[x][y].state.type) << 0 ) | 
+					( out_handler[x][y].state.gen_source.channel << 8 ) | 
+					( uint8_t(out_handler[x][y].state.gen_source.sourceType) << 16 );
 				if ( src_current == criteria ){
-					// CV generation
-					uint32_t span = (outMatrix[x][y].max_range - outMatrix[x][y].min_range) + 1;
-					uint32_t scaled = (msg->value >> 16) * span;
-					outMatrix[x][y].currentOut = (scaled >> 16) + outMatrix[x][y].min_range;
-					continue;
+					out_handler[x][y].state.currentOut = Note_To_Output(keyLanes[x].note);
+					break;
 				}
-				
-				criteria = ( uint8_t(GOType_t::LFO) << 0 ) | ( msg->channel << 8 ) | ( controlNum << 16 );
-				if ( src_current == criteria ){
-					// Wave generation
-					uint64_t span = outMatrix[x][y].freq_max - outMatrix[x][y].freq_min + 1;
-					uint64_t scaled = msg->value * span;
-					outMatrix[x][y].freq_current = (scaled >> 32) + outMatrix[x][y].freq_min;
-					continue;					
-				}	
 			}
 		}
-		
+		return;
+	}
+
+	// Handle outputs
+	for (uint8_t x = 0; x < 4; x++){
+		for (uint8_t y = 0; y < 4; y++){
+			out_handler[x][y].handle_cvm(msg);
+		}
+	}
+
+	// TODO: refactor envelope handling
+	if (msg->status == CC){
+		// TODO: controlnum -> control lookup table
+		uint16_t controlNum = msg->index;
 		// Search envelopes
 		uint32_t criteria = ( uint8_t(ctrlType_t::controller) << 0 ) | ( msg->channel << 8 ) | ( controlNum << 16 );
 		for (uint8_t i = 0; i < 4; i++){
@@ -772,227 +1037,26 @@ void GO_MIDI_Voice(struct umpCVM* msg){
 				}				
 			}
 		}
-	} else if(msgType == ctrlType_t::program){
-		uint32_t criteria = (uint8_t(GOType_t::DC)) | ( msg->channel << 8 ) | ( msg->value << 16 );
-		for (uint8_t x = 0; x < 4; x++){
-			for (uint8_t y = 0; y < 4; y++){
-				uint32_t src_current =
-				( uint8_t(outMatrix[x][y].type) << 0 ) |
-				( outMatrix[x][y].gen_source.channel << 8 ) |
-				( outMatrix[x][y].gen_source.sourceNum << 16 );
-				if ( src_current == criteria ){
-					if (outMatrix[x][y].currentOut == outMatrix[x][y].max_range){
-						outMatrix[x][y].currentOut = outMatrix[x][y].min_range;
-					} else {
-						outMatrix[x][y].currentOut = outMatrix[x][y].max_range;
-					}
-					return;
-				}
-			}
-		}
-	} else {
-		if (msg->channel == 9){
-			// Drum channel
-			uint32_t criteria = ( msg->channel << 8 ) | ( msg->note << 16 );
-			if (msg->status == NOTE_ON){
-				bool foundLane = false;
-				for (uint8_t x = 0; x < 4; x++){
-					for (uint8_t y = 0; y < 4; y++){
-						uint32_t src_current = 
-							( uint8_t(outMatrix[x][y].type) << 0 ) |
-							( outMatrix[x][y].gen_source.channel << 8 ) |
-							( outMatrix[x][y].gen_source.sourceNum << 16 );
-						if ( src_current == ( criteria | uint8_t(GOType_t::Envelope) ) ){
-							foundLane = true;
-							outMatrix[x][y].envelope_stage = 1;
-							outMatrix[x][y].currentOut = outMatrix[x][y].min_range;
-							continue;
-						}
-						if ( src_current == ( criteria | uint8_t(GOType_t::Gate) ) ){
-							foundLane = true;
-							outMatrix[x][y].currentOut = outMatrix[x][y].max_range;
-							continue;
-						} 
-						if ( src_current == ( criteria | uint8_t(GOType_t::Velocity) ) ){
-							foundLane = true;
-							outMatrix[x][y].currentOut = Rescale_16bit(msg->value, outMatrix[x][y].min_range, outMatrix[x][y].max_range);
-							continue;
-						}
-					}
-					if (foundLane){
-						// Assume all controls are on single lane
-						break;
-					}
-				}
-			} else if (msg->status == NOTE_OFF){
-				bool foundLane = false;
-				for (uint8_t x = 0; x < 4; x++){
-					for (uint8_t y = 0; y < 4; y++){
-						uint32_t src_current =
-							( uint8_t(outMatrix[x][y].type) << 0 ) |
-							( outMatrix[x][y].gen_source.channel << 8 ) |
-							( outMatrix[x][y].gen_source.sourceNum << 16 );
-						if ( src_current == ( criteria | uint8_t(GOType_t::Envelope) ) ){
-							foundLane = true;
-							outMatrix[x][y].envelope_stage = 4;
-							continue;
-						} 
-						if ( src_current == ( criteria | uint8_t(GOType_t::Gate) ) ){
-							foundLane = true;
-							outMatrix[x][y].currentOut = outMatrix[x][y].min_range;
-							continue;
-						}
-					}
-					if (foundLane){
-						// Assume all controls are on single lane
-						break;
-					}
-				}
-			}
-		} else if(keyChannel == msg->channel) {
-			if (msg->status == NOTE_ON){
-				uint8_t tempLane = 250;
-				for (uint8_t x = 0; x < 4; x++){
-					uint8_t lane = (currentKeyLane + x) & 0b11;
-					if (keyLanes[lane].state == keyLanes_t::KeyPlaying && keyLanes[lane].note == msg->note){
-						// Note is already playing
-						return;
-					}
-					if (tempLane & 0x80){
-						if (keyLanes[lane].state == keyLanes_t::KeyIdle){
-							// Found an unused lane
-							tempLane = lane;
-							//break;
-						} else if ((tempLane == 250) && (keyLanes[lane].state == keyLanes_t::KeyPlaying)){
-							// Next lane in round-robin
-							tempLane = lane | 0x80;
-						}
-					}
-				}
-				
-				tempLane &= 0x7f;
-				
-				if (tempLane == 250){
-					// No keys configured
-					return;
-				}
-				
-				// Update starting lane for Round-robin arbitration
-				currentKeyLane = (tempLane + 1) & 0b11;
-				
-				if (keyLanes[tempLane].state == keyLanes_t::KeyPlaying){
-					// Note already playing in lane. Push to queue
-					noteQueue[queueIndex++].note = keyLanes[tempLane].note;
-				}
-				
-				Start_Note(tempLane, msg->note, msg->value);
-				
-			} else if (msg->status == NOTE_OFF){
-				// Find the used lane
-				uint8_t tempLane = 250;
-				for (uint8_t x = 0; x < 4; x++){
-					if (keyLanes[x].state == keyLanes_t::KeyPlaying){
-						if (keyLanes[x].note == msg->note){
-							tempLane = x;
-							break;
-						}
-					}
-				}
-				
-				// Look for note in queue
-				uint8_t i;
-				for (i = 0; i < queueIndex; i++){
-					if (noteQueue[i].note == msg->note){
-						queueIndex--;
-						break;
-					}
-				}
-				// Overwrite that note
-				for (; i < queueIndex; i++){
-					noteQueue[i] = noteQueue[i+1];
-				}
-				
-				if (tempLane != 250){
-					if (queueIndex > 0){
-						// Start last note which was put in queue
-						uint8_t tempNote = noteQueue[--queueIndex].note;
-						Start_Note(tempLane, tempNote, msg->value);
-					} else {
-						// Stop note
-						Stop_Note(tempLane);
-					}
-				}
-			} else if (msg->status == PITCH_BEND){
-				uint16_t tempBend = Rescale_16bit(msg->value >> 16, minBend, maxBend);
-				currentBend = tempBend - 0x7fff;
-				
-				// update v/oct outputs
-				uint32_t criteria = ( uint8_t(GOType_t::DC) << 0 ) | ( keyChannel << 8 ) | ( uint8_t(ctrlType_t::key) << 16 );
-				for (uint8_t x = 0; x < 4; x++){
-					if (keyLanes[x].state != keyLanes_t::KeyPlaying){
-						continue;
-					}
-					for (uint8_t y = 0; y < 4; y++){
-						uint32_t src_current = 
-							( uint8_t(outMatrix[x][y].type) << 0 ) | 
-							( outMatrix[x][y].gen_source.channel << 8 ) | 
-							( uint8_t(outMatrix[x][y].gen_source.sourceType) << 16 );
-						if ( src_current == criteria ){
-							outMatrix[x][y].currentOut = Note_To_Output(keyLanes[x].note);
-							break;
-						}
-					}
-				}
-			} else if (msg->status == CHANNEL_PRESSURE){
-				uint32_t criteria = ( uint8_t(GOType_t::Pressure) << 0 ) | ( keyChannel << 8 ) | ( uint8_t(ctrlType_t::key) << 16 );
-				for (uint8_t x = 0; x < 4; x++){
-					for (uint8_t y = 0; y < 4; y++){
-						uint32_t src_current = 
-							( uint8_t(outMatrix[x][y].type) << 0 ) | 
-							( outMatrix[x][y].gen_source.channel << 8 ) | 
-							( uint8_t(outMatrix[x][y].gen_source.sourceType) << 16 );
-						if ( src_current == criteria ){
-							outMatrix[x][y].currentOut = Rescale_16bit(msg->value >> 16, outMatrix[x][y].min_range, outMatrix[x][y].max_range);
-							break;
-						}
-					}
-				}
-			} else if (msg->status == KEY_PRESSURE){
-				uint32_t criteria = ( uint8_t(GOType_t::Pressure) << 0 ) | ( keyChannel << 8 ) | ( uint8_t(ctrlType_t::key) << 16 ) | ( msg->note << 24 );
-				for (uint8_t x = 0; x < 4; x++){
-					for (uint8_t y = 0; y < 4; y++){
-						uint32_t src_current = 
-							( uint8_t(outMatrix[x][y].type) << 0 ) | 
-							( outMatrix[x][y].gen_source.channel << 8 ) | 
-							( uint8_t(outMatrix[x][y].gen_source.sourceType) << 16 ) |
-							( keyLanes[x].note << 24 );
-						if ( src_current == criteria ){
-							outMatrix[x][y].currentOut = Rescale_16bit(msg->value >> 16, outMatrix[x][y].min_range, outMatrix[x][y].max_range);
-							break;
-						}
-					}
-				}
-			}
-		}		
 	}
 	return;
 }
 
-void GO_MIDI_Realtime(struct umpGeneric* msg){
+void clk_output_c::handle_realtime(GenOut_t* genout, umpGeneric* msg){
 	if(msg->status == TIMINGCLOCK){
-		for (uint8_t x = 0; x < 4; x++){
-			for (uint8_t y = 0; y < 4; y++){
-				GenOut_t* tempOut = &outMatrix[x][y];
-				if (tempOut->type == GOType_t::CLK){
-					tempOut->outCount++;
-					if (tempOut->outCount > tempOut->freq_current){
-						tempOut->outCount = 0;
-						tempOut->currentOut = (tempOut->currentOut == tempOut->max_range) ? tempOut->min_range : tempOut->max_range;
-					}
-				}
-			}
+		genout->outCount++;
+		if (genout->outCount > genout->freq_current){
+			genout->outCount = 0;
+			genout->currentOut = (genout->currentOut == genout->max_range) ? genout->min_range : genout->max_range;
 		}
 	}
+}
+
+void GO_MIDI_Realtime(struct umpGeneric* msg){
+		for (uint8_t x = 0; x < 4; x++){
+			for (uint8_t y = 0; y < 4; y++){
+				out_handler[x][y].handle_realtime(msg);
+			}
+		}
 }
 
 void GO_Service(){
@@ -1001,17 +1065,7 @@ void GO_Service(){
 	
 	for (uint8_t x = 0; x < 4; x++){
 		for (uint8_t y = 0; y < 4; y++){
-			switch(outMatrix[x][y].type){
-				case GOType_t::LFO:
-					GO_LFO(&outMatrix[x][y]);
-					break;
-				case GOType_t::Envelope:
-					GO_ENV(&outMatrix[x][y]);
-					break;
-				default:
-					break;
-			}
-			//PWM_Set(x,y,outMatrix[x][y].currentOut);
+			out_handler[x][y].update();
 		}
 	}
 }
@@ -1021,22 +1075,12 @@ void GO_Service(uint8_t x){
 	if (needScan) Scan_Matrix();
 	
 	for (uint8_t y = 0; y < 4; y++){
-		switch(outMatrix[x][y].type){
-		case GOType_t::LFO:
-			GO_LFO(&outMatrix[x][y]);
-			break;
-		case GOType_t::Envelope:
-			GO_ENV(&outMatrix[x][y]);
-			break;
-		default:
-			break;
-		}
-		//PWM_Set(x,y,outMatrix[x][y].currentOut);
+		out_handler[x][y].update();
 	}
 }
 
 // Return sine output from linear input
-uint16_t TriSine(uint16_t in){
+uint16_t base_output_c::TriSine(uint16_t in){
 	// Smoothstep approximation
 	// In**1	
 	uint32_t tempIn = in;
