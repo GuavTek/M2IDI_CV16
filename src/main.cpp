@@ -189,8 +189,8 @@ void main1(void) {
 	const uint32_t lm_div = dac_rate / lm_freq;
 
     SPI_DAC.Init(SPI_DAC_CONF);
-	irq_set_exclusive_handler(DMA_IRQ_0, dma0_irq_handler);
-	irq_set_enabled(DMA_IRQ_0, true);
+	//irq_set_exclusive_handler(DMA_IRQ_0, dma0_irq_handler);
+	//irq_set_enabled(DMA_IRQ_0, true);
 
 	while(!DAC.optimize_linearity(1));
 	sleep_ms(10);
@@ -244,7 +244,7 @@ void main1(void) {
     }
 }
 
-void dac_pwm_handler(){
+void __time_critical_func(dac_pwm_handler)(){
     pwm_clear_irq(pwm_gpio_to_slice_num(M2IDI_MUXINH_PIN));
     dac_valid = 0;
 
@@ -278,9 +278,8 @@ void dac_pwm_handler(){
 }
 
 void dma0_irq_handler (){
-	SPI_DAC.Handler();
 }
 
-void dma1_irq_handler (){
+void __time_critical_func(dma1_irq_handler) (){
 	SPI_CAN.Handler();
 }

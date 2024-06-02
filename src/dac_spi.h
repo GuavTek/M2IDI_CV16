@@ -28,56 +28,47 @@ class DAC_SPI_C : public communication_base_c
 {
 	public:
 		void Init(const dac_spi_config_t config);
-		inline void Handler();
 		uint8_t Transfer(char* buff, uint8_t length, com_state_e state);
-		inline int8_t get_dma_tx() {return dmaTx;}
 		DAC_SPI_C(PIO const pio_inst) : communication_base_c(1), pio(pio_inst){pio_sm = pio_claim_unused_sm(pio_inst, 1);} ;
 		~DAC_SPI_C(){};
 	protected:
 		PIO const pio;
         uint8_t pio_sm;
-		uint8_t dmaNum;
-		int8_t dmaTx;
-        uint32_t buffer[4];
 };
-
-// SPI interrupt handler
-inline void DAC_SPI_C::Handler(){
-	if (currentState == Idle){
-		return;
-	}
-	if (dma_irqn_get_channel_status(dmaNum, dmaTx)){
-		dma_irqn_acknowledge_channel(dmaNum, dmaTx);
-		currentState = Idle;
-		slaveCallbacks[0]->com_cb();
-	}
-}
 
 class fast_max5134_c : public max5134_c {
 	public:
-    void set(uint16_t value[4], uint8_t write_thru){
-        max5134_c::set(value, write_thru);
+    void __time_critical_func(set)(uint16_t value[4], uint8_t write_thru){
+    	for (uint8_t i = 0; i < 4; i++){
+    	    dac_value[i] = value[i];
+    	}
         write_to_dac(0);
     }
     uint8_t Set_SS(uint8_t enabled) {return 1;};
+	fast_max5134_c(communication_base_c* const comInstance, uint8_t slaveNum) : max5134_c(comInstance, slaveNum) {
+		// The DAC commands will not change
+		dac_write_buff[0] = 0b00010000 | (1 << 0);
+		dac_write_buff[3] = 0b00010000 | (1 << 1);
+		dac_write_buff[6] = 0b00010000 | (1 << 2);
+		dac_write_buff[9] = 0b00010000 | (1 << 3);
+	}
     protected:
-    void write_to_dac(uint8_t output){
-        char temp_buff[12];
-        uint8_t bi = 0;
-        for (uint8_t i = 0; i < 4; i++){
-            if (need_update & (1 << i)) {
-                temp_buff[bi] = 0b00010000 | (1 << i);
-                temp_buff[bi++] |= ((need_update >> 4) << (5-i)) & 0b00100000; // Enable write-through?
-                temp_buff[bi++] = (dac_value[i] >> 8) & 0xff;
-                temp_buff[bi++] = dac_value[i] & 0xff;
-            }
-        }
-        if (com->Get_Status() == com_state_e::Idle){
-            com->Transfer(temp_buff, bi, Tx);
-            need_update = 0;
-        }
+	char dac_write_buff[12];
+    void __time_critical_func(write_to_dac)(uint8_t output){
+		// Channel 0
+        dac_write_buff[1] = (dac_value[0] >> 8) & 0xff;
+        dac_write_buff[2] = dac_value[0] & 0xff;
+        // Channel 1
+        dac_write_buff[4] = (dac_value[1] >> 8) & 0xff;
+        dac_write_buff[5] = dac_value[1] & 0xff;
+		// Channel 2
+        dac_write_buff[7] = (dac_value[2] >> 8) & 0xff;
+        dac_write_buff[8] = dac_value[2] & 0xff;
+		// Channel 3
+        dac_write_buff[10] = (dac_value[3] >> 8) & 0xff;
+        dac_write_buff[11] = dac_value[3] & 0xff;
+        com->Transfer(dac_write_buff, 12, Tx);
     }
-    using max5134_c::max5134_c;
 };
 
 #endif /* DAC_SPI_H_ */
