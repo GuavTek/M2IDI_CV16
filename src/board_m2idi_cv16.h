@@ -10,28 +10,28 @@
 
 // --- LED MATRIX ---
 #ifndef LEDC1 
-#define LEDC1 12
+#define LEDC1 25
 #endif
 #ifndef LEDC2 
-#define LEDC2 13
+#define LEDC2 19
 #endif
 #ifndef LEDC3 
-#define LEDC3 14
+#define LEDC3 18
 #endif
 #ifndef LEDC4 
-#define LEDC4 15
+#define LEDC4 17
 #endif
 #ifndef LEDC5 
-#define LEDC5 17
+#define LEDC5 15
 #endif
 #ifndef LEDC6 
-#define LEDC6 18
+#define LEDC6 14
 #endif
 #ifndef LEDC7 
-#define LEDC7 19
+#define LEDC7 13
 #endif
 #ifndef LEDC8 
-#define LEDC8 25
+#define LEDC8 12
 #endif
 #ifndef LEDR1 
 #define LEDR1 29
