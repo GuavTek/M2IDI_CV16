@@ -18,6 +18,7 @@
 #include "generic_output.h"
 #include "menu.h"
 #include <hardware/pio.h>
+#include "ring_buffer.h"
 
 void main1(void);
 void dac_pwm_handler();
@@ -38,6 +39,7 @@ MCP2517_C CAN = MCP2517_C(&SPI_CAN, 0);
 DAC_SPI_C SPI_DAC = DAC_SPI_C(pio0);
 fast_max5134_c DAC = fast_max5134_c(&SPI_DAC, 0);
 umpProcessor MIDI;
+ring_buffer_c<64, uint32_t> midi_buffer = ring_buffer_c<64, uint32_t>();
 
 uint8_t current_group;
 uint8_t dac_processed;
@@ -64,8 +66,11 @@ int main(void){
 	MIDI.setCVM(midi_cvm_handler);
 	MIDI.setSysEx(midi_data_handler);
 	MIDI.setMidiEndpoint(midi_stream_discovery);
+	current_group = 1;
 
     menu_init();
+
+	gpio_init(M2IDI_CAN_INT_PIN);
 
     // Start core1
     multicore_reset_core1();
@@ -86,6 +91,14 @@ int main(void){
 			LM_WriteRow(4, 0b0001111111110100);
 
 		}
+		if (midi_buffer.Count() > 0){
+			MIDI.processUMP(midi_buffer.Read());
+		}
+		if (CAN.Ready()){
+			if (!gpio_get(M2IDI_CAN_INT_PIN)){
+				CAN.Check_Rx();
+			}
+		}
     }
 }
 
@@ -98,8 +111,14 @@ void CAN_Receive_Header(CAN_Rx_msg_t* data){
 // Handle MIDI CAN data
 void CAN_Receive_Data(char* data, uint8_t length){
 	// Receive MIDI payload from CAN
-	//MIDI_CAN.Decode(data, length);
-
+	for (uint8_t i = 0; i < length; i += 4){
+		uint32_t temp_data;
+		temp_data = data[i] << 24;
+		temp_data |= data[i+1] << 16;
+		temp_data |= data[i+2] << 8;
+		temp_data |= data[i+3];
+		midi_buffer.Write(temp_data);
+	}
     if (get_menu_state() == menu_status_t::Navigate){
 		smiley_timer = time_us_32() + 500000;
 		LM_WriteRow(0, 0b0000110000110000);
@@ -270,7 +289,8 @@ void __time_critical_func(dac_pwm_handler)(){
 
 	uint16_t values[4];
 	for (uint8_t i = 0; i < 4; i++){
-		values[i] = out_handler[dac_output][i].get();
+		uint8_t ii = i & 1;
+		values[i] = out_handler[dac_output ^ ii][i].get();
 	}
 	DAC.set(values, 0);
     dac_output++;
