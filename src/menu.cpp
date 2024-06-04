@@ -623,32 +623,52 @@ uint8_t menu_service(){
 			LM_WriteRow(3, 0xffff >> (16-2*mid));
 			LM_WriteRow(4, 0xffff >> (14-2*lo));
 		} else {
-			uint32_t tempNum;
+			uint16_t dispNum[4];
 			if (menuStatus == menu_status_t::Edit_8bit){
 				uint8_t* tempPoint = (uint8_t*) var_edit;
-				tempNum = *tempPoint | (*tempPoint << 8) | (*tempPoint << 16) | (*tempPoint << 24);
+				uint8_t tempExpand = *tempPoint;
+				dispNum[0] = 0;
+				for (uint8_t n = 0; n < 16; n += 2){
+					uint8_t temp = tempExpand & 1;
+					temp |= temp << 1;
+					tempExpand >>= 1;
+					dispNum[0] |= temp << n;
+				}
+				dispNum[1] = dispNum[0];
+				dispNum[2] = dispNum[0];
+				dispNum[3] = dispNum[0];
 			} else if (menuStatus == menu_status_t::Edit_16bit){
 				uint16_t* tempPoint = (uint16_t*) var_edit;
-				tempNum = *tempPoint | (*tempPoint << 16);
+				uint16_t tempExpand = *tempPoint;
+				for (uint8_t i = 0; i < 2; i++){
+					dispNum[i] = 0;
+					for (uint8_t n = 0; n < 16; n += 2){
+						uint8_t temp = tempExpand & 1;
+						temp |= temp << 1;
+						tempExpand >>= 1;
+						dispNum[i] |= temp << n;
+					}
+				}
+				dispNum[2] = dispNum[0];
+				dispNum[3] = dispNum[1];
 			} else {
 				uint32_t* tempPoint = (uint32_t*) var_edit;
-				tempNum = *tempPoint;
-			}
-			uint64_t tempNum2 = 0;
-			for (uint8_t n = 0; n < 32; n++){
-				uint8_t temp = tempNum & 1;
-				temp |= temp << 1;
-				tempNum >>= 1;
-				tempNum2 |= temp << 2*n;
+				uint32_t tempExpand = *tempPoint;
+				for (uint8_t i = 0; i < 4; i++){
+					dispNum[i] = 0;
+					for (uint8_t n = 0; n < 16; n += 2){
+						uint8_t temp = tempExpand & 1;
+						temp |= temp << 1;
+						tempExpand >>= 1;
+						dispNum[i] |= temp << n;
+					}
+				}
 			}
 			LM_WriteRow(4, 0xffff);
-			LM_WriteRow(3, tempNum & 0xffff);
-			tempNum >>= 16;
-			LM_WriteRow(2, tempNum & 0xffff);
-			tempNum >>= 16;
-			LM_WriteRow(1, tempNum & 0xffff);
-			tempNum >>= 16;
-			LM_WriteRow(0, tempNum & 0xffff);
+			LM_WriteRow(3, dispNum[0]);
+			LM_WriteRow(2, dispNum[1]);
+			LM_WriteRow(1, dispNum[2]);
+			LM_WriteRow(0, dispNum[3]);
 		}
 		return 1;
 	} else {
