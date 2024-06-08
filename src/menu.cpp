@@ -129,7 +129,7 @@ void Enter_Env1()			{ chanSel = 1; Enter_Kid(); }
 void Enter_Env2()			{ chanSel = 2; Enter_Kid(); }
 void Enter_Env3()			{ chanSel = 3; Enter_Kid(); }
 void Exit_Env()			{ chanSel = 0; Enter_Kid(); }
-void Edit_Bend()			{ menuStatus = Edit_int; var_edit = &bendRange; max_edit = 8; }
+void Edit_Bend()			{ menuStatus = Edit_int; var_edit = &bendRange; max_edit = 12; }
 void Select_Pressure()	{ out_handler[chanSel & 0b11][chanSel >> 2].set_type(GOType_t::Pressure); needScan = true; Enter_Kid(); }
 void Select_CV()			{ out_handler[chanSel & 0b11][chanSel >> 2].set_type(GOType_t::DC); needScan = true; Enter_Kid(); }
 void Select_Gate()		{ out_handler[chanSel & 0b11][chanSel >> 2].set_type(GOType_t::Gate); needScan = true; Enter_Kid(); }

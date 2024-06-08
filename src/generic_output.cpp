@@ -33,7 +33,7 @@ constexpr struct freqs_t {
 		}
     }
     uint32_t midi[128];
-	uint32_t f1Hz = pow(2.0, 31.0)/out_rate;
+	uint32_t f1Hz = pow(2.0, 32.0)/out_rate;
 } FREQS;
 
 //template <uint32_t i>
@@ -75,7 +75,8 @@ uint8_t midi_group = 1;
 #define OUTPUT_GAIN 1		// Nominal gain
 #define INT_PER_VOLT 6553.6/OUTPUT_GAIN
 #define INT_PER_NOTE INT_PER_VOLT/12
-#define FIXED_POINT_POS 14
+#define FIXED_POINT_POS 16
+#define FIXED_VOLT_PER_INT ((uint32_t) ((1/INT_PER_VOLT) * (1 << FIXED_POINT_POS)))
 #define FIXED_INT_PER_NOTE ((uint32_t) (INT_PER_NOTE * (1 << FIXED_POINT_POS)))
 
 // TODO: Setting gate on y > 1 breaks lanes. Sometimes???
@@ -204,8 +205,8 @@ void Scan_Matrix(){
 	}
 	
 	// Configure note bend range
-	maxBend = 0x7fff + (uint32_t)((INT_PER_VOLT/8) * bendRange);
-	minBend = 0x7fff - (uint32_t)((INT_PER_VOLT/8) * bendRange);
+	maxBend = 0x7fff + (uint32_t)(INT_PER_NOTE * (bendRange+1));
+	minBend = 0x7fff - (uint32_t)(INT_PER_NOTE * (bendRange+1));
 	
 	needScan = false;
 }
@@ -300,6 +301,22 @@ inline void Start_Note(uint8_t lane, uint8_t note, uint16_t velocity){
 			tempOut->envelope_stage = 1;
 			continue;
 		}
+
+		// TODO: not copy-paste
+		if ( tempOut->type == GOType_t::LFO ){
+			tempOut->gen_source.sourceNum = note;
+			int64_t tempBend = currentBend;
+			tempBend *= FIXED_VOLT_PER_INT;
+			tempBend *= FREQS.midi[note];
+			if (tempBend < 0) {
+				tempBend >>= 1;	// Bending down one octave should halve the frequency
+			}
+			tempBend >>= FIXED_POINT_POS;
+			int32_t bendfreq = tempBend;
+			tempOut->freq_current = FREQS.midi[note] + bendfreq;
+			continue;
+		}
+		
 	}
 	
 	keyLanes[lane].state = keyLanes_t::KeyPlaying;
@@ -331,6 +348,21 @@ inline void Start_Note(uint8_t lane, uint8_t note, uint16_t velocity){
 			tempOut->gen_source.sourceNum = note;
 			//tempOut->outCount = tempOut->min_range << 16;
 			tempOut->envelope_stage = 1;
+			continue;
+		}
+
+		// TODO: not copy-paste
+		if ( tempOut->type == GOType_t::LFO ){
+			tempOut->gen_source.sourceNum = note;
+			int64_t tempBend = currentBend;
+			tempBend *= FREQS.midi[note];
+			tempBend *= FIXED_VOLT_PER_INT;
+			if (tempBend < 0) {
+				tempBend >>= 1;	// Bending down one octave should halve the frequency
+			}
+			tempBend >>= FIXED_POINT_POS;
+			int32_t bendfreq = tempBend;
+			tempOut->freq_current = FREQS.midi[note] + bendfreq;
 			continue;
 		}
 		
@@ -454,13 +486,13 @@ void GO_Init(){
 	out_handler[0][1].state.max_range = 0xffff;
 	out_handler[0][1].state.min_range = 0;
 	out_handler[0][1].state.direction = 1;
-	out_handler[0][1].state.freq_current = FREQS.f1Hz * 2; // 0x0040 << 16;
+	out_handler[0][1].state.freq_current = FREQS.f1Hz; // 0x0040 << 16;
 	out_handler[0][2].set_type(GOType_t::LFO);
 	out_handler[0][2].state.shape = WavShape_t::Triangle;
 	out_handler[0][2].state.max_range = 0xffff;
 	out_handler[0][2].state.min_range = 0;
 	out_handler[0][2].state.direction = -1;
-	out_handler[0][2].state.freq_current = FREQS.midi[69] * 2; // 0x0020 << 16;
+	out_handler[0][2].state.freq_current = FREQS.midi[69]; // 0x0020 << 16;
 	
 	keyChannel = 1;
 	keyLanes[0].state = keyLanes_t::KeyNone;
@@ -468,9 +500,11 @@ void GO_Init(){
 	keyLanes[2].state = keyLanes_t::KeyNone;
 	keyLanes[3].state = keyLanes_t::KeyIdle;
 	
-	out_handler[3][0].set_type(GOType_t::DC);
+	out_handler[3][0].set_type(GOType_t::LFO);
 	out_handler[3][0].state.gen_source.sourceType = ctrlType_t::key;
 	out_handler[3][0].state.gen_source.channel = 0;
+	out_handler[3][0].state.shape = WavShape_t::Triangle;
+	out_handler[3][0].state.direction = -1;
 	out_handler[3][0].state.max_range = 0xffff;
 	out_handler[3][0].state.min_range = 0;
 	out_handler[3][1].set_type(GOType_t::Gate);
@@ -489,9 +523,11 @@ void GO_Init(){
 	out_handler[3][3].state.max_range = 0xffff;
 	out_handler[3][3].state.min_range = 0;
 	out_handler[3][3].state.freq_current = 23;
-	out_handler[2][0].set_type(GOType_t::DC);
+	out_handler[2][0].set_type(GOType_t::LFO);
 	out_handler[2][0].state.gen_source.sourceType = ctrlType_t::key;
 	out_handler[2][0].state.gen_source.channel = 0;
+	out_handler[2][0].state.shape = WavShape_t::Triangle;
+	out_handler[2][0].state.direction = -1;
 	out_handler[2][0].state.max_range = 0xffff;
 	out_handler[2][0].state.min_range = 0;
 	out_handler[2][1].set_type(GOType_t::Gate);
@@ -574,7 +610,7 @@ void generic_output_c::set_type(GOType_t type){
 		break;
 	case GOType_t::CLK:
 		current_handler = &clk_handler;
-		state.freq_current=12; 
+		//state.freq_current=12; 
 		break;
 	case GOType_t::Pressure:
 		current_handler = &pressure_handler;
@@ -599,9 +635,9 @@ void lfo_output_c::update(GenOut_t* go){
 		go->outCount -= go->freq_current;
 		go->currentOut = Rescale_16bit(TriSine(go->outCount >> 16), go->min_range, go->max_range);
 	} else if (go->shape == WavShape_t::Square){
-		go->outCount -= go->freq_current;
+		go->outCount -= go->freq_current*2;
 		uint32_t remain = go->outCount;
-		if (remain < go->freq_current){
+		if (remain < (go->freq_current*2)){
 			if (go->currentOut == go->min_range){
 				go->currentOut = go->max_range;
 			} else {
@@ -617,22 +653,22 @@ void lfo_output_c::update(GenOut_t* go){
 		
 		if (go->direction == 1){
 			uint32_t remain = (0xFFFF'FFFF << 16) - go->outCount;
-			if (remain <= go->freq_current){
+			if (remain <= (2*go->freq_current)){
 				// change direction
 				go->direction = -1;
-				uint32_t diff = go->freq_current - remain;
+				uint32_t diff = (2*go->freq_current) - remain;
 				go->outCount = (0xFFFF'FFFF << 16) - diff;
 			} else {
-				go->outCount += go->freq_current;
+				go->outCount += (2*go->freq_current);
 			}
 		} else {
 			uint32_t remain = go->outCount;
-			if (remain <= go->freq_current){
+			if (remain <= (2*go->freq_current)){
 				go->direction = 1;
-				uint32_t diff = go->freq_current - remain;
+				uint32_t diff = (2*go->freq_current) - remain;
 				go->outCount = diff;
 			} else {
-				go->outCount -= go->freq_current;
+				go->outCount -= (2*go->freq_current);
 			}
 		}
 	}
@@ -712,6 +748,12 @@ void dc_output_c::handle_cvm(GenOut_t* genout, umpCVM* msg){
 		}
 		break;
 	case PITCH_BEND:
+		// update v/oct outputs
+		criteria = ( keyChannel << 0 ) | ( uint8_t(ctrlType_t::key) << 8 );
+		src_current = ( genout->gen_source.channel << 0 ) | ( uint8_t(genout->gen_source.sourceType) << 8 );
+		if ( src_current == criteria ){
+			genout->currentOut = Note_To_Output(genout->gen_source.sourceNum);
+		}
 		break;
 	default:
 		return;
@@ -722,26 +764,47 @@ void dc_output_c::handle_cvm(GenOut_t* genout, umpCVM* msg){
 void lfo_output_c::handle_cvm(GenOut_t* genout, umpCVM* msg){
 	uint32_t criteria;
 	uint32_t src_current;
-	if (genout->gen_source.sourceType != ctrlType_t::controller){
-		return;
+	if (genout->gen_source.sourceType == ctrlType_t::controller){
+		if (msg->status == CC){
+			criteria = ( msg->channel << 0 ) | ( msg->index << 8 );
+			src_current = (genout->gen_source.channel << 0) | (genout->gen_source.sourceNum << 8);
+		} else if (msg->status == NRPN){
+			criteria = ( msg->channel << 0 ) | ( msg->index << 8 );	// TODO: handle banks?
+			src_current = (genout->gen_source.channel << 0) | (genout->gen_source.sourceNum << 8);
+		} else {
+			return;
+		}	
+		if ( src_current == criteria ){
+			// Wave generation
+			uint64_t span = genout->freq_max - genout->freq_min + 1;
+			uint64_t scaled = msg->value * span;
+			genout->freq_current = (scaled >> 32) + genout->freq_min;
+		}	
+	} else if (genout->gen_source.sourceType == ctrlType_t::key){
+		uint32_t criteria = ( keyChannel << 0 ) | ( uint8_t(ctrlType_t::key) << 8 );
+		uint32_t src_current = ( genout->gen_source.channel << 0 ) | ( uint8_t(genout->gen_source.sourceType) << 8 );
+		if (src_current != criteria ) {
+			return;
+		}
+		// TODO: allow detuning and sub-audible oscillators
+		// TODO: handle range limiting
+		// TODO: exponential bending
+		if (msg->status == NOTE_ON){
+			//genout->freq_current = FREQS.midi[msg->note];
+			genout->gen_source.sourceNum = msg->note;
+		} else if (msg->status == PITCH_BEND){
+			// Bend must be taken account of at note start too
+		}
+		int64_t tempBend = currentBend;
+		tempBend *= FREQS.midi[genout->gen_source.sourceNum];
+		tempBend *= FIXED_VOLT_PER_INT;
+		if (tempBend < 0) {
+			tempBend >>= 1;	// Bending down one octave should halve the frequency
+		}
+		tempBend >>= FIXED_POINT_POS;
+		int32_t bendfreq = tempBend;
+		genout->freq_current = FREQS.midi[genout->gen_source.sourceNum] + bendfreq;
 	}
-	if (msg->status == CC){
-		criteria = ( msg->channel << 0 ) | ( msg->index << 8 );
-		src_current = (genout->gen_source.channel << 0) | (genout->gen_source.sourceNum << 8);
-	} else if (msg->status == NRPN){
-		criteria = ( msg->channel << 0 ) | ( msg->index << 8 );	// TODO: handle banks?
-		src_current = (genout->gen_source.channel << 0) | (genout->gen_source.sourceNum << 8);
-
-	} else {
-		return;
-	}
-	
-	if ( src_current == criteria ){
-		// Wave generation
-		uint64_t span = genout->freq_max - genout->freq_min + 1;
-		uint64_t scaled = msg->value * span;
-		genout->freq_current = (scaled >> 32) + genout->freq_min;
-	}	
 }
 
 void envelope_output_c::handle_cvm(GenOut_t* genout, umpCVM* msg){
@@ -940,22 +1003,12 @@ void GO_MIDI_Voice(struct umpCVM* msg){
 	} else if (msg->status == PITCH_BEND){
 		uint16_t tempBend = Rescale_16bit(msg->value >> 16, minBend, maxBend);
 		currentBend = tempBend - 0x7fff;
-				
-		// update v/oct outputs
-		uint32_t criteria = ( uint8_t(GOType_t::DC) << 0 ) | ( keyChannel << 8 ) | ( uint8_t(ctrlType_t::key) << 16 );
 		for (uint8_t x = 0; x < 4; x++){
 			if (keyLanes[x].state != keyLanes_t::KeyPlaying){
 				continue;
 			}
 			for (uint8_t y = 0; y < 4; y++){
-				uint32_t src_current = 
-					( uint8_t(out_handler[x][y].state.type) << 0 ) | 
-					( out_handler[x][y].state.gen_source.channel << 8 ) | 
-					( uint8_t(out_handler[x][y].state.gen_source.sourceType) << 16 );
-				if ( src_current == criteria ){
-					out_handler[x][y].state.currentOut = Note_To_Output(keyLanes[x].note);
-					break;
-				}
+				out_handler[x][y].handle_cvm(msg);
 			}
 		}
 		return;
