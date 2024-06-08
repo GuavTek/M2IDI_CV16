@@ -9,6 +9,7 @@
 #include "led_matrix.h"
 #include "umpProcessor.h"
 #include "utils.h"
+#include "math.h"
 
 bool needScan = false;
 
@@ -23,6 +24,22 @@ velocity_output_c generic_output_c::velocity_handler = velocity_output_c();
 gate_output_c generic_output_c::gate_handler = gate_output_c();
 
 generic_output_c out_handler[4][4];
+
+// Generate constant array for genout oscillator frequencies
+constexpr struct freqs_t {
+    constexpr freqs_t() : midi() {
+        for (auto i = 0; i < 128; i++){
+            midi[i] = 440.0 * pow(2.0, (i-69)/12.0) * pow(2.0, 32.0) / out_rate; 
+		}
+    }
+    uint32_t midi[128];
+	uint32_t f1Hz = pow(2.0, 31.0)/out_rate;
+} FREQS;
+
+//template <uint32_t i>
+//struct PrintConst;
+//PrintConst<FREQS.midi[8]> p;
+
 
 struct keyLanes_t {
 	uint8_t note;
@@ -415,14 +432,14 @@ void GO_Init(){
 	// Temporary settings
 	out_handler[0][3].set_type(GOType_t::LFO);
 	out_handler[0][3].state.shape = WavShape_t::Sawtooth;
-	out_handler[0][3].state.max_range = 0x3fff;
+	out_handler[0][3].state.max_range = 0x7fff;
 	out_handler[0][3].state.min_range = 0;
 	out_handler[0][3].state.direction = -1;
 	out_handler[0][3].state.freq_current = 0x0008 << 16;
 	out_handler[1][2].set_type(GOType_t::LFO);
 	out_handler[1][2].state.shape = WavShape_t::Sawtooth;
 	out_handler[1][2].state.max_range = 0xffff;
-	out_handler[1][2].state.min_range = 0x3fff;
+	out_handler[1][2].state.min_range = 0x7fff;
 	out_handler[1][2].state.direction = -1;
 	out_handler[1][2].state.freq_current = 0x0010 << 16;
 	out_handler[1][2].state.freq_max = 0x01000000;
@@ -437,13 +454,13 @@ void GO_Init(){
 	out_handler[0][1].state.max_range = 0xffff;
 	out_handler[0][1].state.min_range = 0;
 	out_handler[0][1].state.direction = 1;
-	out_handler[0][1].state.freq_current = 0x0040 << 16;
+	out_handler[0][1].state.freq_current = FREQS.f1Hz * 2; // 0x0040 << 16;
 	out_handler[0][2].set_type(GOType_t::LFO);
 	out_handler[0][2].state.shape = WavShape_t::Triangle;
 	out_handler[0][2].state.max_range = 0xffff;
 	out_handler[0][2].state.min_range = 0;
 	out_handler[0][2].state.direction = -1;
-	out_handler[0][2].state.freq_current = 0x0020 << 16;
+	out_handler[0][2].state.freq_current = FREQS.midi[69] * 2; // 0x0020 << 16;
 	
 	keyChannel = 1;
 	keyLanes[0].state = keyLanes_t::KeyNone;

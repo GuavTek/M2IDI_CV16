@@ -194,7 +194,6 @@ void midi_data_handler(struct umpData msg){
 // Core1 main
 void main1(void) {
 	const uint32_t core_clk = 120000000;
-	const uint32_t out_rate = 22100;	// The rate each module output is updated
 	const uint32_t dac_rate = 4*out_rate; // The rate of DAC outputs
 	const float dac_period = 1.0 / dac_rate;
 	const float dac_delay = 0.000008; //0.000005;	// DAC has 5µs settling time (7µs for 5v range)

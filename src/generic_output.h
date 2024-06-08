@@ -212,6 +212,7 @@ class generic_output_c {
 	static gate_output_c gate_handler;
 };
 
+const uint32_t out_rate = 22100;	// The rate each output is updated
 extern bool needScan;
 extern uint8_t bendRange;
 extern generic_output_c out_handler[4][4];
