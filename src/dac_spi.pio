@@ -6,7 +6,6 @@
 ; - SCK is side-set bit 3
 ; - CSn is side-set bit 0
 ; - MOSI is OUT bit 0 (host-to-device)
-; - MISO is IN bit 0 (device-to-host)
 ;
 ; SCK frequency is clock/2
 ; CPHA=0: data is captured on the leading edge of each SCK pulse (including
