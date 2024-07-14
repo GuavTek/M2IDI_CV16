@@ -64,6 +64,7 @@ inline uint8_t extrapolate_num (uint8_t in, uint8_t pos){
 	return in | (in >> 4);
 }
 
+// TODO: set key lanes
 extern struct menuNode edit_n;
 extern struct menuNode edit_bend_n;
 extern struct menuNode edit_select_n;

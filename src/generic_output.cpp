@@ -15,6 +15,8 @@ bool needScan = false;
 
 Env_t envelopes[4];
 
+uint8_t bendRange; // TODO: remove and fix bendrange editing
+
 dc_output_c generic_output_c::dc_handler = dc_output_c();
 lfo_output_c generic_output_c::lfo_handler = lfo_output_c();
 envelope_output_c generic_output_c::envelope_handler = envelope_output_c();
@@ -24,6 +26,7 @@ velocity_output_c generic_output_c::velocity_handler = velocity_output_c();
 gate_output_c generic_output_c::gate_handler = gate_output_c();
 
 generic_output_c out_handler[4][4];
+key_handler_c key_handler = key_handler_c();
 
 // Generate constant array for genout oscillator frequencies
 constexpr struct freqs_t {
@@ -40,30 +43,6 @@ constexpr struct freqs_t {
 //struct PrintConst;
 //PrintConst<FREQS.midi[8]> p;
 
-
-struct keyLanes_t {
-	uint8_t note;
-	enum keyState_t {
-		KeyNone = 0,
-		KeyIdle = 1,
-		KeyPlaying} state;
-} keyLanes[4];
-uint8_t currentKeyLane = 0;
-uint8_t keyChannel = 1;
-GridPos_t keyPara[8];
-uint8_t keyParaNum;
-uint16_t keyMask;
-
-uint8_t bendRange = 4;
-int16_t currentBend = 0;
-uint16_t maxBend;
-uint16_t minBend;
-
-uint8_t queueIndex;
-struct {
-	uint8_t note;
-} noteQueue[32];
-
 // hasCC[4] is for envelopes
 bool hasCC[5][4];
 
@@ -79,95 +58,50 @@ uint8_t midi_group = 1;
 #define FIXED_VOLT_PER_INT ((uint32_t) ((1/INT_PER_VOLT) * (1 << FIXED_POINT_POS)))
 #define FIXED_INT_PER_NOTE ((uint32_t) (INT_PER_NOTE * (1 << FIXED_POINT_POS)))
 
-// TODO: Setting gate on y > 1 breaks lanes. Sometimes???
 // Scan the configuration
-// To populate time saving variables
+// To configure key_handler
 void Scan_Matrix(){
-	// find Keychannel
-	bool foundChannel = false;
+	key_handler.reset();
+
+	// find Keychannel and which lanes are present
+	bool found_channel = false;
+	uint8_t active_lanes = 0;
 	for(uint8_t x = 0; x < 4; x++){
 		for (uint8_t y = 0; y < 4; y++){
 			if (out_handler[x][y].state.gen_source.sourceType == ctrlType_t::key){
+				if (out_handler[x][y].get_key_lane() > 0){
+					active_lanes |= 1 << (out_handler[x][y].get_key_lane()-1);
+				}
+				if (found_channel) continue;
 				if (out_handler[x][y].state.gen_source.channel != 9){
-					keyChannel = out_handler[x][y].state.gen_source.channel;
-					foundChannel = true;
-					break;
+					key_handler.set_key_channel(out_handler[x][y].state.gen_source.channel);
+					found_channel = true;
 				}
 			}
 		}
-		if (foundChannel){
-			break;
+	}
+
+	// Map the active keylanes to the handler lanes
+	uint8_t lane_map[9];
+	lane_map[0] = 0;
+	uint8_t lane_num = 1;
+	for (uint8_t i = 0; i < 8; i++){
+		if(active_lanes & (1 << i)){
+			lane_map[i+1] = lane_num++;
+		} else {
+			lane_map[i+1] = 0;
 		}
 	}
 	
-	// Scan matrix
-	int32_t lane_conf[4];
+	// Subscribe to keylanes
 	for(uint8_t x = 0; x < 4; x++){
-		lane_conf[x] = 0;
 		for (uint8_t y = 0; y < 4; y++){
-			// Get Keylane configuration
 			if (out_handler[x][y].state.gen_source.sourceType == ctrlType_t::key){
-				if (out_handler[x][y].state.gen_source.channel == keyChannel){
-					lane_conf[x] |= 1 << (4 * ((uint8_t) out_handler[x][y].state.type) + y);
+				if (out_handler[x][y].state.gen_source.channel == key_handler.get_key_channel()){
+					key_handler.subscribe_key(&out_handler[x][y], lane_map[out_handler[x][y].get_key_lane()]);
+				} else if (out_handler[x][y].state.gen_source.channel == 9){
+					key_handler.subscribe_drum(&out_handler[x][y]);
 				}
-			}
-		}
-	}
-	
-	uint8_t maxCom = 0;
-	uint32_t comConf = 0;
-	for (uint8_t i = 0; i < 4; i++){
-		// Detect lane similarities
-		if (lane_conf[i]){
-			for (uint8_t j = 0; j < i; j++){
-				if (lane_conf[j]){
-					uint8_t numCom = 0;
-					uint32_t conf = lane_conf[i] & lane_conf[j];
-					for (uint8_t k = 0; k < 32; k++){
-						numCom += (conf >> k) & 1;	
-					}
-					if (numCom > maxCom){
-						maxCom = numCom;
-						comConf = conf;
-					}
-				}
-			}
-			// Set config for fallback
-			if (!comConf){
-				comConf = lane_conf[i];
-			}
-		}
-	}
-	
-	// Find common outputs
-	keyParaNum = 0;
-	keyMask = 0;
-	uint16_t matKey = (uint16_t) ctrlType_t::key | (keyChannel << 8);
-	for (uint8_t x = 0; x < 4; x++){
-		uint8_t hasLane = 0;
-		// Has key outputs?
-		if (lane_conf[x]){
-			for (uint8_t y = 0; y < 4; y++){
-				if (comConf & (1 << (4 * ((uint8_t) out_handler[x][y].state.type) + y))){
-					// Not a common output?
-					if ((comConf & lane_conf[x]) == comConf){
-						// Not a common output!
-						keyMask |= 1 << (y + 4*x);
-						hasLane = 1;
-						continue;
-					}
-				}
-				uint16_t tempKey = (uint16_t) out_handler[x][y].state.gen_source.sourceType | (out_handler[x][y].state.gen_source.channel << 8);
-				if (tempKey == matKey){
-					// Common output
-					keyPara[keyParaNum].x = x;
-					keyPara[keyParaNum].y = y;
-					keyParaNum++;
-				}
-			}
-			// Update keylane states
-			if (!((uint8_t) keyLanes[x].state) != !hasLane){
-				keyLanes[x].state = (keyLanes_t::keyState_t) hasLane;
 			}
 		}
 	}
@@ -204,9 +138,6 @@ void Scan_Matrix(){
 		}
 	}
 	
-	// Configure note bend range
-	maxBend = 0x7fff + (uint32_t)(INT_PER_NOTE * (bendRange+1));
-	minBend = 0x7fff - (uint32_t)(INT_PER_NOTE * (bendRange+1));
 	
 	needScan = false;
 }
@@ -244,7 +175,7 @@ inline uint16_t Note_To_Output(uint8_t note){
 	tempOut += 0x7fff - (uint16_t) (60 * INT_PER_NOTE);	// C4 is middle note -> 60 = 0V
 	
 	// Add bend
-	tempOut += currentBend;
+	tempOut += key_handler.get_current_bend();
 	
 	if (tempOut < 0){
 		tempOut = 0;
@@ -268,175 +199,6 @@ inline uint16_t Rescale_16bit(uint16_t val, uint16_t minOut, uint16_t maxOut){
 		tempResult = minOut - tempResult;
 	}
 	return (uint16_t) tempResult;
-}
-
-inline void Start_Note(uint8_t lane, uint8_t note, uint16_t velocity){
-	for (uint8_t y = 0; y < 4; y++){
-		if (!(keyMask & (1 << (y + 4*lane)))){
-			continue;
-		}
-		GenOut_t* tempOut = &out_handler[lane][y].state;
-		
-		if ( tempOut->type == GOType_t::DC ){
-			tempOut->gen_source.sourceNum = note;
-			tempOut->currentOut = Note_To_Output(note);
-			continue;
-		}
-		
-		if ( tempOut->type == GOType_t::Gate ){
-			tempOut->gen_source.sourceNum = note;
-			tempOut->currentOut = tempOut->max_range;
-			continue;
-		}
-		
-		if ( tempOut->type == GOType_t::Velocity ){
-			tempOut->gen_source.sourceNum = note;
-			tempOut->currentOut = Rescale_16bit(velocity, tempOut->min_range, tempOut->max_range);
-			continue;
-		}
-		
-		if ( tempOut->type == GOType_t::Envelope ){
-			tempOut->gen_source.sourceNum = note;
-			//tempOut->outCount = tempOut->min_range << 16;
-			tempOut->envelope_stage = 1;
-			continue;
-		}
-
-		// TODO: not copy-paste
-		if ( tempOut->type == GOType_t::LFO ){
-			tempOut->gen_source.sourceNum = note;
-			int64_t tempBend = currentBend;
-			tempBend *= FIXED_VOLT_PER_INT;
-			tempBend *= FREQS.midi[note];
-			if (tempBend < 0) {
-				tempBend >>= 1;	// Bending down one octave should halve the frequency
-			}
-			tempBend >>= FIXED_POINT_POS;
-			int32_t bendfreq = tempBend;
-			tempOut->freq_current = FREQS.midi[note] + bendfreq;
-			continue;
-		}
-		
-	}
-	
-	keyLanes[lane].state = keyLanes_t::KeyPlaying;
-	keyLanes[lane].note = note;
-	
-	// Handle shared outputs
-	for (uint8_t i = 0; i < keyParaNum; i++){
-		GenOut_t* tempOut = &out_handler[keyPara[i].x][keyPara[i].y].state;
-		
-		if ( tempOut->type == GOType_t::DC ){
-			tempOut->gen_source.sourceNum = note;
-			tempOut->currentOut = Note_To_Output(note);
-			continue;
-		}
-		
-		if ( tempOut->type == GOType_t::Gate ){
-			tempOut->gen_source.sourceNum = note;
-			tempOut->currentOut = tempOut->max_range;
-			continue;
-		}
-		
-		if ( tempOut->type == GOType_t::Velocity ){
-			tempOut->gen_source.sourceNum = note;
-			tempOut->currentOut = Rescale_16bit(velocity, tempOut->min_range, tempOut->max_range);
-			continue;
-		}
-		
-		if ( tempOut->type == GOType_t::Envelope ){
-			tempOut->gen_source.sourceNum = note;
-			//tempOut->outCount = tempOut->min_range << 16;
-			tempOut->envelope_stage = 1;
-			continue;
-		}
-
-		// TODO: not copy-paste
-		if ( tempOut->type == GOType_t::LFO ){
-			tempOut->gen_source.sourceNum = note;
-			int64_t tempBend = currentBend;
-			tempBend *= FREQS.midi[note];
-			tempBend *= FIXED_VOLT_PER_INT;
-			if (tempBend < 0) {
-				tempBend >>= 1;	// Bending down one octave should halve the frequency
-			}
-			tempBend >>= FIXED_POINT_POS;
-			int32_t bendfreq = tempBend;
-			tempOut->freq_current = FREQS.midi[note] + bendfreq;
-			continue;
-		}
-		
-	}
-}
-
-inline void Stop_Note(uint8_t lane){
-	for (uint8_t y = 0; y < 4; y++){
-		if (!(keyMask & (1 << (y + 4*lane)))){
-			continue;
-		}
-		
-		if ( out_handler[lane][y].state.type == GOType_t::Gate ){
-			out_handler[lane][y].state.currentOut = out_handler[lane][y].state.min_range;
-			continue;
-		} 
-		
-		if ( out_handler[lane][y].state.type == GOType_t::Envelope ){
-			out_handler[lane][y].state.envelope_stage = 4;
-			continue;
-		}
-	}
-	
-	keyLanes[lane].state = keyLanes_t::KeyIdle;
-	
-	// Check lanestates, to know if shared outputs should be turned off
-	bool foundActive = false;
-	for (uint8_t i = 0; i < 4; i++){
-		if (keyLanes[i].state == keyLanes_t::KeyPlaying){
-			foundActive = true;
-			break;
-		}
-	}
-	
-	// Handle shared outputs
-	for (uint8_t i = 0; i < keyParaNum; i++){
-		GenOut_t* tempOut = &out_handler[keyPara[i].x][keyPara[i].y].state;
-				
-		if ( tempOut->type == GOType_t::Gate ){
-			if (!foundActive){
-				tempOut->currentOut = tempOut->min_range;
-			}
-			continue;
-		}
-		
-		if ( tempOut->type == GOType_t::Envelope ){
-			if (foundActive){
-				tempOut->envelope_stage = 1;
-			} else {
-				tempOut->envelope_stage = 4;
-			}
-			continue;
-		}
-		
-	}
-	
-}
-
-inline void Stop_All_Notes(){
-	queueIndex = 0;
-	for(uint8_t x = 0; x < 4; x++){
-		if (keyLanes[x].state == keyLanes_t::KeyPlaying){
-			keyLanes[x].state = keyLanes_t::KeyIdle;
-		}
-		for (uint8_t y = 0; y < 4; y++){
-			GenOut_t* tempOut = &out_handler[x][y].state;
-			if (tempOut->type == GOType_t::Envelope){
-				tempOut->currentOut = tempOut->min_range;
-				tempOut->envelope_stage = 4;
-			} else if (tempOut->type == GOType_t::Gate){
-				tempOut->currentOut = tempOut->min_range;
-			}
-		}
-	}
 }
 
 inline void Reset_All_Controllers(){
@@ -494,11 +256,8 @@ void GO_Init(){
 	out_handler[0][2].state.direction = -1;
 	out_handler[0][2].state.freq_current = FREQS.midi[69]; // 0x0020 << 16;
 	
-	keyChannel = 1;
-	keyLanes[0].state = keyLanes_t::KeyNone;
-	keyLanes[1].state = keyLanes_t::KeyNone;
-	keyLanes[2].state = keyLanes_t::KeyNone;
-	keyLanes[3].state = keyLanes_t::KeyIdle;
+	key_handler.set_key_channel(1);
+	key_handler.set_bend_range(4);
 	
 	out_handler[3][0].set_type(GOType_t::LFO);
 	out_handler[3][0].state.gen_source.sourceType = ctrlType_t::key;
@@ -714,11 +473,15 @@ void envelope_output_c::update(GenOut_t* go){
 	go->currentOut = Rescale_16bit(go->outCount >> 16, go->min_range, go->max_range);
 }
 
+// TODO: handle RPN for poly pitch bend
+// TODO: handle note on attribute data for microtonal
 void dc_output_c::handle_cvm(GenOut_t* genout, umpCVM* msg){
 	uint32_t src_current;
 	uint32_t criteria;
 	switch (msg->status){
 	case NOTE_ON:
+		genout->gen_source.sourceNum = msg->note;
+		genout->currentOut = Note_To_Output(msg->note);
 		// Expect caller to check channel etc
 		return;
 	case NOTE_OFF:
@@ -749,7 +512,7 @@ void dc_output_c::handle_cvm(GenOut_t* genout, umpCVM* msg){
 		break;
 	case PITCH_BEND:
 		// update v/oct outputs
-		criteria = ( keyChannel << 0 ) | ( uint8_t(ctrlType_t::key) << 8 );
+		criteria = ( key_handler.get_key_channel() << 0 ) | ( uint8_t(ctrlType_t::key) << 8 );
 		src_current = ( genout->gen_source.channel << 0 ) | ( uint8_t(genout->gen_source.sourceType) << 8 );
 		if ( src_current == criteria ){
 			genout->currentOut = Note_To_Output(genout->gen_source.sourceNum);
@@ -761,6 +524,8 @@ void dc_output_c::handle_cvm(GenOut_t* genout, umpCVM* msg){
 }
 
 // TODO: use CC/NRPN lookup table
+// TODO: handle RPN for poly pitch bend
+// TODO: handle note on attribute data for microtonal
 void lfo_output_c::handle_cvm(GenOut_t* genout, umpCVM* msg){
 	uint32_t criteria;
 	uint32_t src_current;
@@ -768,7 +533,7 @@ void lfo_output_c::handle_cvm(GenOut_t* genout, umpCVM* msg){
 		if (msg->status == CC){
 			criteria = ( msg->channel << 0 ) | ( msg->index << 8 );
 			src_current = (genout->gen_source.channel << 0) | (genout->gen_source.sourceNum << 8);
-		} else if (msg->status == NRPN){
+		} else if (msg->status == NRPN){	// TODO: per-note CC
 			criteria = ( msg->channel << 0 ) | ( msg->index << 8 );	// TODO: handle banks?
 			src_current = (genout->gen_source.channel << 0) | (genout->gen_source.sourceNum << 8);
 		} else {
@@ -781,7 +546,7 @@ void lfo_output_c::handle_cvm(GenOut_t* genout, umpCVM* msg){
 			genout->freq_current = (scaled >> 32) + genout->freq_min;
 		}	
 	} else if (genout->gen_source.sourceType == ctrlType_t::key){
-		uint32_t criteria = ( keyChannel << 0 ) | ( uint8_t(ctrlType_t::key) << 8 );
+		uint32_t criteria = ( key_handler.get_key_channel() << 0 ) | ( uint8_t(ctrlType_t::key) << 8 );
 		uint32_t src_current = ( genout->gen_source.channel << 0 ) | ( uint8_t(genout->gen_source.sourceType) << 8 );
 		if (src_current != criteria ) {
 			return;
@@ -795,7 +560,7 @@ void lfo_output_c::handle_cvm(GenOut_t* genout, umpCVM* msg){
 		} else if (msg->status == PITCH_BEND){
 			// Bend must be taken account of at note start too
 		}
-		int64_t tempBend = currentBend;
+		int64_t tempBend = key_handler.get_current_bend();
 		tempBend *= FREQS.midi[genout->gen_source.sourceNum];
 		tempBend *= FIXED_VOLT_PER_INT;
 		if (tempBend < 0) {
@@ -808,39 +573,303 @@ void lfo_output_c::handle_cvm(GenOut_t* genout, umpCVM* msg){
 }
 
 void envelope_output_c::handle_cvm(GenOut_t* genout, umpCVM* msg){
-	
+	if (msg->status == NOTE_ON) {
+		genout->gen_source.sourceNum = msg->note;
+		//genout->outCount = tempOut->min_range << 16;
+		genout->envelope_stage = 1;
+	} else if (msg->status == NOTE_OFF) {
+		genout->envelope_stage = 4;
+	}
 }
 
 // TODO: fix keylanes, maybe split handle cc from handle note and add a subscriber mechanism?
 // TODO: determine if channel or poly pressure is used (msg->note is only needed for poly pressure)
+// TODO: should pressure outputs always react to velocity?
 void pressure_output_c::handle_cvm(GenOut_t* genout, umpCVM* msg){
-	uint32_t criteria;
-	uint32_t src_current;
-	if (msg->status == CHANNEL_PRESSURE){
-		criteria = ( keyChannel << 0 ) | ( uint8_t(ctrlType_t::key) << 8 );
-		src_current = 
-			( genout->gen_source.channel << 0 ) | 
-			( uint8_t(genout->gen_source.sourceType) << 8 );
+	if (msg->status == NOTE_ON){
+	} else if (msg->status == CHANNEL_PRESSURE){
 	} else if (msg->status == KEY_PRESSURE){
-		criteria = ( keyChannel << 0 ) | ( uint8_t(ctrlType_t::key) << 8 );// | ( msg->note << 16 );
-		src_current = 
-			( genout->gen_source.channel << 0 ) | 
-			( uint8_t(genout->gen_source.sourceType) << 8 );// |
-			//( keyLanes[x].note << 16 );
 	} else {
 		return;
 	}
-	if ( src_current == criteria ){
-		genout->currentOut = Rescale_16bit(msg->value >> 16, genout->min_range, genout->max_range);
-	}
+	genout->gen_source.sourceNum = msg->note;
+	genout->currentOut = Rescale_16bit(msg->value >> 16, genout->min_range, genout->max_range);
 }
 
 void velocity_output_c::handle_cvm(GenOut_t* genout, umpCVM* msg){
-	
+	if (msg->status == NOTE_ON){
+		genout->gen_source.sourceNum = msg->note;
+		genout->currentOut = Rescale_16bit(msg->value, genout->min_range, genout->max_range);
+	} else if (msg->status == NOTE_OFF){
+		genout->currentOut = Rescale_16bit(msg->value, genout->min_range, genout->max_range);
+	}
 }
 
 void gate_output_c::handle_cvm(GenOut_t* genout, umpCVM* msg){
+	if (msg->status == NOTE_ON){
+		genout->gen_source.sourceNum = msg->note;
+		genout->currentOut = genout->max_range;
+	} else if (msg->status == NOTE_OFF){
+		genout->currentOut = genout->min_range;
+	}
+}
+
+void key_handler_c::reset(){
+	next_lane = 0;
+	queue_index = 0;
+	channel = 1;
+	num_lanes = 0;
+	num_coms = 0;
+	for (uint8_t i = 0; i < 8; i++){
+		num_outputs[i] = 0;
+		key_playing[i] = -1;
+		drum_note[i] = -1;
+	}
+}
+
+void key_handler_c::stop_notes(){
+	queue_index = 0;
+	for(uint8_t l = 0; l < num_lanes; l++){
+		key_playing[l] = -1;
+		for (uint8_t i = 0; i < num_outputs[l]; i++){
+			GenOut_t* temp_out = &lanes[l][i]->state;
+			if (temp_out->type == GOType_t::Envelope){
+				temp_out->currentOut = temp_out->min_range;
+				temp_out->envelope_stage = 4;
+			} else if (temp_out->type == GOType_t::Gate){
+				temp_out->currentOut = temp_out->min_range;
+			}
+		}
+	}
+}
+
+void key_handler_c::start_note(uint8_t lane, umpCVM* msg){
+	for (uint8_t i = 0; i < num_outputs[lane]; i++){
+		lanes[lane][i]->handle_cvm(msg);
+	}
 	
+	key_playing[lane] = msg->note;
+	
+	// Start common outputs
+	start_note(msg);
+}
+
+
+void key_handler_c::start_note(umpCVM* msg){
+	// Handle shared outputs
+	for (uint8_t i = 0; i < num_coms; i++){
+		com_out[i]->handle_cvm(msg);
+	}
+}
+
+void key_handler_c::stop_note(uint8_t lane, umpCVM* msg){
+	for (uint8_t i = 0; i < num_outputs[lane]; i++){
+		lanes[lane][i]->handle_cvm(msg);
+	}
+
+	key_playing[lane] = -1;
+	
+	// Check lanestates, to know if shared outputs should be turned off
+	bool foundActive = false;
+	for (uint8_t j = 0; j < num_lanes; j++){
+		if (key_playing[j] >= 0){
+			foundActive = true;
+			break;
+		}
+	}
+	if (foundActive){
+		for (uint8_t j = 0; j < num_coms; j++){
+			if ( com_out[j]->state.type == GOType_t::Envelope ){
+				// Re-trigger envelope
+				com_out[j]->state.envelope_stage = 1;
+			}
+		}
+	} else {
+		stop_note(msg);
+	}
+}
+	
+void key_handler_c::stop_note(umpCVM* msg){
+	// Handle shared outputs
+	for (uint8_t j = 0; j < num_coms; j++){
+		com_out[j]->handle_cvm(msg);
+	}
+}
+
+void key_handler_c::set_bend_range(uint8_t range){
+	// Configure note bend range
+	max_bend = 0x7fff + (uint32_t)(INT_PER_NOTE * (range+1));
+	min_bend = 0x7fff - (uint32_t)(INT_PER_NOTE * (range+1));
+}
+
+uint8_t key_handler_c::handle_cvm(umpCVM* msg){
+	if (msg->status == NOTE_ON){
+		if (msg->channel == 9){
+			// Drum channel
+			for (int8_t l = 7; l >= num_lanes; l--){
+					if ( msg->note == drum_note[l] ){
+						key_playing[l] = drum_note[l];
+						for (uint8_t i = 0; i < num_outputs[l]; i++){
+							lanes[l][i]->handle_cvm(msg);
+						}
+						break;
+					} 
+			}
+		} else if(channel == msg->channel) {
+			if (num_lanes == 0) {
+				// Unison mode
+				if (key_playing[0] >= 0) {
+					// Note already playing in lane. Push to queue
+					note_queue[queue_index++].note = key_playing[0];
+				}
+				start_note(msg);
+				return 1;
+			}
+			// Polyphonic mode
+			uint8_t tempLane = 0x80 | next_lane;
+			for (uint8_t l = 0; l < num_lanes; l++){
+				uint8_t lane = next_lane + l;
+				if (lane >= num_lanes) {
+					lane -= num_lanes;
+				}
+				if (key_playing[lane] == msg->note){
+					// Note is already playing
+					return 1;
+				}
+				if (tempLane & 0x80){
+					if (key_playing[lane] < 0){
+						// Found an unused lane
+						tempLane = lane;
+						//break;
+					}
+				}
+			}
+				
+			tempLane &= 0x7f;
+				
+			// Update starting lane for Round-robin arbitration
+			next_lane = tempLane + 1;
+			if (num_lanes == 0){
+				next_lane = 0;
+			} else if (next_lane >= num_lanes) {
+				next_lane -= num_lanes;
+			}
+				
+			if (key_playing[tempLane] >= 0) {
+				// Note already playing in lane. Push to queue
+				note_queue[queue_index++].note = key_playing[tempLane];
+			}
+			start_note(tempLane, msg);
+		}	
+		return 1;
+	} else if (msg->status == NOTE_OFF){
+		if (msg->channel == 9){
+			// Drum channel
+			for (int8_t l = 7; l >= num_lanes; l--){
+					if ( msg->note == drum_note[l] ){
+						key_playing[l] = drum_note[l];
+						for (uint8_t i = 0; i < num_outputs[l]; i++){
+							lanes[l][i]->handle_cvm(msg);
+						}
+						break;
+					} 
+			}
+		} else if(channel == msg->channel) {
+			// Look for note in queue
+			uint8_t i;
+			for (i = 0; i < queue_index; i++){
+				if (note_queue[i].note == msg->note){
+					queue_index--;
+					break;
+				}
+			}
+			// Overwrite that note
+			for (; i < queue_index; i++){
+				note_queue[i] = note_queue[i+1];
+			}
+				
+			if (num_lanes == 0){
+				// Unison mode
+				if (key_playing[0] != msg->note) return 1;
+				if (queue_index > 0){
+					// Start last note which was put in queue
+					umpCVM tempMsg;
+					tempMsg.note = note_queue[--queue_index].note;
+					tempMsg.value = msg->value;
+					start_note(&tempMsg);
+				} else {
+					stop_note(msg);
+				}
+				return 1;
+			}
+			// Polyphonic mode
+			// Find the used lane
+			uint8_t tempLane = 0x80;
+			for (uint8_t l = 0; l < num_lanes; l++){
+				if (key_playing[l] == msg->note){
+					tempLane = l;
+					break;
+				}
+			}
+				
+			if (tempLane != 0x80){
+				if (queue_index > 0){
+					// Start last note which was put in queue
+					umpCVM tempMsg;
+					tempMsg.note = note_queue[--queue_index].note;
+					tempMsg.value = msg->value;
+					start_note(tempLane, &tempMsg);
+				} else {
+					// Stop note
+					stop_note(tempLane, msg);
+				}
+			}
+		}	
+		return 1;
+	} else if (msg->status == PITCH_BEND){
+		// TODO: keychannel
+		uint16_t tempBend = Rescale_16bit(msg->value >> 16, min_bend, max_bend);
+		current_bend = tempBend - 0x7fff;
+		for (uint8_t l = 0; l < num_lanes; l++){
+			if (key_playing[l] < 0){
+				// Not playing
+				continue;
+			}
+			for (uint8_t i = 0; i < num_outputs[l]; i++){
+				lanes[l][i]->handle_cvm(msg);
+			}
+		}
+		for (uint8_t i = 0; i < num_coms; i++){
+			com_out[i]->handle_cvm(msg);
+		}
+		return 1;
+	}	
+	// TODO: pressure
+	// TODO: combined pressure and velocity
+	return 0;
+}
+
+uint8_t key_handler_c::subscribe_key(generic_output_c* handler){
+	return subscribe_key(handler, handler->get_key_lane());
+}
+
+uint8_t key_handler_c::subscribe_key(generic_output_c* handler, uint8_t lane){
+	if (lane == 0){
+		com_out[num_coms++] = handler;
+	} else {
+		if (num_outputs[lane] >= 4){
+			return 0;
+		}
+		lanes[lane][num_outputs[lane]++] = handler;
+		if (num_lanes < lane){
+			num_lanes = lane;
+		}
+	}
+	return 1;
+}
+
+uint8_t key_handler_c::subscribe_drum(generic_output_c* handler){
+	// TODO:
 }
 
 // TODO: Fix stuck notes
@@ -853,7 +882,7 @@ void GO_MIDI_Voice(struct umpCVM* msg){
 	// Handle special messages
 	if (msg->status == CC){
 		if ((msg->index == 120)||(msg->index == 123)){
-			Stop_All_Notes();
+			key_handler.stop_notes();
 			return;
 		} else if (msg->index == 121){
 			Reset_All_Controllers();
@@ -861,156 +890,8 @@ void GO_MIDI_Voice(struct umpCVM* msg){
 		}
 	}
 	
-	// TODO: refactor keylanes, use a subscription pattern to find outputs
 	// Handle note messages
-	if (msg->status == NOTE_ON){
-		// TODO: trigger keylanes
-		if (msg->channel == 9){
-			// Drum channel
-			uint32_t criteria = ( msg->channel << 8 ) | ( msg->note << 16 );
-			bool foundLane = false;
-			for (uint8_t x = 0; x < 4; x++){
-				for (uint8_t y = 0; y < 4; y++){
-					uint32_t src_current = 
-						( uint8_t(out_handler[x][y].state.type) << 0 ) |
-						( out_handler[x][y].state.gen_source.channel << 8 ) |
-						( out_handler[x][y].state.gen_source.sourceNum << 16 );
-					if ( src_current == ( criteria | uint8_t(GOType_t::Envelope) ) ){
-						foundLane = true;
-						out_handler[x][y].state.envelope_stage = 1;
-						out_handler[x][y].state.currentOut = out_handler[x][y].state.min_range;
-						continue;
-					}
-					if ( src_current == ( criteria | uint8_t(GOType_t::Gate) ) ){
-						foundLane = true;
-						out_handler[x][y].state.currentOut = out_handler[x][y].state.max_range;
-						continue;
-					} 
-					if ( src_current == ( criteria | uint8_t(GOType_t::Velocity) ) ){
-						foundLane = true;
-						out_handler[x][y].state.currentOut = Rescale_16bit(msg->value, out_handler[x][y].state.min_range, out_handler[x][y].state.max_range);
-						continue;
-					}
-				}
-				if (foundLane){
-					// Assume all controls are on single lane
-					break;
-				}
-			}
-		} else if(keyChannel == msg->channel) {
-			uint8_t tempLane = 250;
-			for (uint8_t x = 0; x < 4; x++){
-				uint8_t lane = (currentKeyLane + x) & 0b11;
-				if (keyLanes[lane].state == keyLanes_t::KeyPlaying && keyLanes[lane].note == msg->note){
-					// Note is already playing
-					return;
-				}
-				if (tempLane & 0x80){
-					if (keyLanes[lane].state == keyLanes_t::KeyIdle){
-						// Found an unused lane
-						tempLane = lane;
-						//break;
-					} else if ((tempLane == 250) && (keyLanes[lane].state == keyLanes_t::KeyPlaying)){
-						// Next lane in round-robin
-						tempLane = lane | 0x80;
-					}
-				}
-			}
-				
-			tempLane &= 0x7f;
-				
-			if (tempLane == 250){
-				// No keys configured
-				return;
-			}
-				
-			// Update starting lane for Round-robin arbitration
-			currentKeyLane = (tempLane + 1) & 0b11;
-				
-			if (keyLanes[tempLane].state == keyLanes_t::KeyPlaying){
-				// Note already playing in lane. Push to queue
-				noteQueue[queueIndex++].note = keyLanes[tempLane].note;
-			}
-				
-			Start_Note(tempLane, msg->note, msg->value);
-		}	
-		return;
-	} else if (msg->status == NOTE_OFF){
-		// TODO: Trigger keylanes
-		if (msg->channel == 9){
-			// Drum channel
-			uint32_t criteria = ( msg->channel << 8 ) | ( msg->note << 16 );
-			bool foundLane = false;
-			for (uint8_t x = 0; x < 4; x++){
-				for (uint8_t y = 0; y < 4; y++){
-					uint32_t src_current =
-						( uint8_t(out_handler[x][y].state.type) << 0 ) |
-						( out_handler[x][y].state.gen_source.channel << 8 ) |
-						( out_handler[x][y].state.gen_source.sourceNum << 16 );
-					if ( src_current == ( criteria | uint8_t(GOType_t::Envelope) ) ){
-						foundLane = true;
-						out_handler[x][y].state.envelope_stage = 4;
-						continue;
-					} 
-					if ( src_current == ( criteria | uint8_t(GOType_t::Gate) ) ){
-						foundLane = true;
-						out_handler[x][y].state.currentOut = out_handler[x][y].state.min_range;
-						continue;
-					}
-				}
-				if (foundLane){
-					// Assume all controls are on single lane
-					break;
-				}
-			}
-		} else if(keyChannel == msg->channel) {
-			// Find the used lane
-			uint8_t tempLane = 250;
-			for (uint8_t x = 0; x < 4; x++){
-				if (keyLanes[x].state == keyLanes_t::KeyPlaying){
-					if (keyLanes[x].note == msg->note){
-						tempLane = x;
-						break;
-					}
-				}
-			}
-				
-			// Look for note in queue
-			uint8_t i;
-			for (i = 0; i < queueIndex; i++){
-				if (noteQueue[i].note == msg->note){
-					queueIndex--;
-					break;
-				}
-			}
-			// Overwrite that note
-			for (; i < queueIndex; i++){
-				noteQueue[i] = noteQueue[i+1];
-			}
-				
-			if (tempLane != 250){
-				if (queueIndex > 0){
-					// Start last note which was put in queue
-					uint8_t tempNote = noteQueue[--queueIndex].note;
-					Start_Note(tempLane, tempNote, msg->value);
-				} else {
-					// Stop note
-					Stop_Note(tempLane);
-				}
-			}
-		}	
-		return;
-	} else if (msg->status == PITCH_BEND){
-		uint16_t tempBend = Rescale_16bit(msg->value >> 16, minBend, maxBend);
-		currentBend = tempBend - 0x7fff;
-		for (uint8_t x = 0; x < 4; x++){
-			if (keyLanes[x].state != keyLanes_t::KeyPlaying){
-				continue;
-			}
-			for (uint8_t y = 0; y < 4; y++){
-				out_handler[x][y].handle_cvm(msg);
-			}
-		}
+	if (key_handler.handle_cvm(msg)) {
 		return;
 	}
 

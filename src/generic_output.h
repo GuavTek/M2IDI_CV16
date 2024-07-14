@@ -30,6 +30,7 @@ enum class ctrlType_t : uint8_t {
 	program
 };
 
+// TODO? this could subscribe to key handler/CV handler etc
 struct ctrlSource_t {
 	enum ctrlType_t sourceType;
 	uint8_t channel;
@@ -197,11 +198,14 @@ class generic_output_c {
 	void handle_realtime(umpGeneric* msg);
 	void handle_cvm(umpCVM* msg);
 	void set_type(GOType_t type);
+	void set_key_lane(uint8_t lane) {key_lane = lane;}
+	uint8_t get_key_lane() {return key_lane;}
 	inline uint16_t get() {return state.currentOut;};
 	GenOut_t state;
 	generic_output_c() {current_handler = &dc_handler;};
 	protected:
 	uint8_t num_cc;
+	uint8_t key_lane;
 	base_output_c* current_handler;
 	static dc_output_c dc_handler;
 	static lfo_output_c lfo_handler;
@@ -212,12 +216,53 @@ class generic_output_c {
 	static gate_output_c gate_handler;
 };
 
+typedef struct key_note_t {
+	int8_t note;
+};
+
+class key_handler_c {
+	public:
+	void reset();
+	void stop_notes();
+	inline void set_key_channel(uint8_t num) {channel = num;}
+	inline uint8_t get_key_channel() {return channel;}
+	void set_bend_range(uint8_t range);
+	inline int16_t get_current_bend() {return current_bend;}
+	uint8_t handle_cvm(umpCVM* msg);
+	uint8_t subscribe_key(generic_output_c* handler);
+	uint8_t subscribe_key(generic_output_c* handler, uint8_t lane);
+	uint8_t subscribe_drum(generic_output_c* handler);
+
+	protected:
+	void start_note(uint8_t lane, umpCVM* msg);
+	void start_note(umpCVM* msg);
+	void stop_note(uint8_t lane, umpCVM* msg);
+	void stop_note(umpCVM* msg);
+	uint8_t queue_index;
+	key_note_t note_queue[32];
+	uint8_t next_lane = 0;
+	int16_t current_bend = 0;
+	uint16_t max_bend;
+	uint16_t min_bend;
+	uint8_t channel;
+	uint8_t num_lanes;			// Number of lanes
+	int8_t drum_note[8];
+	uint8_t num_outputs[8];	// Output number per lane
+	uint8_t num_coms;
+	int8_t key_playing[8];		// The currently playing note on each lane (-1 for none)
+	generic_output_c* com_out[16];
+	generic_output_c* lanes[8][4];	// Outputs subscribed to each lane
+};
+
 const uint32_t out_rate = 22100;	// The rate each output is updated
 extern bool needScan;
-extern uint8_t bendRange;
+extern key_handler_c key_handler;
 extern generic_output_c out_handler[4][4];
 extern Env_t envelopes[4];
 extern uint8_t midi_group;
+
+// TODO: remove
+extern uint8_t bendRange;
 
 void GO_Init();
 
