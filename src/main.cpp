@@ -35,7 +35,7 @@ void midi_data_handler(struct umpData msg);
 
 SPI_RP2040_C SPI_CAN = SPI_RP2040_C(spi0,2);
 MCP2517_C CAN = MCP2517_C(&SPI_CAN, 0);
-//eeprom_cat_c EEPROM = eeprom_cat_c(&SPI, 1);	// TODO
+eeprom_cat_c EEPROM = eeprom_cat_c(&SPI_CAN, 1);
 DAC_SPI_C SPI_DAC = DAC_SPI_C(pio0);
 fast_max5134_c DAC = fast_max5134_c(&SPI_DAC, 0);
 umpProcessor MIDI;
@@ -59,8 +59,8 @@ int main(void){
     CAN.Set_Rx_Header_Callback(CAN_Receive_Header);
     CAN.Set_Rx_Data_Callback(CAN_Receive_Data);
 
-	//EEPROM.init(EEPROM_CONF, EEPROM_SECTIONS, 2);
-	//EEPROM.set_callback(eeprom_handler);
+	EEPROM.init(EEPROM_CONF, EEPROM_SECTIONS, 2);
+	EEPROM.set_callback(eeprom_handler);
 
     MIDI.setSystem(midi_com_handler);
 	MIDI.setCVM(midi_cvm_handler);

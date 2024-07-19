@@ -14,7 +14,7 @@ void DAC_SPI_C::Init(const dac_spi_config_t config){
     float clk_div = (120.0 * 1000000 / config.speed) / 2;
     // Initialize pio
     uint32_t offset = pio_add_program(pio, &spi_tx_cs_program);
-    pio_spi_cs_init(pio, pio_sm, offset, 24, clk_div, config.polarity, config.pin_cs, config.pin_tx);
+    pio_spi_cs_init(pio, pio_sm, offset, 24, clk_div, config.polarity, config.pin_ck, config.pin_tx);
 	
 	currentState = Idle;
 }

@@ -10,28 +10,28 @@
 
 // --- LED MATRIX ---
 #ifndef LEDC1 
-#define LEDC1 25
+#define LEDC1 14
 #endif
 #ifndef LEDC2 
-#define LEDC2 19
+#define LEDC2 16
 #endif
 #ifndef LEDC3 
-#define LEDC3 18
+#define LEDC3 17
 #endif
 #ifndef LEDC4 
-#define LEDC4 17
+#define LEDC4 18
 #endif
 #ifndef LEDC5 
-#define LEDC5 15
+#define LEDC5 20
 #endif
 #ifndef LEDC6 
-#define LEDC6 14
+#define LEDC6 21
 #endif
 #ifndef LEDC7 
-#define LEDC7 13
+#define LEDC7 22
 #endif
 #ifndef LEDC8 
-#define LEDC8 12
+#define LEDC8 23
 #endif
 #ifndef LEDR1 
 #define LEDR1 29
@@ -46,7 +46,7 @@
 #define LEDR4 26
 #endif
 #ifndef LEDR5 
-#define LEDR5 16
+#define LEDR5 19
 #endif
 
 // no PICO_DEFAULT_WS2812_PIN
@@ -64,52 +64,46 @@
 
 // MUX pins
 #ifndef M2IDI_MUXA_PIN 
-#define M2IDI_MUXA_PIN 5
+#define M2IDI_MUXA_PIN 8
 #endif
 #ifndef M2IDI_MUXB_PIN 
-#define M2IDI_MUXB_PIN 4
+#define M2IDI_MUXB_PIN 9
 #endif
 #ifndef M2IDI_MUXINH_PIN 
-#define M2IDI_MUXINH_PIN 6
+#define M2IDI_MUXINH_PIN 10
 #endif
 
 // --- SPI ---
-#ifndef M2IDI_CAN_SPI
-#define M2IDI_CAN_SPI 0
+#ifndef M2IDI_SPI
+#define M2IDI_SPI 0
 #endif
-#ifndef M2IDI_CAN_SPI_SCK_PIN
-#define M2IDI_CAN_SPI_SCK_PIN 22
+#ifndef M2IDI_SPI_SCK_PIN
+#define M2IDI_SPI_SCK_PIN 6
 #endif
-#ifndef M2IDI_CAN_SPI_TX_PIN
-#define M2IDI_CAN_SPI_TX_PIN 23
+#ifndef M2IDI_SPI_TX_PIN
+#define M2IDI_SPI_TX_PIN 7
 #endif
-#ifndef M2IDI_CAN_SPI_RX_PIN
-#define M2IDI_CAN_SPI_RX_PIN 20
+#ifndef M2IDI_SPI_RX_PIN
+#define M2IDI_SPI_RX_PIN 4
 #endif
-#ifndef M2IDI_CAN_SPI_CSN_PIN
-#define M2IDI_CAN_SPI_CSN_PIN 21
+#ifndef M2IDI_SPI_CSN_CAN_PIN
+#define M2IDI_SPI_CSN_CAN_PIN 25
 #endif
 #ifndef M2IDI_CAN_INT_PIN
 #define M2IDI_CAN_INT_PIN 24
 #endif
-
-#ifndef M2IDI_SPI
-#define M2IDI_SPI 1
-#endif
-#ifndef M2IDI_SPI_SCK_PIN
-#define M2IDI_SPI_SCK_PIN 10
-#endif
-#ifndef M2IDI_SPI_TX_PIN
-#define M2IDI_SPI_TX_PIN 11
-#endif
-#ifndef M2IDI_SPI_RX_PIN
-#define M2IDI_SPI_RX_PIN 8
-#endif
-#ifndef M2IDI_SPI_CSN_DAC_PIN
-#define M2IDI_SPI_CSN_DAC_PIN 7
-#endif
 #ifndef M2IDI_SPI_CSN_EEPROM_PIN
-#define M2IDI_SPI_CSN_EEPROM_PIN 9
+#define M2IDI_SPI_CSN_EEPROM_PIN 3
+#endif
+
+#ifndef M2IDI_DAC_SPI_SCK_PIN
+#define M2IDI_DAC_SPI_SCK_PIN 12
+#endif
+#ifndef M2IDI_DAC_SPI_TX_PIN
+#define M2IDI_DAC_SPI_TX_PIN 11
+#endif
+#ifndef M2IDI_DAC_SPI_CSN_PIN
+#define M2IDI_DAC_SPI_CSN_PIN 13
 #endif
 
 // --- FLASH ---

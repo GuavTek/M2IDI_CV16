@@ -92,9 +92,9 @@ const dac_spi_config_t SPI_DAC_CONF = {
 	.dma_irq_num = 0,
 	.polarity = 0,
 	.speed = 30000000,
-	.pin_tx = M2IDI_SPI_TX_PIN,
-	.pin_ck = M2IDI_SPI_SCK_PIN,
-	.pin_cs = M2IDI_SPI_CSN_DAC_PIN
+	.pin_tx = M2IDI_DAC_SPI_TX_PIN,
+	.pin_ck = M2IDI_DAC_SPI_SCK_PIN,
+	.pin_cs = M2IDI_DAC_SPI_CSN_PIN
 };
 
 const spi_config_t SPI_CAN_CONF = {
@@ -103,10 +103,10 @@ const spi_config_t SPI_CAN_CONF = {
 	.polarity = SPI_CPOL_0,
 	.order = SPI_MSB_FIRST,
 	.speed = 8000000,
-	.pin_tx = M2IDI_CAN_SPI_TX_PIN,
-	.pin_rx = M2IDI_CAN_SPI_RX_PIN,
-	.pin_ck = M2IDI_CAN_SPI_SCK_PIN,
-	.pin_cs = {M2IDI_CAN_SPI_CSN_PIN} // TODO: add M2IDI_SPI_CSN_EEPROM_PIN
+	.pin_tx = M2IDI_SPI_TX_PIN,
+	.pin_rx = M2IDI_SPI_RX_PIN,
+	.pin_ck = M2IDI_SPI_SCK_PIN,
+	.pin_cs = {M2IDI_SPI_CSN_CAN_PIN, M2IDI_SPI_CSN_EEPROM_PIN}
 };
 
 const CAN_Config_t CAN_CONF = {

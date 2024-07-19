@@ -3,8 +3,8 @@
 ; -----------------------------------------------------------------------------
 ;
 ; Pin assignments:
-; - SCK is side-set bit 3
-; - CSn is side-set bit 0
+; - SCK is side-set bit 0
+; - CSn is side-set bit 1
 ; - MOSI is OUT bit 0 (host-to-device)
 ;
 ; SCK frequency is clock/2
@@ -16,31 +16,31 @@
 
 .wrap_target
 bitloop:
-    out pins, 1        side 0x8
+    out pins, 1        side 0x1
     jmp !osre bitloop  side 0x0
 
-    nop                side 0x8 [1]    ; CSn back porch
+    nop                side 0x1 [1]    ; CSn back porch
 public entry_point:
-    pull ifempty       side 0x9 [1] ; Block with CSn high (minimum 2 cycles)
+    pull ifempty       side 0x3 [1] ; Block with CSn high (minimum 2 cycles)
 .wrap
 
 % c-sdk {
 #include "hardware/gpio.h"
 static inline void pio_spi_cs_init(PIO pio, uint sm, uint prog_offs, uint n_bits, float clkdiv, bool cpol,
-        uint pin_cs, uint pin_mosi) {
+        uint pin_sck, uint pin_mosi) {
     pio_sm_config c = spi_tx_cs_program_get_default_config(prog_offs);
     sm_config_set_out_pins(&c, pin_mosi, 1);
-    sm_config_set_sideset_pins(&c, pin_cs);
+    sm_config_set_sideset_pins(&c, pin_sck);
     sm_config_set_out_shift(&c, false, false, n_bits);
     sm_config_set_clkdiv(&c, clkdiv);
     sm_config_set_fifo_join(&c, PIO_FIFO_JOIN_TX);
     
-    pio_sm_set_pins_with_mask(pio, sm, (1u << pin_cs), (9u << pin_cs) | (1u << pin_mosi));
-    pio_sm_set_pindirs_with_mask(pio, sm, (9u << pin_cs) | (1u << pin_mosi), (9u << pin_cs) | (1u << pin_mosi));
+    pio_sm_set_pins_with_mask(pio, sm, (2u << pin_sck), (3u << pin_sck) | (1u << pin_mosi));
+    pio_sm_set_pindirs_with_mask(pio, sm, (3u << pin_sck) | (1u << pin_mosi), (3u << pin_sck) | (1u << pin_mosi));
     pio_gpio_init(pio, pin_mosi);
-    pio_gpio_init(pio, pin_cs);
-    pio_gpio_init(pio, pin_cs + 3);
-    gpio_set_outover(pin_cs+1, cpol ? GPIO_OVERRIDE_INVERT : GPIO_OVERRIDE_NORMAL);
+    pio_gpio_init(pio, pin_sck);
+    pio_gpio_init(pio, pin_sck + 1);
+    gpio_set_outover(pin_sck, cpol ? GPIO_OVERRIDE_INVERT : GPIO_OVERRIDE_NORMAL);
 
     uint entry_point = prog_offs + spi_tx_cs_offset_entry_point;
     pio_sm_init(pio, sm, entry_point, &c);

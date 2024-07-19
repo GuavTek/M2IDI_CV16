@@ -20,7 +20,7 @@ uint16_t lmData[5] = {
 	0xffff
 };
 const uint8_t LEDR[5] = { LEDR1, LEDR2, LEDR3, LEDR4, LEDR5 };
-const uint8_t LEDC[8] = { LEDC1, LEDC2, LEDC3, LEDC4, LEDC5, LEDC6, LEDC7, LEDC8 };
+const uint8_t LEDC[8] = { LEDC8, LEDC7, LEDC6, LEDC5, LEDC4, LEDC3, LEDC2, LEDC1 };
 
 void LM_Init(){
 	for (uint8_t i = 0; i < 5; i++){
