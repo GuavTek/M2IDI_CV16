@@ -722,7 +722,7 @@ uint8_t key_handler_c::handle_cvm(umpCVM* msg){
 					// Note already playing in lane. Push to queue
 					note_queue[queue_index++].note = key_playing[0];
 				}
-				start_note(msg);
+				start_note(0, msg);
 				return 1;
 			}
 			// Polyphonic mode
@@ -744,7 +744,7 @@ uint8_t key_handler_c::handle_cvm(umpCVM* msg){
 					}
 				}
 			}
-				
+			
 			tempLane &= 0x7f;
 				
 			// Update starting lane for Round-robin arbitration
@@ -794,11 +794,12 @@ uint8_t key_handler_c::handle_cvm(umpCVM* msg){
 				if (queue_index > 0){
 					// Start last note which was put in queue
 					umpCVM tempMsg;
+					tempMsg.status = NOTE_ON;
 					tempMsg.note = note_queue[--queue_index].note;
 					tempMsg.value = msg->value;
-					start_note(&tempMsg);
+					start_note(0,&tempMsg);
 				} else {
-					stop_note(msg);
+					stop_note(0,msg);
 				}
 				return 1;
 			}
@@ -816,6 +817,7 @@ uint8_t key_handler_c::handle_cvm(umpCVM* msg){
 				if (queue_index > 0){
 					// Start last note which was put in queue
 					umpCVM tempMsg;
+					tempMsg.status = NOTE_ON;
 					tempMsg.note = note_queue[--queue_index].note;
 					tempMsg.value = msg->value;
 					start_note(tempLane, &tempMsg);
