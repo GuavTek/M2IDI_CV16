@@ -23,6 +23,14 @@ enum class GOType_t : uint8_t {
 	Gate = 6
 };
 
+enum class EnvStage_t : uint8_t {
+	idle = 0,
+	attack = 1,
+	decay = 2,
+	sustain = 3,
+	release = 4
+};
+
 enum class ctrlType_t : uint8_t {
 	none,
 	key,
@@ -91,41 +99,38 @@ struct GenOut_t : GenOut_base {
 		};
 		
 		struct {
-			uint8_t envelope_stage;
+			EnvStage_t envelope_stage;
 		};
 	};
 };
 
+struct Env_stage_base {
+	struct ctrlSource_t source;
+	uint8_t max;
+	uint8_t min;
+};
+
 // Envelope data saved in NVM
 struct Env_base {
-	uint8_t att_max;
-	uint8_t att_min;
-	struct ctrlSource_t att_source;
-	uint8_t dec_max;
-	uint8_t dec_min;
-	struct ctrlSource_t dec_source;
-	uint8_t sus_max;
-	uint8_t sus_min;
-	struct ctrlSource_t sus_source;
-	uint8_t rel_max;
-	uint8_t rel_min;
-	struct ctrlSource_t rel_source;
+	Env_stage_base att;
+	Env_stage_base dec;
+	Env_stage_base sus;
+	Env_stage_base rel;
+};
+
+struct Env_stage_t {
+	struct ctrlSource_t source;
+	uint32_t max;
+	uint32_t min;
+	uint32_t current;
 };
 
 // Envelope data to store in RAM
-struct Env_t : Env_base {
-	uint32_t att_max;
-	uint32_t att_min;
-	uint32_t dec_max;
-	uint32_t dec_min;
-	uint16_t sus_max;
-	uint16_t sus_min;
-	uint32_t rel_max;
-	uint32_t rel_min;
-	uint32_t att_current;
-	uint32_t dec_current;
-	uint16_t sus_current;
-	uint32_t rel_current;
+struct Env_t {
+	Env_stage_t att;
+	Env_stage_t dec;
+	Env_stage_t sus;
+	Env_stage_t rel;
 };
 
 // Collection of data saved in NVM
@@ -254,11 +259,20 @@ class key_handler_c {
 	generic_output_c* lanes[8][4];	// Outputs subscribed to each lane
 };
 
+class env_handler_c {
+	public:
+	void handle_cvm(umpCVM* msg);
+	uint32_t get(EnvStage_t stage);
+	Env_t env;
+	protected:
+	void set_stage(uint32_t val, Env_stage_t* stage);
+};
+
 const uint32_t out_rate = 22100;	// The rate each output is updated
 extern bool needScan;
 extern key_handler_c key_handler;
 extern generic_output_c out_handler[4][4];
-extern Env_t envelopes[4];
+extern env_handler_c envelopes[4];
 extern uint8_t midi_group;
 
 // TODO: remove

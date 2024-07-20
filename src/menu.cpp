@@ -149,18 +149,18 @@ void Set_Save_PC()		{ menuStatus = Wait_MIDI; var_edit = &confPC; midiTypeMask =
 void Save_Config()		{ needSave = true; Enter_Kid(); }
 void Load_Config()		{ needLoad = true; Enter_Kid(); }
 void Set_Group()			{ menuStatus = Edit_int; var_edit = &midi_group; max_edit = 16; }
-void Set_Env_Atk_Max()	{ menuStatus = Edit_32bit; var_edit = &envelopes[chanSel].att_max; var_monitor = &envelopes[chanSel].att_current; }
-void Set_Env_Atk_Min()	{ menuStatus = Edit_32bit; var_edit = &envelopes[chanSel].att_min; var_monitor = &envelopes[chanSel].att_current; }
-void Set_Env_Atk_Bind()	{ menuStatus = Wait_MIDI; var_edit = &envelopes[chanSel].att_source; midiTypeMask = 0b001; }
-void Set_Env_Dec_Max()	{ menuStatus = Edit_32bit; var_edit = &envelopes[chanSel].dec_max; var_monitor = &envelopes[chanSel].dec_current; }
-void Set_Env_Dec_Min()	{ menuStatus = Edit_32bit; var_edit = &envelopes[chanSel].dec_min; var_monitor = &envelopes[chanSel].dec_current; }
-void Set_Env_Dec_Bind()	{ menuStatus = Wait_MIDI; var_edit = &envelopes[chanSel].dec_source; midiTypeMask = 0b001; }
-void Set_Env_Sus_Max()	{ menuStatus = Edit_16bit; var_edit = &envelopes[chanSel].sus_max; var_monitor = &envelopes[chanSel].sus_current; }
-void Set_Env_Sus_Min()	{ menuStatus = Edit_16bit; var_edit = &envelopes[chanSel].sus_min; var_monitor = &envelopes[chanSel].sus_current; }
-void Set_Env_Sus_Bind()	{ menuStatus = Wait_MIDI; var_edit = &envelopes[chanSel].sus_source; midiTypeMask = 0b001; }
-void Set_Env_Rel_Max()	{ menuStatus = Edit_32bit; var_edit = &envelopes[chanSel].rel_max; var_monitor = &envelopes[chanSel].rel_current; }
-void Set_Env_Rel_Min()	{ menuStatus = Edit_32bit; var_edit = &envelopes[chanSel].rel_min; var_monitor = &envelopes[chanSel].rel_current; }
-void Set_Env_Rel_Bind()	{ menuStatus = Wait_MIDI; var_edit = &envelopes[chanSel].rel_source; midiTypeMask = 0b001; }
+void Set_Env_Atk_Max()	{ menuStatus = Edit_32bit; var_edit = &envelopes[chanSel].env.att.max; var_monitor = &envelopes[chanSel].env.att.current; }
+void Set_Env_Atk_Min()	{ menuStatus = Edit_32bit; var_edit = &envelopes[chanSel].env.att.min; var_monitor = &envelopes[chanSel].env.att.current; }
+void Set_Env_Atk_Bind()	{ menuStatus = Wait_MIDI; var_edit = &envelopes[chanSel].env.att.source; midiTypeMask = 0b001; }
+void Set_Env_Dec_Max()	{ menuStatus = Edit_32bit; var_edit = &envelopes[chanSel].env.dec.max; var_monitor = &envelopes[chanSel].env.dec.current; }
+void Set_Env_Dec_Min()	{ menuStatus = Edit_32bit; var_edit = &envelopes[chanSel].env.dec.min; var_monitor = &envelopes[chanSel].env.dec.current; }
+void Set_Env_Dec_Bind()	{ menuStatus = Wait_MIDI; var_edit = &envelopes[chanSel].env.dec.source; midiTypeMask = 0b001; }
+void Set_Env_Sus_Max()	{ menuStatus = Edit_16bit; var_edit = &envelopes[chanSel].env.sus.max; var_monitor = &envelopes[chanSel].env.sus.current; }
+void Set_Env_Sus_Min()	{ menuStatus = Edit_16bit; var_edit = &envelopes[chanSel].env.sus.min; var_monitor = &envelopes[chanSel].env.sus.current; }
+void Set_Env_Sus_Bind()	{ menuStatus = Wait_MIDI; var_edit = &envelopes[chanSel].env.sus.source; midiTypeMask = 0b001; }
+void Set_Env_Rel_Max()	{ menuStatus = Edit_32bit; var_edit = &envelopes[chanSel].env.rel.max; var_monitor = &envelopes[chanSel].env.rel.current; }
+void Set_Env_Rel_Min()	{ menuStatus = Edit_32bit; var_edit = &envelopes[chanSel].env.rel.min; var_monitor = &envelopes[chanSel].env.rel.current; }
+void Set_Env_Rel_Bind()	{ menuStatus = Wait_MIDI; var_edit = &envelopes[chanSel].env.rel.source; midiTypeMask = 0b001; }
 
 // Used to bind MIDI sources in configuration
 uint8_t menu_midi(struct umpCVM* msg){

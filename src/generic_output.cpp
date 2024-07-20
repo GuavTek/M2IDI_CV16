@@ -13,7 +13,7 @@
 
 bool needScan = false;
 
-Env_t envelopes[4];
+env_handler_c envelopes[4];
 
 uint8_t bendRange; // TODO: remove and fix bendrange editing
 
@@ -42,9 +42,6 @@ constexpr struct freqs_t {
 //template <uint32_t i>
 //struct PrintConst;
 //PrintConst<FREQS.midi[8]> p;
-
-// hasCC[4] is for envelopes
-bool hasCC[5][4];
 
 uint8_t midi_group = 1;
 
@@ -151,39 +148,6 @@ void Scan_Matrix(){
 			}
 		}
 	}
-	
-	// Find controller bound to outputs
-	for (uint8_t x = 0; x < 4; x++){
-		for (uint8_t y = 0; y < 4; y++){
-			if (out_handler[x][y].state.gen_source.sourceType == ctrlType_t::none){
-				hasCC[x][y] = 0;
-			} else {
-				hasCC[x][y] = 1;
-			}
-		}
-	}
-	
-	// Detect controller in envelopes
-	for (uint8_t i = 0; i < 4; i++){
-		hasCC[4][i] = 0;
-		if (envelopes[i].att_source.sourceType != ctrlType_t::none){
-			hasCC[4][i] = 1;
-			continue;
-		}
-		if (envelopes[i].dec_source.sourceType != ctrlType_t::none){
-			hasCC[4][i] = 1;
-			continue;
-		}
-		if (envelopes[i].sus_source.sourceType != ctrlType_t::none){
-			hasCC[4][i] = 1;
-			continue;
-		}
-		if (envelopes[i].rel_source.sourceType != ctrlType_t::none){
-			hasCC[4][i] = 1;
-			continue;
-		}
-	}
-	
 	
 	needScan = false;
 }
@@ -293,7 +257,6 @@ void GO_Init(){
 	out_handler[1][2].state.gen_source.channel = 1;
 	out_handler[1][2].state.gen_source.sourceNum = 10;
 	out_handler[1][2].state.gen_source.sourceType = ctrlType_t::controller;
-	hasCC[1][2] = 1;
 	
 	out_handler[0][1].set_type(GOType_t::LFO);
 	out_handler[0][1].state.shape = WavShape_t::Square;
@@ -327,7 +290,7 @@ void GO_Init(){
 	out_handler[3][2].state.env_num = 0;
 	out_handler[3][2].state.max_range = 0xffff;
 	out_handler[3][2].state.min_range = 0;
-	out_handler[3][2].state.envelope_stage = 0;
+	out_handler[3][2].state.envelope_stage = EnvStage_t::idle;
 	out_handler[3][2].state.gen_source.sourceType = ctrlType_t::key;
 	out_handler[3][2].state.gen_source.channel = 0;
 	out_handler[3][3].set_type(GOType_t::CLK);
@@ -350,7 +313,7 @@ void GO_Init(){
 	out_handler[2][2].state.env_num = 0;
 	out_handler[2][2].state.max_range = 0xffff;
 	out_handler[2][2].state.min_range = 0;
-	out_handler[2][2].state.envelope_stage = 0;
+	out_handler[2][2].state.envelope_stage = EnvStage_t::idle;
 	out_handler[2][2].state.gen_source.sourceType = ctrlType_t::key;
 	out_handler[2][2].state.gen_source.channel = 0;
 	out_handler[1][3].set_type(GOType_t::DC);
@@ -361,31 +324,30 @@ void GO_Init(){
 	out_handler[1][3].state.currentOut = 0xffff;
 	out_handler[1][3].state.min_range = 0;
 	
-	envelopes[0].att_current = 0x3000'0000;
-	envelopes[0].att_max = 0x3000'0000;
-	envelopes[0].att_min = 255;
-	envelopes[0].att_source.sourceType = ctrlType_t::controller;
-	envelopes[0].att_source.channel = 0;
-	envelopes[0].att_source.sourceNum = 24;
-	envelopes[0].dec_current = 0x0080'0000;
-	envelopes[0].dec_max = 0x0800'0000;
-	envelopes[0].dec_min = 0x0000'8000;
-	envelopes[0].dec_source.sourceType = ctrlType_t::controller;
-	envelopes[0].dec_source.channel = 0;
-	envelopes[0].dec_source.sourceNum = 25;
-	envelopes[0].sus_current = 0xA000;
-	envelopes[0].sus_max = 0xffff;
-	envelopes[0].sus_min = 0;
-	envelopes[0].sus_source.sourceType = ctrlType_t::controller;
-	envelopes[0].sus_source.channel = 0;
-	envelopes[0].sus_source.sourceNum = 26;
-	envelopes[0].rel_current = 0x1000'0000;
-	envelopes[0].rel_max = 0x3fff'ffff;
-	envelopes[0].rel_min = 1;
-	envelopes[0].rel_source.sourceType = ctrlType_t::controller;
-	envelopes[0].rel_source.channel = 0;
-	envelopes[0].rel_source.sourceNum = 27;
-	hasCC[4][0] = 1;
+	envelopes[0].env.att.current = 0x3000'0000;
+	envelopes[0].env.att.max = 0x3000'0000;
+	envelopes[0].env.att.min = 255;
+	envelopes[0].env.att.source.sourceType = ctrlType_t::controller;
+	envelopes[0].env.att.source.channel = 0;
+	envelopes[0].env.att.source.sourceNum = 24;
+	envelopes[0].env.dec.current = 0x0080'0000;
+	envelopes[0].env.dec.max = 0x0800'0000;
+	envelopes[0].env.dec.min = 0x0000'8000;
+	envelopes[0].env.dec.source.sourceType = ctrlType_t::controller;
+	envelopes[0].env.dec.source.channel = 0;
+	envelopes[0].env.dec.source.sourceNum = 25;
+	envelopes[0].env.sus.current = 0xA000;
+	envelopes[0].env.sus.max = 0xffff;
+	envelopes[0].env.sus.min = 0;
+	envelopes[0].env.sus.source.sourceType = ctrlType_t::controller;
+	envelopes[0].env.sus.source.channel = 0;
+	envelopes[0].env.sus.source.sourceNum = 26;
+	envelopes[0].env.rel.current = 0x1000'0000;
+	envelopes[0].env.rel.max = 0x3fff'ffff;
+	envelopes[0].env.rel.min = 1;
+	envelopes[0].env.rel.source.sourceType = ctrlType_t::controller;
+	envelopes[0].env.rel.source.channel = 0;
+	envelopes[0].env.rel.source.sourceNum = 27;
 	
 	// TODO: Load setup from NVM
 	
@@ -487,36 +449,38 @@ void lfo_output_c::update(GenOut_t* go){
 }
 
 void envelope_output_c::update(GenOut_t* go){
-	Env_t* tempEnv = &envelopes[go->env_num];
+	env_handler_c* tempEnv = &envelopes[go->env_num];
 	uint32_t remain;
+	uint32_t tempSus;
 	switch(go->envelope_stage){
-		case 1:
+		case EnvStage_t::attack:
 			// attack
 			remain = (0xFFFF'FFFF << 16) - go->outCount;
-			if (remain <= tempEnv->att_current){
-				go->envelope_stage++;
+			if (remain <= tempEnv->get(EnvStage_t::attack)){
+				go->envelope_stage = EnvStage_t::decay;
 				go->outCount = 0xFFFF'FFFF << 16;
 			} else {
-				go->outCount += tempEnv->att_current;
+				go->outCount += tempEnv->get(EnvStage_t::attack);
 			}
 			break;
-		case 2:
+		case EnvStage_t::decay:
 			// decay
-			remain = go->outCount - (tempEnv->sus_current << 16);
-			if (remain <= tempEnv->dec_current){
-				go->envelope_stage++;
-				go->outCount = tempEnv->sus_current << 16;
+			tempSus = tempEnv->get(EnvStage_t::sustain) * 0x0101; // 16 to 32 bit conversion
+			remain = go->outCount - tempSus;
+			if (remain <= tempEnv->get(EnvStage_t::decay)){
+				go->envelope_stage = EnvStage_t::sustain;
+				go->outCount = tempSus;
 			} else {
-				go->outCount -= tempEnv->dec_current;
+				go->outCount -= tempEnv->get(EnvStage_t::decay);
 			}
 			break;
-		case 4:
+		case EnvStage_t::release:
 			// release
-			if (go->outCount <= tempEnv->rel_current){
-				go->envelope_stage = 0;
+			if (go->outCount <= tempEnv->get(EnvStage_t::release)){
+				go->envelope_stage = EnvStage_t::idle;
 				go->outCount = 0;
 			} else {
-				go->outCount -= tempEnv->rel_current;
+				go->outCount -= tempEnv->get(EnvStage_t::release);
 			}
 			break;
 		default:
@@ -620,9 +584,9 @@ void envelope_output_c::handle_cvm(GenOut_t* genout, umpCVM* msg){
 	if (msg->status == NOTE_ON) {
 		genout->gen_source.sourceNum = msg->note;
 		//genout->outCount = tempOut->min_range << 16;
-		genout->envelope_stage = 1;
+		genout->envelope_stage = EnvStage_t::attack;
 	} else if (msg->status == NOTE_OFF) {
-		genout->envelope_stage = 4;
+		genout->envelope_stage = EnvStage_t::release;
 	}
 }
 
@@ -680,7 +644,7 @@ void key_handler_c::stop_notes(){
 			GenOut_t* temp_out = &lanes[l][i]->state;
 			if (temp_out->type == GOType_t::Envelope){
 				temp_out->currentOut = temp_out->min_range;
-				temp_out->envelope_stage = 4;
+				temp_out->envelope_stage = EnvStage_t::release;
 			} else if (temp_out->type == GOType_t::Gate){
 				temp_out->currentOut = temp_out->min_range;
 			}
@@ -725,7 +689,7 @@ void key_handler_c::stop_note(uint8_t lane, umpCVM* msg){
 		for (uint8_t j = 0; j < num_coms; j++){
 			if ( com_out[j]->state.type == GOType_t::Envelope ){
 				// Re-trigger envelope
-				com_out[j]->state.envelope_stage = 1;
+				com_out[j]->state.envelope_stage = EnvStage_t::attack;
 			}
 		}
 	} else {
@@ -927,6 +891,49 @@ uint8_t key_handler_c::subscribe_drum(generic_output_c* handler){
 	}
 }
 
+void env_handler_c::handle_cvm(umpCVM* msg){
+	// TODO: controlnum -> control lookup table
+	uint16_t controlNum = msg->index;
+	uint32_t criteria = ( uint8_t(ctrlType_t::controller) << 0 ) | ( msg->channel << 8 ) | ( controlNum << 16 );
+	for (uint8_t i = 0; i < 4; i++) {
+		Env_stage_t* stage;
+		if (i == 0) stage = &env.att;
+		else if (i == 1) stage = &env.dec;
+		else if (i == 2) stage = &env.sus;
+		else if (i == 3) stage = &env.rel;
+		uint32_t src_current = 
+			( uint8_t(stage->source.sourceType) << 0 ) | 
+			( stage->source.channel << 8 ) | 
+			( stage->source.sourceNum << 16 );
+		if (src_current == criteria){
+			set_stage(msg->value, stage);
+		}
+	}
+}
+
+uint32_t env_handler_c::get(EnvStage_t stage){
+	if (stage == EnvStage_t::attack) return env.att.current;
+	else if (stage == EnvStage_t::decay) return env.dec.current;
+	else if (stage == EnvStage_t::sustain) return env.sus.current;
+	else if (stage == EnvStage_t::release) return env.rel.current;
+	return 0;
+}
+
+// TODO: fix scaling
+void env_handler_c::set_stage(uint32_t val, Env_stage_t* stage){
+	if (stage->max > stage->min){
+		uint32_t diff = stage->max - stage->min;
+		uint32_t span = diff * 0x0101 + 1;
+		uint32_t scaled = (val >> 16) * span;
+		stage->current = 0x0101 * stage->min + (scaled >> 16);
+	} else {
+		uint32_t diff = stage->min - stage->max;
+		uint32_t span = diff * 0x0101 + 1;
+		uint32_t scaled = (val >> 16) * span;
+		stage->current = 0x0101 * stage->min - (scaled >> 16);
+	}
+}
+
 void GO_MIDI_Voice(struct umpCVM* msg){
 	if(msg->umpGroup != midi_group){
 		return;
@@ -955,94 +962,15 @@ void GO_MIDI_Voice(struct umpCVM* msg){
 		}
 	}
 
-	// TODO: refactor envelope handling
-	if (msg->status == CC){
-		// TODO: controlnum -> control lookup table
-		uint16_t controlNum = msg->index;
-		// Search envelopes
-		uint32_t criteria = ( uint8_t(ctrlType_t::controller) << 0 ) | ( msg->channel << 8 ) | ( controlNum << 16 );
-		for (uint8_t i = 0; i < 4; i++){
-			if (!hasCC[4][i]){
-				continue;
-			}
-			
-			// TODO: fix scaling
-			// Attack
-			uint32_t src_current = 
-				( uint8_t(envelopes[i].att_source.sourceType) << 0 ) | 
-				( envelopes[i].att_source.channel << 8 ) | 
-				( envelopes[i].att_source.sourceNum << 16 );
-			if (src_current == criteria){
-				if (envelopes[i].att_max > envelopes[i].att_min){
-					uint32_t diff = envelopes[i].att_max - envelopes[i].att_min;
-					uint32_t span = diff * 0x0101 + 1;
-					uint32_t scaled = (msg->value >> 16) * span;
-					envelopes[i].att_current = 0x0101 * envelopes[i].att_min + (scaled >> 16);
-				} else {
-					uint32_t diff = envelopes[i].att_min - envelopes[i].att_max;
-					uint32_t span = diff * 0x0101 + 1;
-					uint32_t scaled = (msg->value >> 16) * span;
-					envelopes[i].att_current = 0x0101 * envelopes[i].att_min - (scaled >> 16);
-				}
-			}
-			
-			// Decay
-			src_current =
-				( uint8_t(envelopes[i].dec_source.sourceType) << 0 ) |
-				( envelopes[i].dec_source.channel << 8 ) |
-				( envelopes[i].dec_source.sourceNum << 16 );
-			if ( src_current == criteria ){
-				if (envelopes[i].dec_max > envelopes[i].dec_min){
-					uint32_t diff = envelopes[i].dec_max - envelopes[i].dec_min;
-					uint32_t span = diff * 0x0101 + 1;
-					uint32_t scaled = (msg->value >> 16) * span;
-					envelopes[i].dec_current = 0x0101 * envelopes[i].dec_min + (scaled >> 16);
-				} else {
-					uint32_t diff = envelopes[i].dec_min - envelopes[i].dec_max;
-					uint32_t span = diff * 0x0101 + 1;
-					uint32_t scaled = (msg->value >> 16) * span;
-					envelopes[i].dec_current = 0x0101 * envelopes[i].dec_min - (scaled >> 16);
-				}	
-			}
-			
-			// Sustain
-			src_current =
-				( uint8_t(envelopes[i].sus_source.sourceType) << 0 ) |
-				( envelopes[i].sus_source.channel << 8 ) |
-				( envelopes[i].sus_source.sourceNum << 16 );
-			if ( src_current == criteria ){
-				if (envelopes[i].sus_max > envelopes[i].sus_min){
-					uint32_t diff = envelopes[i].sus_max - envelopes[i].sus_min;
-					uint32_t span = diff * 0x0101 + 1;
-					uint32_t scaled = (msg->value >> 16) * span;
-					envelopes[i].sus_current = 0x0101 * envelopes[i].sus_min + (scaled >> 16);
-				} else {
-					uint32_t diff = envelopes[i].sus_min - envelopes[i].sus_max;
-					uint32_t span = diff * 0x0101 + 1;
-					uint32_t scaled = (msg->value >> 16) * span;
-					envelopes[i].sus_current = 0x0101 * envelopes[i].sus_min - (scaled >> 16);
-				}
-			}
-			
-			// Release
-			src_current =
-				( uint8_t(envelopes[i].rel_source.sourceType) << 0 ) |
-				( envelopes[i].rel_source.channel << 8 ) |
-				( envelopes[i].rel_source.sourceNum << 16 );
-			if ( src_current == criteria ){
-				if (envelopes[i].rel_max > envelopes[i].rel_min){
-					uint32_t diff = envelopes[i].rel_max - envelopes[i].rel_min;
-					uint32_t span = diff * 0x0101 + 1;
-					uint32_t scaled = (msg->value >> 16) * span;
-					envelopes[i].rel_current = 0x0101 * envelopes[i].rel_min + (scaled >> 16);
-				} else {
-					uint32_t diff = envelopes[i].rel_min - envelopes[i].rel_max;
-					uint32_t span = diff * 0x0101 + 1;
-					uint32_t scaled = (msg->value >> 16) * span;
-					envelopes[i].rel_current = 0x0101 * envelopes[i].rel_min - (scaled >> 16);
-				}				
-			}
-		}
+	if (msg->status != CC) {
+		// Envelope handler only deal with CC
+		return;
+	}
+	
+
+	// Search envelopes
+	for (uint8_t i = 0; i < 4; i++){
+		envelopes[i].handle_cvm(msg);
 	}
 	return;
 }
