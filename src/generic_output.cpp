@@ -698,7 +698,6 @@ void key_handler_c::start_note(uint8_t lane, umpCVM* msg){
 	start_note(msg);
 }
 
-
 void key_handler_c::start_note(umpCVM* msg){
 	// Handle shared outputs
 	for (uint8_t i = 0; i < num_coms; i++){
@@ -752,13 +751,13 @@ uint8_t key_handler_c::handle_cvm(umpCVM* msg){
 		if (msg->channel == 9){
 			// Drum channel
 			for (int8_t l = 7; l >= num_lanes; l--){
-					if ( msg->note == drum_note[l] ){
-						key_playing[l] = drum_note[l];
-						for (uint8_t i = 0; i < num_outputs[l]; i++){
-							lanes[l][i]->handle_cvm(msg);
-						}
-						break;
-					} 
+				if ( msg->note == drum_note[l] ){
+					key_playing[l] = drum_note[l];
+					for (uint8_t i = 0; i < num_outputs[l]; i++){
+						lanes[l][i]->handle_cvm(msg);
+					}
+					break;
+				} 
 			}
 		} else if(channel == msg->channel) {
 			if (num_lanes == 0) {
@@ -811,13 +810,13 @@ uint8_t key_handler_c::handle_cvm(umpCVM* msg){
 		if (msg->channel == 9){
 			// Drum channel
 			for (int8_t l = 7; l >= num_lanes; l--){
-					if ( msg->note == drum_note[l] ){
-						key_playing[l] = drum_note[l];
-						for (uint8_t i = 0; i < num_outputs[l]; i++){
-							lanes[l][i]->handle_cvm(msg);
-						}
-						break;
-					} 
+				if ( msg->note == drum_note[l] ){
+					key_playing[l] = drum_note[l];
+					for (uint8_t i = 0; i < num_outputs[l]; i++){
+						lanes[l][i]->handle_cvm(msg);
+					}
+					break;
+				} 
 			}
 		} else if(channel == msg->channel) {
 			// Look for note in queue
@@ -874,25 +873,15 @@ uint8_t key_handler_c::handle_cvm(umpCVM* msg){
 		}	
 		return 1;
 	} else if (msg->status == PITCH_BEND){
-		// TODO: keychannel
-		uint16_t tempBend = Rescale_16bit(msg->value >> 16, min_bend, max_bend);
-		current_bend = tempBend - 0x7fff;
-		for (uint8_t l = 0; l < num_lanes; l++){
-			if (key_playing[l] < 0){
-				// Not playing
-				continue;
-			}
-			for (uint8_t i = 0; i < num_outputs[l]; i++){
-				lanes[l][i]->handle_cvm(msg);
-			}
+		if (channel == msg->channel) {
+			// Update currentbend, all outputs will be updated after
+			uint16_t tempBend = Rescale_16bit(msg->value >> 16, min_bend, max_bend);
+			current_bend = tempBend - 0x7fff;
+		} else {
+			// Don't apply bend from other channels
+			return 1;
 		}
-		for (uint8_t i = 0; i < num_coms; i++){
-			com_out[i]->handle_cvm(msg);
-		}
-		return 1;
-	}	
-	// TODO: pressure
-	// TODO: combined pressure and velocity
+	}
 	return 0;
 }
 
