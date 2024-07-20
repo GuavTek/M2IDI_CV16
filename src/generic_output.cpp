@@ -465,7 +465,7 @@ void envelope_output_c::update(GenOut_t* go){
 			break;
 		case EnvStage_t::decay:
 			// decay
-			tempSus = tempEnv->get(EnvStage_t::sustain) * 0x0101; // 16 to 32 bit conversion
+			tempSus = tempEnv->get(EnvStage_t::sustain) << 16;
 			remain = go->outCount - tempSus;
 			if (remain <= tempEnv->get(EnvStage_t::decay)){
 				go->envelope_stage = EnvStage_t::sustain;
