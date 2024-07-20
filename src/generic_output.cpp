@@ -50,13 +50,59 @@ uint8_t midi_group = 1;
 
 #define ENV_MANTISSA 7
 
-// TODO: update gain if switching to DACs
 #define OUTPUT_GAIN 1		// Nominal gain
 #define INT_PER_VOLT 6553.6/OUTPUT_GAIN
 #define INT_PER_NOTE INT_PER_VOLT/12
 #define FIXED_POINT_POS 16
 #define FIXED_VOLT_PER_INT ((uint32_t) ((1/INT_PER_VOLT) * (1 << FIXED_POINT_POS)))
 #define FIXED_INT_PER_NOTE ((uint32_t) (INT_PER_NOTE * (1 << FIXED_POINT_POS)))
+
+// Python cubic curve fit: 0.05707194*x^3 + 0.2489873*x^2 + 0.69279463*x + 0.99907843
+// Python square fit: 0.2489873*x^2 + 0.72872142*x + 0.99907843
+// Fixed point exp2 (Only valid for range [-16,15]
+uint32_t fp_exp2(int32_t val){
+	int32_t ret_val;
+	int32_t fmant;
+	int64_t temp64;
+	int32_t exp_mant;
+	int32_t fint;
+	fint = val >> FIXED_POINT_POS;
+	if (val >= 0) {
+		fmant = val & ~(0xffffffff << FIXED_POINT_POS);
+	} else {
+		fmant = val | (0xffffffff << FIXED_POINT_POS);
+		fint += 1;
+	}
+	exp_mant = fmant;
+	// Mantissa part of the value
+	ret_val = int32_t(0.99907843 * (1 << FIXED_POINT_POS));
+	// 1st coeff
+	int32_t temp_val;
+	temp64 = int32_t(0.69279463 * (1 << FIXED_POINT_POS));
+	temp64 *= exp_mant;
+	ret_val += temp64 >> FIXED_POINT_POS;
+	// 2nd coeff
+	temp_val = int32_t(0.2489873 * (1 << FIXED_POINT_POS));
+	temp64 = exp_mant;
+	temp64 *= fmant;
+	exp_mant = temp64 >> FIXED_POINT_POS;
+	temp_val *= exp_mant;
+	temp_val >>= FIXED_POINT_POS;
+	ret_val += temp_val;
+	// 3rd coeff
+	temp_val = int32_t(0.05707194 * (1 << FIXED_POINT_POS));
+	temp64 = exp_mant;
+	temp64 *= fmant;
+	exp_mant = temp64 >> FIXED_POINT_POS;
+	temp_val *= exp_mant;
+	temp_val >>= FIXED_POINT_POS;
+	ret_val += temp_val;
+	// Integer part of fixed point value
+	temp64 = 1 << (fint + FIXED_POINT_POS);
+	temp64 *= ret_val;
+	temp64 >>= FIXED_POINT_POS;
+	return uint32_t(temp64);
+}
 
 // Scan the configuration
 // To configure key_handler
@@ -169,10 +215,16 @@ ufloat8_t uint32_to_ufloat8(uint32_t in){
 }
 
 inline uint16_t Note_To_Output(uint8_t note){
-	int32_t tempOut = note * FIXED_INT_PER_NOTE;// * 546.133 fixed point multiplication
-	tempOut += 1 << (FIXED_POINT_POS - 1);	// + 0.5 to round intead of floor
-	tempOut >>= FIXED_POINT_POS;	// Round to int
-	tempOut += 0x7fff - (uint16_t) (60 * INT_PER_NOTE);	// C4 is middle note -> 60 = 0V
+	// C4 is middle note -> 60 = 0V
+	int32_t tempOut;
+	if (note > 119) {
+		tempOut = 0xffff;
+	} else {
+		tempOut = (note-60) * FIXED_INT_PER_NOTE;// * 546.133 fixed point multiplication
+		tempOut += 1 << (FIXED_POINT_POS - 1);	// + 0.5 to round intead of floor
+		tempOut >>= FIXED_POINT_POS;	// Round to int
+		tempOut += 0x7fff;
+	}
 	
 	// Add bend
 	tempOut += key_handler.get_current_bend();
@@ -257,7 +309,7 @@ void GO_Init(){
 	out_handler[0][2].state.freq_current = FREQS.midi[69]; // 0x0020 << 16;
 	
 	key_handler.set_key_channel(1);
-	key_handler.set_bend_range(4);
+	key_handler.set_bend_range(11);
 	
 	out_handler[3][0].set_type(GOType_t::LFO);
 	out_handler[3][0].state.gen_source.sourceType = ctrlType_t::key;
@@ -547,14 +599,8 @@ void lfo_output_c::handle_cvm(GenOut_t* genout, umpCVM* msg){
 			genout->freq_current = (scaled >> 32) + genout->freq_min;
 		}	
 	} else if (genout->gen_source.sourceType == ctrlType_t::key){
-		uint32_t criteria = ( key_handler.get_key_channel() << 0 ) | ( uint8_t(ctrlType_t::key) << 8 );
-		uint32_t src_current = ( genout->gen_source.channel << 0 ) | ( uint8_t(genout->gen_source.sourceType) << 8 );
-		if (src_current != criteria ) {
-			return;
-		}
 		// TODO: allow detuning and sub-audible oscillators
 		// TODO: handle range limiting
-		// TODO: exponential bending
 		if (msg->status == NOTE_ON){
 			//genout->freq_current = FREQS.midi[msg->note];
 			genout->gen_source.sourceNum = msg->note;
@@ -562,14 +608,11 @@ void lfo_output_c::handle_cvm(GenOut_t* genout, umpCVM* msg){
 			// Bend must be taken account of at note start too
 		}
 		int64_t tempBend = key_handler.get_current_bend();
+		tempBend *= FIXED_VOLT_PER_INT;	// int * fixed-point, no need to right-shift
+		tempBend = fp_exp2(tempBend);
 		tempBend *= FREQS.midi[genout->gen_source.sourceNum];
-		tempBend *= FIXED_VOLT_PER_INT;
-		if (tempBend < 0) {
-			tempBend >>= 1;	// Bending down one octave should halve the frequency
-		}
 		tempBend >>= FIXED_POINT_POS;
-		int32_t bendfreq = tempBend;
-		genout->freq_current = FREQS.midi[genout->gen_source.sourceNum] + bendfreq;
+		genout->freq_current = tempBend;
 	}
 }
 
@@ -698,9 +741,10 @@ void key_handler_c::stop_note(umpCVM* msg){
 }
 
 void key_handler_c::set_bend_range(uint8_t range){
+	uint32_t span = (FIXED_INT_PER_NOTE * (range+1)) >> FIXED_POINT_POS;
 	// Configure note bend range
-	max_bend = 0x7fff + (uint32_t)(INT_PER_NOTE * (range+1));
-	min_bend = 0x7fff - (uint32_t)(INT_PER_NOTE * (range+1));
+	max_bend = 0x7fff + span;
+	min_bend = 0x7fff - span;
 }
 
 uint8_t key_handler_c::handle_cvm(umpCVM* msg){
