@@ -627,16 +627,17 @@ void envelope_output_c::handle_cvm(GenOut_t* genout, umpCVM* msg){
 }
 
 // TODO: fix keylanes, maybe split handle cc from handle note and add a subscriber mechanism?
-// TODO: determine if channel or poly pressure is used (msg->note is only needed for poly pressure)
-// TODO: should pressure outputs always react to velocity?
 void pressure_output_c::handle_cvm(GenOut_t* genout, umpCVM* msg){
 	if (msg->status == NOTE_ON){
+		genout->gen_source.sourceNum = msg->note;
 	} else if (msg->status == CHANNEL_PRESSURE){
 	} else if (msg->status == KEY_PRESSURE){
+		if (genout->gen_source.sourceNum != msg->note) {
+			return;
+		}
 	} else {
 		return;
 	}
-	genout->gen_source.sourceNum = msg->note;
 	genout->currentOut = Rescale_16bit(msg->value >> 16, genout->min_range, genout->max_range);
 }
 
@@ -879,6 +880,13 @@ uint8_t key_handler_c::handle_cvm(umpCVM* msg){
 			current_bend = tempBend - 0x7fff;
 		} else {
 			// Don't apply bend from other channels
+			return 1;
+		}
+	} else if (msg->channel != channel) {
+		// Don't apply pressure or from other channels
+		if (msg->status == KEY_PRESSURE){
+			return 1;
+		} else if (msg->status == CHANNEL_PRESSURE) {
 			return 1;
 		}
 	}
