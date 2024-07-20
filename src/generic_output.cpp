@@ -913,11 +913,20 @@ uint8_t key_handler_c::subscribe_key(generic_output_c* handler, uint8_t lane){
 }
 
 uint8_t key_handler_c::subscribe_drum(generic_output_c* handler){
-	// TODO:
+	uint8_t note = handler->state.gen_source.sourceNum;
+	for (int8_t l = 7; l >= num_lanes; l--){
+		if ( note == drum_note[l] ){
+			lanes[l][num_outputs[l]++] = handler;
+			break;
+		} else if (drum_note[l] == -1){
+			// New lane
+			drum_note[l] = note;
+			lanes[l][num_outputs[l]++] = handler;
+			break;
+		}
+	}
 }
 
-// TODO: Fix stuck notes
-// TODO: Optimize pitchbend
 void GO_MIDI_Voice(struct umpCVM* msg){
 	if(msg->umpGroup != midi_group){
 		return;
