@@ -356,6 +356,7 @@ void generic_output_c::handle_cvm(umpCVM* msg){
 }
 
 void generic_output_c::set_type(GOType_t type){
+	if (state.type == type) return;
 	state.type = type;
 	switch (type){
 	case GOType_t::DC:
