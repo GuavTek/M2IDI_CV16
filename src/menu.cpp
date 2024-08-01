@@ -3,7 +3,7 @@
  *
  * Created: 19/07/2021 17:01:37
  *  Author: GuavTek
- */ 
+ */
 
 #include <stdio.h>
 #include "pico/stdlib.h"
@@ -14,23 +14,14 @@
 #include "generic_output.h"
 #include "menu.h"
 
-menu_status_t menuStatus;
-menuNode* currentNode;
-void* var_edit;
-void* var_monitor;
-uint8_t max_edit;
-uint8_t bit_edit_stage = 0;
-uint8_t chanSel = 0;
-volatile bool buttUp;
-volatile bool buttDown;
-volatile bool buttRight;
+menu_node_c* current_node;
+generic_output_c* menu_node_c::go;
+env_handler_c* menu_node_c::env;
+Env_stage_t* menu_node_c::env_stage;
+ctrlSource_t* menu_node_c::midi_src;
+uint8_t menu_node_c::screen_change;
+menu_status_t menu_node_c::status;
 
-// i0: CC, i1: Key, i2: PC
-uint8_t midiTypeMask;	
-
-const uint8_t MAX_SLOTS = 8;
-bool needSave = false;
-bool needLoad = false;
 uint8_t confSlot;
 ctrlSource_t confPC;
 uint8_t butt_state;
@@ -38,176 +29,71 @@ uint8_t butt_state_debounced;
 uint32_t butt_timer;
 const uint32_t butt_timeout = 20000;	// 20ms timeout
 
-inline uint32_t extrapolate_num (uint32_t in, uint8_t pos){
-	uint32_t tempResult = in & (0xffff'ffff << pos);
-	uint8_t cleanIn = (in >> pos) & 0xf;
-	int8_t i = pos - 4;
-	for (; i > 0; i -= 4){
-		tempResult |= cleanIn << i;
-	}
-	tempResult |= cleanIn >> -i;
-	return tempResult;
-}
+extern menu_node_c node_edit;
+extern menu_bend_range_c node_edit_bend;
+extern menu_select_out_c node_edit_select;
+extern menu_node_c node_edit_sel_back;
+extern menu_midi_out_c node_edit_sel_bind;
+extern menu_key_lane_c node_edit_sel_lane;
+extern menu_type_select_c node_edit_sel_type;
+extern menu_type_pressure_c node_edit_sel_type_pressure;
+extern menu_type_cv_c node_edit_sel_type_cv;
+extern menu_type_gate_c node_edit_sel_type_gate;
+extern menu_type_env_c node_edit_sel_type_envelope;
+extern menu_edit_sel_env_c node_edit_sel_env_num;
+extern menu_type_velocity_c node_edit_sel_type_velocity;
+extern menu_type_clk_c node_edit_sel_type_clk;
+extern menu_type_lfo_c node_edit_sel_type_lfo;
+extern menu_lfo_shape_c node_edit_sel_type_lfo_shape;
+extern menu_freq_max_c node_edit_sel_type_lfo_fmax;
+extern menu_freq_min_c node_edit_sel_type_lfo_fmin;
+extern menu_node_c node_edit_sel_type_lfo_back;
+extern menu_node_c node_edit_sel_type_back;
+extern menu_max_range_c node_edit_sel_max_range;
+extern menu_min_range_c node_edit_sel_min_range;
+extern menu_node_c node_edit_envelope;
+extern menu_node_c node_edit_envelope_back;
+extern menu_select_env_c node_edit_env;
+extern menu_node_c node_edit_env_back;
+extern menu_env_atk_c node_edit_env_atk;
+extern menu_env_dec_c node_edit_env_dec;
+extern menu_env_sus_c node_edit_env_sus;
+extern menu_env_rel_c node_edit_env_rel;
+extern menu_env_max_c node_edit_env_stage_max;
+extern menu_env_min_c node_edit_env_stage_min;
+extern menu_midi_env_c node_edit_env_stage_bind;
+extern menu_node_c node_edit_env_stage_back;
+extern menu_node_c node_edit_env_back;
+extern menu_node_c node_edit_back;
+extern menu_node_c node_save;
+extern menu_node_c node_save_slot;	// TODO: select NVM slot
+extern menu_node_c node_save_bind_pc;	// TODO: menu_midi_save_c
+extern menu_node_c node_save_back;
+extern menu_node_c node_save_back_accept;	// TODO: save to NVM
+extern menu_node_c node_save_back_abort;
+extern menu_node_c node_load;
+extern menu_node_c node_load_slot;	// TODO: load NVM
+extern menu_node_c node_load_back;
+extern menu_group_c node_edit_group;
 
-inline uint16_t extrapolate_num (uint16_t in, uint8_t pos){
-	uint16_t tempResult = in & (0xffff << pos);
-	uint8_t cleanIn = (in >> pos) & 0xf;
-	int8_t i = pos - 4;
-	for (; i > 0; i -= 4){
-		tempResult |= cleanIn << i;
-	}
-	tempResult |= cleanIn >> -i;
-	return tempResult;
-}
-
-inline uint8_t extrapolate_num (uint8_t in, uint8_t pos){
-	return in | (in >> 4);
-}
-
-// TODO: set key lanes
-extern struct menuNode edit_n;
-extern struct menuNode edit_bend_n;
-extern struct menuNode edit_select_n;
-extern struct menuNode edit_sel_back_n;
-extern struct menuNode edit_sel_bind_n;
-extern struct menuNode edit_sel_type_n;
-extern struct menuNode edit_sel_type_pressure_n;
-extern struct menuNode edit_sel_type_CV_n;
-extern struct menuNode edit_sel_type_gate_n;
-extern struct menuNode edit_sel_type_envelope_n;
-extern struct menuNode edit_sel_type_velocity_n;
-extern struct menuNode edit_sel_type_clk_n;
-extern struct menuNode edit_sel_type_lfo_n;
-extern struct menuNode edit_sel_type_lfo_shape_n;
-extern struct menuNode edit_sel_type_lfo_fmax_n;
-extern struct menuNode edit_sel_type_lfo_fmin_n;
-extern struct menuNode edit_sel_type_lfo_back_n;
-extern struct menuNode edit_sel_type_back_n;
-extern struct menuNode edit_sel_max_range_n;
-extern struct menuNode edit_sel_min_range_n;
-extern struct menuNode edit_envelope;
-extern struct menuNode edit_env_0;
-extern struct menuNode edit_env_1;
-extern struct menuNode edit_env_2;
-extern struct menuNode edit_env_3;
-extern struct menuNode edit_env_back;
-extern struct menuNode edit_env_atk_n;
-extern struct menuNode edit_env_atk_max_n;
-extern struct menuNode edit_env_atk_min_n;
-extern struct menuNode edit_env_atk_bind_n;
-extern struct menuNode edit_env_atk_back_n;
-extern struct menuNode edit_env_dec_n;
-extern struct menuNode edit_env_dec_max_n;
-extern struct menuNode edit_env_dec_min_n;
-extern struct menuNode edit_env_dec_bind_n;
-extern struct menuNode edit_env_dec_back_n;
-extern struct menuNode edit_env_sus_n;
-extern struct menuNode edit_env_sus_max_n;
-extern struct menuNode edit_env_sus_min_n;
-extern struct menuNode edit_env_sus_bind_n;
-extern struct menuNode edit_env_sus_back_n;
-extern struct menuNode edit_env_rel_n;
-extern struct menuNode edit_env_rel_max_n;
-extern struct menuNode edit_env_rel_min_n;
-extern struct menuNode edit_env_rel_bind_n;
-extern struct menuNode edit_env_rel_back_n;
-extern struct menuNode edit_env_back_n;
-extern struct menuNode edit_back_n;
-extern struct menuNode save_n;
-extern struct menuNode save_slot_n;
-extern struct menuNode save_bind_pc_n;
-extern struct menuNode save_back_n;
-extern struct menuNode save_back_accept_n;
-extern struct menuNode save_back_abort_n;
-extern struct menuNode load_n;
-extern struct menuNode load_slot_n;
-extern struct menuNode load_back_n;
-extern struct menuNode edit_group;
-
-void Enter_Kid()			{ currentNode = currentNode->kid; }
-void Enter_Env0()			{ chanSel = 0; Enter_Kid(); }
-void Enter_Env1()			{ chanSel = 1; Enter_Kid(); }
-void Enter_Env2()			{ chanSel = 2; Enter_Kid(); }
-void Enter_Env3()			{ chanSel = 3; Enter_Kid(); }
-void Exit_Env()			{ chanSel = 0; Enter_Kid(); }
-void Edit_Bend()			{ menuStatus = Edit_int; var_edit = &bendRange; max_edit = 12; }
-void Select_Pressure()	{ out_handler[chanSel & 0b11][chanSel >> 2].set_type(GOType_t::Pressure); needScan = true; Enter_Kid(); }
-void Select_CV()			{ out_handler[chanSel & 0b11][chanSel >> 2].set_type(GOType_t::DC); needScan = true; Enter_Kid(); }
-void Select_Gate()		{ out_handler[chanSel & 0b11][chanSel >> 2].set_type(GOType_t::Gate); needScan = true; Enter_Kid(); }
-void Select_Envelope()	{ menuStatus = Edit_int; var_edit = &out_handler[chanSel & 0b11][chanSel >> 2].state.env_num; max_edit = 4; out_handler[chanSel & 0b11][chanSel >> 2].set_type(GOType_t::Envelope); }
-void Select_Velocity()	{ out_handler[chanSel & 0b11][chanSel >> 2].set_type(GOType_t::Velocity); needScan = true; Enter_Kid(); }
-void Select_Clk()			{ menuStatus = Edit_int; var_edit = &out_handler[chanSel & 0b11][chanSel >> 2].state.freq_current; max_edit = 128; out_handler[chanSel & 0b11][chanSel >> 2].set_type(GOType_t::CLK); }
-void Select_LFO()			{ out_handler[chanSel & 0b11][chanSel >> 2].set_type(GOType_t::LFO); needScan = true; Enter_Kid(); }
-void Select_LFO_Shape()	{ menuStatus = SetLFO; var_edit = &out_handler[chanSel & 0b11][chanSel >> 2].state.shape; }
-void Select_LFO_Freq_Max(){ menuStatus = Edit_32bit; var_edit = &out_handler[chanSel & 0b11][chanSel >> 2].state.freq_max; var_monitor = &out_handler[chanSel & 0b11][chanSel >> 2].state.freq_current; }
-void Select_LFO_Freq_Min(){ menuStatus = Edit_32bit; var_edit = &out_handler[chanSel & 0b11][chanSel >> 2].state.freq_min; var_monitor = &out_handler[chanSel & 0b11][chanSel >> 2].state.freq_current; }
-void Set_GO_MIDI()		{ menuStatus = Wait_MIDI; var_edit = &out_handler[chanSel & 0b11][chanSel >> 2].state.gen_source; midiTypeMask = 0b111; }
-void Set_Max_Range()		{ menuStatus = Edit_16bit; var_edit = &out_handler[chanSel & 0b11][chanSel >> 2].state.max_range; var_monitor = &out_handler[chanSel & 0b11][chanSel >> 2].state.currentOut; }
-void Set_Min_Range()		{ menuStatus = Edit_16bit; var_edit = &out_handler[chanSel & 0b11][chanSel >> 2].state.min_range; var_monitor = &out_handler[chanSel & 0b11][chanSel >> 2].state.currentOut; }
-void Set_Conf_Slot()		{ menuStatus = Edit_int; var_edit = &confSlot; max_edit = MAX_SLOTS; }
-void Set_Save_PC()		{ menuStatus = Wait_MIDI; var_edit = &confPC; midiTypeMask = 0b100; }
-void Save_Config()		{ needSave = true; Enter_Kid(); }
-void Load_Config()		{ needLoad = true; Enter_Kid(); }
-void Set_Group()			{ menuStatus = Edit_int; var_edit = &midi_group; max_edit = 16; }
-void Set_Env_Atk_Max()	{ menuStatus = Edit_32bit; var_edit = &envelopes[chanSel].env.att.max; var_monitor = &envelopes[chanSel].env.att.current; }
-void Set_Env_Atk_Min()	{ menuStatus = Edit_32bit; var_edit = &envelopes[chanSel].env.att.min; var_monitor = &envelopes[chanSel].env.att.current; }
-void Set_Env_Atk_Bind()	{ menuStatus = Wait_MIDI; var_edit = &envelopes[chanSel].env.att.source; midiTypeMask = 0b001; }
-void Set_Env_Dec_Max()	{ menuStatus = Edit_32bit; var_edit = &envelopes[chanSel].env.dec.max; var_monitor = &envelopes[chanSel].env.dec.current; }
-void Set_Env_Dec_Min()	{ menuStatus = Edit_32bit; var_edit = &envelopes[chanSel].env.dec.min; var_monitor = &envelopes[chanSel].env.dec.current; }
-void Set_Env_Dec_Bind()	{ menuStatus = Wait_MIDI; var_edit = &envelopes[chanSel].env.dec.source; midiTypeMask = 0b001; }
-void Set_Env_Sus_Max()	{ menuStatus = Edit_16bit; var_edit = &envelopes[chanSel].env.sus.max; var_monitor = &envelopes[chanSel].env.sus.current; }
-void Set_Env_Sus_Min()	{ menuStatus = Edit_16bit; var_edit = &envelopes[chanSel].env.sus.min; var_monitor = &envelopes[chanSel].env.sus.current; }
-void Set_Env_Sus_Bind()	{ menuStatus = Wait_MIDI; var_edit = &envelopes[chanSel].env.sus.source; midiTypeMask = 0b001; }
-void Set_Env_Rel_Max()	{ menuStatus = Edit_32bit; var_edit = &envelopes[chanSel].env.rel.max; var_monitor = &envelopes[chanSel].env.rel.current; }
-void Set_Env_Rel_Min()	{ menuStatus = Edit_32bit; var_edit = &envelopes[chanSel].env.rel.min; var_monitor = &envelopes[chanSel].env.rel.current; }
-void Set_Env_Rel_Bind()	{ menuStatus = Wait_MIDI; var_edit = &envelopes[chanSel].env.rel.source; midiTypeMask = 0b001; }
+//void Set_Conf_Slot()		{ menuStatus = Edit_int; var_edit = &confSlot; max_edit = MAX_SLOTS; }
+//void Set_Save_PC()		{ menuStatus = Wait_MIDI; var_edit = &confPC; midiTypeMask = 0b100; }
+//void Save_Config()		{ needSave = true; Enter_Kid(); }
+//void Load_Config()		{ needLoad = true; Enter_Kid(); }
 
 // Used to bind MIDI sources in configuration
 uint8_t menu_midi(struct umpCVM* msg){
-	if (menuStatus == menu_status_t::Wait_MIDI){
-		ctrlSource_t* tempSource = (ctrlSource_t*) var_edit;
-		
-		switch(msg->status){
-			case PROGRAM_CHANGE:
-				if (!(midiTypeMask & 0b100)){
-					return 0;
-				}
-				// TODO: Set global bank?
-				tempSource->sourceType = ctrlType_t::program;
-				tempSource->sourceNum = msg->value;
-				break;
-			case NOTE_ON:
-			case NOTE_OFF:
-				if (!(midiTypeMask & 0b010)){
-					return 0;
-				}
-				tempSource->sourceType = ctrlType_t::key;
-				tempSource->sourceNum = msg->note;
-				break;
-			case CC:
-				if (!(midiTypeMask & 0b001)){
-					return 0;
-				}
-				tempSource->sourceType = ctrlType_t::controller;
-				tempSource->sourceNum = msg->index;
-				break;
-			default:
-				return 0;
-		}
-		
-		tempSource->channel = msg->channel;
-		menuStatus = menu_status_t::Navigate;
+	if (current_node->handle_midi(msg)){
 		needScan = true;
-		Enter_Kid();
 		return 1;
 	}
 	return 0;
 }
 
 void menu_init(){
-	currentNode = &edit_n;
-	menuStatus = Navigate;
-	
+	current_node = &node_edit;
+	current_node->init();
+
 	// Enable pin interrupts on buttons
 	gpio_init(BUTT1);
 	gpio_init(BUTT2);
@@ -225,15 +111,18 @@ void check_buttons(){
 		uint8_t butt_edge = butt_state_debounced & ~temp_state;
 		if (butt_edge & 0b001){
 			// BUTT1
-			buttRight = true;
+			current_node->butt_right();
+			needScan = true;
 		}
 		if (butt_edge & 0b010){
 			// BUTT2
-			buttUp = true;
+			current_node->butt_up();
+			needScan = true;
 		}
 		if (butt_edge & 0b100){
 			// BUTT3
-			buttDown = true;
+			current_node->butt_down();
+			needScan = true;
 		}
 		butt_state_debounced = temp_state;
 	}
@@ -242,1167 +131,1264 @@ void check_buttons(){
 }
 
 uint8_t menu_service(){
-	bool screenChange = false;
 	if (time_us_32() > butt_timer) {
 		check_buttons();
 	}
-	switch(menuStatus){
-		case menu_status_t::Navigate:
-			if (currentNode == &edit_select_n){
-				if (buttUp) {
-					if (chanSel > 0){
-						chanSel--;
-					} else {
-						currentNode = currentNode->previous;
-					}
-					buttUp = false;
-					screenChange = true;
-				}
-				if (buttDown) {
-					if (chanSel < 15){
-						chanSel++;
-					} else {
-						currentNode = currentNode->next;
-						chanSel = 0;
-					}
-					buttDown = false;
-					screenChange = true;
-				}
-				
-				if (buttRight) {
-					currentNode->function();
-					buttRight = false;
-					screenChange = true;
-				}
-			} else {
-				if (buttUp) {
-					currentNode = currentNode->previous;
-					buttUp = false;
-					screenChange = true;
-				}
-				if (buttDown) {
-					currentNode = currentNode->next;
-					buttDown = false;
-					screenChange = true;
-				}
-				if (buttRight) {
-					currentNode->function();
-					buttRight = false;
-					screenChange = true;
-				}
-			}
-			break;
-		case menu_status_t::Wait_MIDI:
-			// Press to un-bind
-			if (buttRight){
-				buttRight = false;
-				ctrlSource_t* tempSrc = (ctrlSource_t*) var_edit;
-				tempSrc->sourceType = ctrlType_t::none;
-				menuStatus = menu_status_t::Navigate;
-				needScan = true;
-				Enter_Kid();
-			}
-			if (buttDown){
-				buttDown = false;
-			}
-			if (buttUp){
-				buttUp = false;
-			}
-			screenChange = true;
-			break;
-		case menu_status_t::SetLFO:
-			if (buttUp) {
-				uint8_t* tempPoint = (uint8_t*) var_edit;
-				uint8_t tempShape = *tempPoint;
-				tempShape++;
-				if (tempShape >= 5){
-					tempShape = 0;
-				}
-				*tempPoint = tempShape;
-				buttUp = false;
-			}
-			if (buttDown) {
-				uint8_t* tempPoint = (uint8_t*) var_edit;
-				uint8_t tempShape = *tempPoint;
-				tempShape--;
-				if (tempShape >= 5){
-					tempShape = 4;
-				}
-				*tempPoint = tempShape;
-				buttDown = false;
-			}
-			if (buttRight) {
-				buttRight = false;
-				menuStatus = menu_status_t::Navigate;
-				Enter_Kid();
-			}
-			screenChange = true;
-			break;
-		case menu_status_t::Edit_int:
-			if (buttUp) {
-				uint8_t* tempPoint = (uint8_t*) var_edit;
-				uint8_t tempInt = *tempPoint;
-				tempInt++;
-				if (tempInt >= max_edit){
-					tempInt = 0;
-				}
-				*tempPoint = tempInt;
-				buttUp = false;
-				needScan = true;
-			}
-			if (buttDown) {
-				uint8_t* tempPoint = (uint8_t*) var_edit;
-				uint8_t tempInt = *tempPoint;
-				tempInt--;
-				if (tempInt >= max_edit){
-					tempInt = max_edit - 1;
-				}
-				*tempPoint = tempInt;
-				buttDown = false;
-				needScan = true;
-			}
-			if (buttRight) {
-				buttRight = false;
-				menuStatus = menu_status_t::Navigate;
-				needScan = true;
-				Enter_Kid();
-			}
-			screenChange = true;
-			break;
-		case menu_status_t::Edit_8bit:
-			if (buttUp) {
-				uint8_t* tempPoint = (uint8_t*) var_edit;
-				uint8_t tempInt = *tempPoint;
-				buttUp = false;
-				needScan = true;
-				if (bit_edit_stage & 0x80){
-					uint8_t delta = 1 << (bit_edit_stage & 0x07);
-					tempInt += delta;
-					tempInt = extrapolate_num(tempInt, bit_edit_stage & 0x07);
-				} else {
-					uint8_t i;
-					for (i = 7; (i > 0) && !(tempInt & (1 << i)); i--);
-					i++;
-					bit_edit_stage = i & 0x07;
-					tempInt = 1 << bit_edit_stage;
-				}
-				*tempPoint = tempInt;
-				tempPoint = (uint8_t*) var_monitor;
-				*tempPoint = tempInt;
-			}
-			if (buttDown) {
-				uint8_t* tempPoint = (uint8_t*) var_edit;
-				uint8_t tempInt = *tempPoint;
-				buttDown = false;
-				needScan = true;
-				if (bit_edit_stage & 0x80){
-					uint8_t delta = 1 << (bit_edit_stage & 0x07);
-					tempInt -= delta;
-					tempInt = extrapolate_num(tempInt, bit_edit_stage & 0x07);
-				} else {
-					uint8_t i;
-					for (i = 7; (i > 0) && !(tempInt & (1 << i)); i--);
-					i--;
-					bit_edit_stage = i & 0x07;
-					tempInt = 1 << bit_edit_stage;
-				}
-				*tempPoint = tempInt;
-				tempPoint = (uint8_t*) var_monitor;
-				*tempPoint = tempInt;
-			}
-			if (buttRight) {
-				buttRight = false;
-				if (bit_edit_stage & 0x80){
-					bit_edit_stage = 0;
-					menuStatus = menu_status_t::Navigate;
-					needScan = true;
-					Enter_Kid();
-				} else {
-					if (bit_edit_stage > 3){
-						bit_edit_stage -= 3;
-					} else {
-						bit_edit_stage = 0;
-					}
-					bit_edit_stage |= 0x80;
-				}
-			}
-			screenChange = true;
-			break;
-		case menu_status_t::Edit_16bit:
-			if (buttUp) {
-				uint16_t* tempPoint = (uint16_t*) var_edit;
-				uint16_t tempInt = *tempPoint;
-				buttUp = false;
-				needScan = true;
-				if (bit_edit_stage & 0x80){
-					uint16_t delta = 1 << (bit_edit_stage & 0x0f);
-					tempInt += delta;
-					tempInt = extrapolate_num(tempInt, bit_edit_stage & 0x0f);
-				} else {
-					uint8_t i;
-					for (i = 15; (i > 0) && !(tempInt & (1 << i)); i--);
-					i++;
-					bit_edit_stage = i & 0x0f;
-					tempInt = 1 << bit_edit_stage;
-				}
-				*tempPoint = tempInt;
-				tempPoint = (uint16_t*) var_monitor;
-				*tempPoint = tempInt;
-			}
-			if (buttDown) {
-				uint16_t* tempPoint = (uint16_t*) var_edit;
-				uint16_t tempInt = *tempPoint;
-				buttDown = false;
-				needScan = true;
-				if (bit_edit_stage & 0x80){
-					uint16_t delta = 1 << (bit_edit_stage & 0x0f);
-					tempInt -= delta;
-					tempInt = extrapolate_num(tempInt, bit_edit_stage & 0x0f);
-				} else {
-					uint8_t i;
-					for (i = 15; (i > 0) && !(tempInt & (1 << i)); i--);
-					i--;
-					bit_edit_stage = i & 0x0f;
-					tempInt = 1 << bit_edit_stage;
-				}
-				*tempPoint = tempInt;
-				tempPoint = (uint16_t*) var_monitor;
-				*tempPoint = tempInt;
-			}
-			if (buttRight) {
-				buttRight = false;
-				if (bit_edit_stage & 0x80){
-					bit_edit_stage = 0;
-					menuStatus = menu_status_t::Navigate;
-					needScan = true;
-					Enter_Kid();
-				} else {
-					if (bit_edit_stage > 3){
-						bit_edit_stage -= 3;
-					} else {
-						bit_edit_stage = 0;
-					}
-					bit_edit_stage |= 0x80;
-				}
-			}
-			screenChange = true;
-			break;
-		case menu_status_t::Edit_32bit:
-			if (buttUp) {
-				uint32_t* tempPoint = (uint32_t*) var_edit;
-				uint32_t tempInt = *tempPoint;
-				buttUp = false;
-				needScan = true;
-				if (bit_edit_stage & 0x80){
-					uint32_t delta = 1 << (bit_edit_stage & 0x1f);
-					tempInt += delta;
-					tempInt = extrapolate_num(tempInt, bit_edit_stage & 0x1f);
-				} else {
-					uint8_t i;
-					for (i = 31; (i > 0) && !(tempInt & (1 << i)); i--);
-					i++;
-					bit_edit_stage = i & 0x1f;
-					tempInt = 1 << bit_edit_stage;
-				}
-				*tempPoint = tempInt;
-				tempPoint = (uint32_t*) var_monitor;
-				*tempPoint = tempInt;
-			}
-			if (buttDown) {
-				uint32_t* tempPoint = (uint32_t*) var_edit;
-				uint32_t tempInt = *tempPoint;
-				buttDown = false;
-				needScan = true;
-				if (bit_edit_stage & 0x80){
-					uint32_t delta = 1 << (bit_edit_stage & 0x1f);
-					tempInt -= delta;
-					tempInt = extrapolate_num(tempInt, bit_edit_stage & 0x1f);
-				} else {
-					uint8_t i;
-					for (i = 31; (i > 0) && !(tempInt & (1 << i)); i--);
-					i--;
-					bit_edit_stage = i & 0x1f;
-					tempInt = 1 << bit_edit_stage;
-				}
-				*tempPoint = tempInt;
-				tempPoint = (uint32_t*) var_monitor;
-				*tempPoint = tempInt;
-			}
-			if (buttRight) {
-				buttRight = false;
-				if (bit_edit_stage & 0x80){
-					bit_edit_stage = 0;
-					menuStatus = menu_status_t::Navigate;
-					needScan = true;
-					Enter_Kid();
-				} else {
-					if (bit_edit_stage > 3){
-						bit_edit_stage -= 3;
-					} else {
-						bit_edit_stage = 0;
-					}
-					bit_edit_stage |= 0x80;
-				}
-			}
-			screenChange = true;
-			break;
-		default:
-			// Invalid state, reset menu
-			menu_init();
-			break;
-	}
-	
-	if (screenChange) {
-		if (menuStatus == menu_status_t::Navigate){
-			// Channel select screen override
-			if (currentNode == &edit_select_n){
-				LM_WriteRow(4, 0xffff);
-				for (uint8_t i = 0; i < 4; i++){
-					LM_WriteRow(i, 0b1111000000001111 | (((chanSel % 4) == i) ? 0b10 << (2*(5 - chanSel/4)) : 0));
-				}
-			} else {
-				for (uint8_t i = 0; i < 5; i++)	{
-					LM_WriteRow(i, currentNode->graphic[i]);
-				}
-			}
-		} else if (menuStatus == menu_status_t::Wait_MIDI){
-			LM_WriteRow(0,0xffff);
-			LM_WriteRow(1,0);
-			LM_WriteRow(2,0);
-			LM_WriteRow(4,0);
-			uint8_t timer = (time_us_32() >> 18) & 0b1111;
-			LM_WriteRow(3, 0b0011001100110011 & ~(0b11 << timer));
-		} else if (menuStatus == menu_status_t::SetLFO){
-			WavShape_t* tempPoint = (WavShape_t*) var_edit;
-			WavShape_t tempShape = *tempPoint;
-			switch(tempShape){
-				case WavShape_t::Square:
-					LM_WriteRow(0, 0b0011111111000011);
-					LM_WriteRow(1, 0b0011000011000011);
-					LM_WriteRow(2, 0b0011000011000011);
-					LM_WriteRow(3, 0b0011000011000011);
-					LM_WriteRow(4, 0b1111000011111111);
-					break;
-				case WavShape_t::Triangle:
-					LM_WriteRow(0, 0b0000000011000000);
-					LM_WriteRow(1, 0b0000001100110000);
-					LM_WriteRow(2, 0b0000110000001100);
-					LM_WriteRow(3, 0b0011000000000011);
-					LM_WriteRow(4, 0b1100000000000000);
-					break;
-				case WavShape_t::Sawtooth:
-					LM_WriteRow(0, 0b1100000011000000);
-					LM_WriteRow(1, 0b1111000011110000);
-					LM_WriteRow(2, 0b1100110011001100);
-					LM_WriteRow(3, 0b1100001111000011);
-					LM_WriteRow(4, 0b1100000011000000);
-					break;
-				case WavShape_t::Sine:
-					LM_WriteRow(0, 0b0000000000000011);
-					LM_WriteRow(1, 0b0000000000111100);
-					LM_WriteRow(2, 0b0000000000110000);
-					LM_WriteRow(3, 0b1100000011110000);
-					LM_WriteRow(4, 0b0011111100000000);
-					break;
-				case WavShape_t::SinSaw:
-					LM_WriteRow(0, 0b1111000000111100);
-					LM_WriteRow(1, 0b1100110000110011);
-					LM_WriteRow(2, 0b1100110000110000);
-					LM_WriteRow(3, 0b1100001100110000);
-					LM_WriteRow(4, 0b1100000011110000);
-					break;
-			}
-		} else if (menuStatus == menu_status_t::Edit_int){
-			uint8_t* tempPoint = (uint8_t*) var_edit;
-			uint8_t tempNum = *tempPoint;
-			uint8_t lo = tempNum & 0b111;
-			uint8_t mid = (tempNum >> 3) & 0b111;
-			uint8_t hi = tempNum >> 6;
-			LM_WriteRow(0, 0xffff);
-			LM_WriteRow(1, 0);
-			LM_WriteRow(2, 0xffff >> (16-2*hi));
-			LM_WriteRow(3, 0xffff >> (16-2*mid));
-			LM_WriteRow(4, 0xffff >> (14-2*lo));
-		} else {
-			uint16_t dispNum[4];
-			if (menuStatus == menu_status_t::Edit_8bit){
-				uint8_t* tempPoint = (uint8_t*) var_edit;
-				uint8_t tempExpand = *tempPoint;
-				dispNum[0] = 0;
-				for (uint8_t n = 0; n < 16; n += 2){
-					uint8_t temp = tempExpand & 1;
-					temp |= temp << 1;
-					tempExpand >>= 1;
-					dispNum[0] |= temp << n;
-				}
-				dispNum[1] = dispNum[0];
-				dispNum[2] = dispNum[0];
-				dispNum[3] = dispNum[0];
-			} else if (menuStatus == menu_status_t::Edit_16bit){
-				uint16_t* tempPoint = (uint16_t*) var_edit;
-				uint16_t tempExpand = *tempPoint;
-				for (uint8_t i = 0; i < 2; i++){
-					dispNum[i] = 0;
-					for (uint8_t n = 0; n < 16; n += 2){
-						uint8_t temp = tempExpand & 1;
-						temp |= temp << 1;
-						tempExpand >>= 1;
-						dispNum[i] |= temp << n;
-					}
-				}
-				dispNum[2] = dispNum[0];
-				dispNum[3] = dispNum[1];
-			} else {
-				uint32_t* tempPoint = (uint32_t*) var_edit;
-				uint32_t tempExpand = *tempPoint;
-				for (uint8_t i = 0; i < 4; i++){
-					dispNum[i] = 0;
-					for (uint8_t n = 0; n < 16; n += 2){
-						uint8_t temp = tempExpand & 1;
-						temp |= temp << 1;
-						tempExpand >>= 1;
-						dispNum[i] |= temp << n;
-					}
-				}
-			}
-			LM_WriteRow(4, 0xffff);
-			LM_WriteRow(3, dispNum[0]);
-			LM_WriteRow(2, dispNum[1]);
-			LM_WriteRow(1, dispNum[2]);
-			LM_WriteRow(0, dispNum[3]);
-		}
-		return 1;
-	} else {
-		return 0;
-	}
+
+	uint8_t screen_updated = current_node->screen_changed();
+	current_node->update();
+	return screen_updated;
 }
 
 menu_status_t get_menu_state(){
-	return menuStatus;
+	return current_node->get_status();
 }
 
-// TODO: Improve node linking ( going down a level should lead to the first node at that level )
+/* current menu structure
+- edit
+|- bend
+|- group
+|- output_n
+||- max_range
+||- min_range
+||- select_type
+|||- dc
+|||- gate
+|||- envelope
+|||- lfo
+||||- shape
+||||- max_frequency
+||||- min_frequency
+||||- return
+|||- clk
+|||- velocity
+|||- pressure
+|||- return
+||- bind_midi
+||- select key lane
+||- return
+|- edit_envelope
+||- select_env
+|||- attack
+||||- max
+||||- min
+||||- bind
+||||- return
+|||- decay
+||||- max
+||||- min
+||||- bind
+||||- return
+|||- sustain
+||||- max
+||||- min
+||||- bind
+||||- return
+|||- release
+||||- max
+||||- min
+||||- bind
+||||- return
+|||- return
+||- return
+|- return
+- save
+|- slot
+|- bind
+|- return
+||- accept
+||- abort
+- load
+|- slot
+|- back
+*/
+
+struct menu_graphic_t graphic_blank = {
+	line :{
+		0b0000000000000000,
+		0b0000000000000000,
+		0b0000000000000000,
+		0b0000000000000000,
+		0b0000000000000000
+	}
+};
+
+struct menu_graphic_t graphic_back_0 = {
+	line :{
+		0b0000000011000000,
+		0b0000001111110000,
+		0b0000110011001100,
+		0b0000000011000000,
+		0b0000000011111111
+	}
+};
+
+struct menu_graphic_t graphic_back_1 = {
+	line :{
+		0b1100000011000000,
+		0b0000001111110000,
+		0b0000110011001100,
+		0b0000000011000000,
+		0b0000000011111111
+	}
+};
+
+struct menu_graphic_t graphic_back_2 = {
+	line :{
+		0b0000000011000000,
+		0b1100001111110000,
+		0b0000110011001100,
+		0b0000000011000000,
+		0b0000000011111111
+	}
+};
+
+struct menu_graphic_t graphic_back_3 = {
+	line :{
+		0b0000000011000000,
+		0b0000001111110000,
+		0b1100110011001100,
+		0b0000000011000000,
+		0b0000000011111111
+	}
+};
+
+struct menu_graphic_t graphic_back_4 = {
+	line :{
+		0b0000000011000000,
+		0b0000001111110000,
+		0b0000110011001100,
+		0b1100000011000000,
+		0b0000000011111111
+	}
+};
+
+struct menu_graphic_t graphic_bind_midi = {
+	line :{
+		0b1100000011110000,
+		0b1100000011001100,
+		0b1100000011110000,
+		0b1100000011001100,
+		0b1111110011001100
+	}
+};
+
+struct menu_graphic_t graphic_accept = {
+	line :{
+		0b0000000000000011,
+		0b0000000000001100,
+		0b0011000000110000,
+		0b0000110011000000,
+		0b0000001100000000
+	}
+};
+
+struct menu_graphic_t graphic_abort = {
+	line :{
+		0b0000110000001100,
+		0b0000001100110000,
+		0b0000000011000000,
+		0b0000001100110000,
+		0b0000110000001100
+	}
+};
+
+struct menu_graphic_t graphic_fmax = {
+	line :{
+		0b1111110000110000,
+		0b1100000011111100,
+		0b1111001100110011,
+		0b1100000000110000,
+		0b1100000000110000
+	}
+};
+
+struct menu_graphic_t graphic_fmin = {
+	line :{
+		0b1111110000110000,
+		0b1100000000110000,
+		0b1111001100110011,
+		0b1100000011111100,
+		0b1100000000110000
+	}
+};
+
+struct menu_graphic_t graphic_rmax = {
+	line :{
+		0b1111000000110000,
+		0b1100110011111100,
+		0b1111001100110011,
+		0b1100110000110000,
+		0b1100110000110000
+	}
+};
+
+struct menu_graphic_t graphic_rmin = {
+	line :{
+		0b1111000000110000,
+		0b1100110000110000,
+		0b1111001100110011,
+		0b1100110011111100,
+		0b1100110000110000
+	}
+};
+
 
 // lvl0
-struct menuNode edit_n = {
-	graphic :{	0b1111110011110000, 
-				0b1100000011001100, 
-				0b1111000011001100, 
-				0b1100000011001100, 
-				0b1111110011110000},
-	kid :		&edit_bend_n,
-	previous :	&load_n,
-	next :		&save_n,
-	function :	Enter_Kid
+struct menu_graphic_t graphic_edit = {
+	line :{
+		0b1111110011110000,
+		0b1100000011001100,
+		0b1111000011001100,
+		0b1100000011001100,
+		0b1111110011110000
+	}
 };
+
+menu_node_c node_edit = menu_node_c(
+	&node_edit_bend,
+	&node_load,
+	&node_save,
+	graphic_edit
+);
 
 // lvl1
-struct menuNode edit_bend_n = {
-	graphic :{	0b1111000011000011, 
-				0b1100110011110011, 
-				0b1111000011110011, 
-				0b1100110011001111, 
-				0b1111000011000011},
-	kid :		&edit_n,
-	previous :	&edit_back_n,
-	next :		&edit_group,
-	function :	Edit_Bend
+struct menu_graphic_t graphic_edit_bend = {
+	line :{
+		0b1111000011000011,
+		0b1100110011110011,
+		0b1111000011110011,
+		0b1100110011001111,
+		0b1111000011000011
+	}
 };
 
-struct menuNode edit_group = {
-	graphic :{	0b1111001111001111,
-				0b1111001111001111,
-				0b0000000000000000,
-				0b0101001111001111,
-				0b0101001111001111},
-	kid :		&edit_group,
-	previous :	&edit_bend_n,
-	next :		&edit_select_n,
-	function :	Set_Group
+menu_bend_range_c node_edit_bend = menu_bend_range_c(
+	&node_edit_bend,
+	&node_edit_back,
+	&node_edit_group,
+	graphic_edit_bend
+);
+
+struct menu_graphic_t graphic_edit_group = {
+	line :{
+		0b1111001111001111,
+		0b1111001111001111,
+		0b0000000000000000,
+		0b0101001111001111,
+		0b0101001111001111
+	}
 };
 
-struct menuNode edit_select_n = {
-	graphic :{	0b1111111111111111, 
-				0b1111110000001111, 
-				0b1111000000001111, 
-				0b1111000000001111, 
-				0b1111000000001111},
-	kid :		&edit_sel_type_n,
-	previous :	&edit_group,
-	next :		&edit_envelope,
-	function :	Enter_Kid
-};
+menu_group_c node_edit_group = menu_group_c(
+	&node_edit_group,
+	&node_edit_bend,
+	&node_edit_select,
+	graphic_edit_group
+);
+
+menu_select_out_c node_edit_select = menu_select_out_c(
+	&node_edit_sel_max_range,
+	&node_edit_group,
+	&node_edit_envelope,
+	graphic_blank
+);
 
 // lvl2
-struct menuNode edit_sel_max_range_n = {
-	graphic :{	0b1111000000110000,
-				0b1100110011111100,
-				0b1111001100110011,
-				0b1100110000110000,
-				0b1100110000110000},
-	kid :		&edit_sel_max_range_n,
-	previous :	&edit_sel_back_n,
-	next :		&edit_sel_min_range_n,
-	function :	Set_Max_Range
+menu_max_range_c node_edit_sel_max_range = menu_max_range_c(
+	&node_edit_sel_min_range,
+	&node_edit_sel_back,
+	&node_edit_sel_min_range,
+	graphic_rmax
+);
+
+menu_min_range_c node_edit_sel_min_range = menu_min_range_c(
+	&node_edit_sel_type,
+	&node_edit_sel_max_range,
+	&node_edit_sel_type,
+	graphic_rmin
+);
+
+struct menu_graphic_t graphic_edit_sel_type = {
+	line :{
+		0b1111110011110000,
+		0b0011000011001100,
+		0b0011000011110000,
+		0b0011000011000000,
+		0b0011000011000000
+	}
 };
 
-struct menuNode edit_sel_min_range_n = {
-	graphic :{	0b1111000000110000,
-				0b1100110000110000,
-				0b1111001100110011,
-				0b1100110011111100,
-				0b1100110000110000},
-	kid :		&edit_sel_min_range_n,
-	previous :	&edit_sel_max_range_n,
-	next :		&edit_sel_bind_n,
-	function :	Set_Min_Range
-};
-
-struct menuNode edit_sel_bind_n = {
-	graphic :{	0b1100000011110000,
-				0b1100000011001100,
-				0b1100000011110000,
-				0b1100000011001100,
-				0b1111110011001100},
-	kid :		&edit_sel_bind_n,
-	previous :	&edit_sel_min_range_n,
-	next :		&edit_sel_type_n,
-	function :	Set_GO_MIDI
-};
-
-struct menuNode edit_sel_type_n = {
-	graphic :{	0b1111110011110000,
-				0b0011000011001100,
-				0b0011000011110000,
-				0b0011000011000000,
-				0b0011000011000000},
-	kid :		&edit_sel_type_CV_n,
-	previous :	&edit_sel_bind_n,
-	next :		&edit_sel_back_n,
-	function :	Enter_Kid
-};
+menu_type_select_c node_edit_sel_type = menu_type_select_c(
+	&node_edit_sel_type_cv,
+	&node_edit_sel_min_range,
+	&node_edit_sel_bind,
+	graphic_edit_sel_type
+);
 
 // lvl3
-struct menuNode edit_sel_type_CV_n = {
-	graphic :{	0b0011110011001100,
-				0b1100000011001100,
-				0b1100000011001100,
-				0b1100000000110000,
-				0b0011110000110000},
-	kid :		&edit_sel_type_n,
-	previous :	&edit_sel_type_back_n,
-	next :		&edit_sel_type_gate_n,
-	function :	Select_CV
+struct menu_graphic_t graphic_edit_cv = {
+	line :{
+		0b0011110011001100,
+		0b1100000011001100,
+		0b1100000011001100,
+		0b1100000000110000,
+		0b0011110000110000
+	}
 };
 
-struct menuNode edit_sel_type_gate_n = {
-	graphic :{	0b0011110000111111,
-				0b1100000000001100,
-				0b1100111100001100,
-				0b1100001100001100,
-				0b0011110000001100},
-	kid :		&edit_sel_type_n,
-	previous :	&edit_sel_type_CV_n,
-	next :		&edit_sel_type_envelope_n,
-	function :	Select_Gate
+menu_type_cv_c node_edit_sel_type_cv = menu_type_cv_c(
+	&node_edit_sel_bind,
+	&node_edit_sel_type_back,
+	&node_edit_sel_type_gate,
+	graphic_edit_cv
+);
+
+struct menu_graphic_t graphic_edit_gate = {
+	line :{
+		0b0011110000111111,
+		0b1100000000001100,
+		0b1100111100001100,
+		0b1100001100001100,
+		0b0011110000001100
+	}
 };
 
-struct menuNode edit_sel_type_envelope_n = {
-	graphic :{	0b0000110000000000,
-				0b0011001100000000,
-				0b0011000011110000,
-				0b1100000000001100,
-				0b1100000000000011},
-	kid :		&edit_sel_type_n,
-	previous :	&edit_sel_type_gate_n,
-	next :		&edit_sel_type_lfo_n,
-	function :	Select_Envelope
+menu_type_gate_c node_edit_sel_type_gate = menu_type_gate_c(
+	&node_edit_sel_bind,
+	&node_edit_sel_type_cv,
+	&node_edit_sel_type_envelope,
+	graphic_edit_gate
+);
+
+struct menu_graphic_t graphic_edit_type_envelope = {
+	line :{
+		0b0000110000000000,
+		0b0011001100000000,
+		0b0011000011110000,
+		0b1100000000001100,
+		0b1100000000000011
+	}
 };
 
-struct menuNode edit_sel_type_lfo_n = {
-	graphic :{	0b0011111100111111,
-				0b0011001100110011,
-				0b0011001100110011,
-				0b0011001100110011,
-				0b1111001111110011},
-	kid :		&edit_sel_type_lfo_shape_n,
-	previous :	&edit_sel_type_envelope_n,
-	next :		&edit_sel_type_clk_n,
-	function :	Select_LFO
+menu_type_env_c node_edit_sel_type_envelope = menu_type_env_c(
+	&node_edit_sel_env_num,
+	&node_edit_sel_type_gate,
+	&node_edit_sel_type_velocity,
+	graphic_edit_type_envelope
+);
+
+struct menu_graphic_t graphic_sel_envelope = {
+	line :{
+		0b1111110000000000,
+		0b1100000000000000,
+		0b1111000000000000,
+		0b1100000000000000,
+		0b1111110000000000
+	}
 };
+
+menu_edit_sel_env_c node_edit_sel_env_num = menu_edit_sel_env_c(
+	&node_edit_sel_bind,
+	&node_edit_sel_env_num,
+	&node_edit_sel_env_num,
+	graphic_sel_envelope
+);
+
+struct menu_graphic_t graphic_edit_velocity = {
+	line :{
+		0b1100111111001100,
+		0b1100111100001100,
+		0b1100111111001100,
+		0b0011001100001100,
+		0b0011001111001111
+	}
+};
+
+menu_type_velocity_c node_edit_sel_type_velocity = menu_type_velocity_c(
+	&node_edit_sel_bind,
+	&node_edit_sel_type_envelope,
+	&node_edit_sel_type_pressure,
+	graphic_edit_velocity
+);
+
+struct menu_graphic_t graphic_edit_pressure = {
+	line :{
+		0b1111001111000011,
+		0b1100111100111100,
+		0b1111001111000011,
+		0b1100001100110011,
+		0b1100001100111100
+	}
+};
+
+menu_type_pressure_c node_edit_sel_type_pressure = menu_type_pressure_c(
+	&node_edit_sel_bind,
+	&node_edit_sel_type_velocity,
+	&node_edit_sel_type_clk,
+	graphic_edit_pressure
+);
+
+struct menu_graphic_t graphic_edit_clk = {
+	line :{
+		0b0011111100110011,
+		0b1100001100110011,
+		0b1100001100111100,
+		0b1100001100110011,
+		0b0011111111110011
+	}
+};
+
+menu_type_clk_c node_edit_sel_type_clk = menu_type_clk_c(
+	&node_edit_sel_bind,
+	&node_edit_sel_type_velocity,
+	&node_edit_sel_type_lfo,
+	graphic_edit_clk
+);
+
+struct menu_graphic_t graphic_edit_lfo = {
+	line :{
+		0b0011111100111111,
+		0b0011001100110011,
+		0b0011001100110011,
+		0b0011001100110011,
+		0b1111001111110011
+	}
+};
+
+menu_type_lfo_c node_edit_sel_type_lfo = menu_type_lfo_c(
+	&node_edit_sel_type_lfo_shape,
+	&node_edit_sel_type_clk,
+	&node_edit_sel_type_back,
+	graphic_edit_lfo
+);
 
 // lvl4
-struct menuNode edit_sel_type_lfo_shape_n = {
-	graphic :{	0b1111000000110000,
-				0b0011000011001100,
-				0b0011001100000011,
-				0b0011110000000000,
-				0b0011000000000000},
-	kid :		&edit_sel_type_lfo_fmax_n,
-	previous :	&edit_sel_type_lfo_back_n,
-	next :		&edit_sel_type_lfo_fmax_n,
-	function :	Select_LFO_Shape
+struct menu_graphic_t graphic_edit_lfo_shape = {
+	line :{
+		0b1111000000110000,
+		0b0011000011001100,
+		0b0011001100000011,
+		0b0011110000000000,
+		0b0011000000000000
+	}
 };
 
-struct menuNode edit_sel_type_lfo_fmax_n = {
-	graphic :{	0b1111110000110000,
-				0b1100000011111100,
-				0b1111001100110011,
-				0b1100000000110000,
-				0b1100000000110000},
-	kid :		&edit_sel_type_lfo_fmin_n,
-	previous :	&edit_sel_type_lfo_shape_n,
-	next :		&edit_sel_type_lfo_fmin_n,
-	function :	Select_LFO_Freq_Max
-};
+menu_lfo_shape_c node_edit_sel_type_lfo_shape = menu_lfo_shape_c(
+	&node_edit_sel_type_lfo_fmax,
+	&node_edit_sel_type_lfo_back,
+	&node_edit_sel_type_lfo_fmax,
+	graphic_edit_lfo_shape
+);
 
-struct menuNode edit_sel_type_lfo_fmin_n = {
-	graphic :{	0b1111110000110000,
-				0b1100000000110000,
-				0b1111001100110011,
-				0b1100000011111100,
-				0b1100000000110000},
-	kid :		&edit_sel_type_lfo_back_n,
-	previous :	&edit_sel_type_lfo_fmax_n,
-	next :		&edit_sel_type_lfo_back_n,
-	function :	Select_LFO_Freq_Min
-};
+menu_freq_max_c node_edit_sel_type_lfo_fmax = menu_freq_max_c(
+	&node_edit_sel_type_lfo_fmin,
+	&node_edit_sel_type_lfo_shape,
+	&node_edit_sel_type_lfo_fmin,
+	graphic_fmax
+);
 
-struct menuNode edit_sel_type_lfo_back_n = {
-	graphic :{	0b0000000011000000,
-				0b0000001111110000,
-				0b0000110011001100,
-				0b1100000011000000,
-				0b0000000011111111},
-	kid :		&edit_sel_type_n,
-	previous :	&edit_sel_type_lfo_fmin_n,
-	next :		&edit_sel_type_lfo_shape_n,
-	function :	Enter_Kid
-};
+menu_freq_min_c node_edit_sel_type_lfo_fmin = menu_freq_min_c(
+	&node_edit_sel_type_lfo_back,
+	&node_edit_sel_type_lfo_fmax,
+	&node_edit_sel_type_lfo_back,
+	graphic_fmin
+);
+
+menu_node_c node_edit_sel_type_lfo_back = menu_node_c(
+	&node_edit_sel_bind,
+	&node_edit_sel_type_lfo_fmin,
+	&node_edit_sel_type_lfo_shape,
+	graphic_back_3
+);
 
 // lvl3
-struct menuNode edit_sel_type_clk_n = {
-	graphic :{	0b0011111100110011,
-				0b1100001100110011,
-				0b1100001100111100,
-				0b1100001100110011,
-				0b0011111111110011},
-	kid :		&edit_sel_type_n,
-	previous :	&edit_sel_type_lfo_n,
-	next :		&edit_sel_type_velocity_n,
-	function :	Select_Clk
-};
-
-struct menuNode edit_sel_type_velocity_n = {
-	graphic :{	0b1100111111001100,
-				0b1100111100001100,
-				0b1100111111001100,
-				0b0011001100001100,
-				0b0011001111001111},
-	kid :		&edit_sel_type_n,
-	previous :	&edit_sel_type_clk_n,
-	next :		&edit_sel_type_pressure_n,
-	function :	Select_Velocity
-};
-
-struct menuNode edit_sel_type_pressure_n = {
-	graphic :{	0b1111001111000011,
-				0b1100111100111100,
-				0b1111001111000011,
-				0b1100001100110011,
-				0b1100001100111100},
-	kid :		&edit_sel_type_n,
-	previous :	&edit_sel_type_velocity_n,
-	next :		&edit_sel_type_back_n,
-	function :	Select_Pressure
-};
-
-struct menuNode edit_sel_type_back_n = {
-	graphic :{	0b0000000011000000,
-				0b0000001111110000,
-				0b1100110011001100,
-				0b0000000011000000,
-				0b0000000011111111},
-	kid :		&edit_sel_type_n,
-	previous :	&edit_sel_type_pressure_n,
-	next :		&edit_sel_type_CV_n,
-	function :	Enter_Kid
-};
+menu_node_c node_edit_sel_type_back = menu_node_c(
+	&node_edit_sel_back,
+	&node_edit_sel_type_lfo,
+	&node_edit_sel_type_cv,
+	graphic_back_2
+);
 
 // lvl2
-struct menuNode edit_sel_back_n = {
-	graphic :{	0b0000000011000000,
-				0b1100001111110000,
-				0b0000110011001100,
-				0b0000000011000000,
-				0b0000000011111111},
-	kid :		&edit_select_n,
-	previous :	&edit_sel_type_n,
-	next :		&edit_sel_max_range_n,
-	function :	Enter_Kid
+menu_midi_out_c node_edit_sel_bind = menu_midi_out_c(
+	&node_edit_sel_lane,
+	&node_edit_sel_type,
+	&node_edit_sel_lane,
+	graphic_bind_midi
+);
+
+struct menu_graphic_t graphic_edit_key_lane = {
+	line :{
+		0b1100000011000000,
+		0b1100110011000000,
+		0b1111000011000000,
+		0b1100110011000000,
+		0b1100110011111100
+	}
 };
+
+menu_key_lane_c node_edit_sel_lane = menu_key_lane_c(
+	&node_edit_sel_back,
+	&node_edit_sel_bind,
+	&node_edit_sel_back,
+	graphic_edit_key_lane
+);
+
+menu_node_c node_edit_sel_back = menu_node_c(
+	&node_edit_select,
+	&node_edit_sel_bind,
+	&node_edit_sel_max_range,
+	graphic_back_1
+);
 
 // lvl1
-struct menuNode edit_envelope = {
-	graphic :{	0b0000110000000000,
-				0b0011001111000000,
-				0b0011000000110000,
-				0b1100000000001100,
-				0b1100000000000011},
-	kid :		&edit_env_0,
-	previous :	&edit_select_n,
-	next :		&edit_back_n,
-	function :	Enter_Kid
+struct menu_graphic_t graphic_edit_envelope = {
+	line :{
+		0b0000110000000000,
+		0b0011001111000000,
+		0b0011000000110000,
+		0b1100000000001100,
+		0b1100000000000011
+	}
 };
+
+menu_node_c node_edit_envelope = menu_node_c(
+	&node_edit_env,
+	&node_edit_select,
+	&node_edit_back,
+	graphic_edit_envelope
+);
 
 // lvl2
-struct menuNode edit_env_0 = {
-	graphic :{	0b1111110000001100,
-				0b1100000000110011,
-				0b1111000000110011,
-				0b1100000000110011,
-				0b1111110000001100},
-	kid :		&edit_env_atk_n,
-	previous :	&edit_env_back,
-	next :		&edit_env_1,
-	function :	Enter_Env0
-};
+menu_select_env_c node_edit_env = menu_select_env_c(
+	&node_edit_env_atk,
+	&node_edit_envelope_back,
+	&node_edit_envelope_back,
+	graphic_sel_envelope
+);
 
-struct menuNode edit_env_1 = {
-	graphic :{	0b1111110000001100,
-				0b1100000000001100,
-				0b1111000000001100,
-				0b1100000000001100,
-				0b1111110000001100},
-	kid :		&edit_env_atk_n,
-	previous :	&edit_env_0,
-	next :		&edit_env_2,
-	function :	Enter_Env1
-};
-
-struct menuNode edit_env_2 = {
-	graphic :{	0b1111110000111100,
-				0b1100000000000011,
-				0b1111000000001100,
-				0b1100000000110000,
-				0b1111110000111111},
-	kid :		&edit_env_atk_n,
-	previous :	&edit_env_1,
-	next :		&edit_env_3,
-	function :	Enter_Env2
-};
-
-struct menuNode edit_env_3 = {
-	graphic :{	0b1111110000111100,
-				0b1100000000000011,
-				0b1111000000111100,
-				0b1100000000000011,
-				0b1111110000111100},
-	kid :		&edit_env_atk_n,
-	previous :	&edit_env_2,
-	next :		&edit_env_back,
-	function :	Enter_Env3
-};
+menu_node_c node_edit_envelope_back = menu_node_c(
+	&node_edit_envelope,
+	&node_edit_env,
+	&node_edit_env,
+	graphic_back_1
+);
 
 // lvl3
-struct menuNode edit_env_atk_n = {
-	graphic :{	0b0000000000001100,
-				0b0000000000110011,
-				0b0000000011000000,
-				0b0000001100000000,
-				0b0000110000000000},
-	kid :		&edit_env_atk_max_n,
-	previous :	&edit_env_back_n,
-	next :		&edit_env_dec_n,
-	function :	Enter_Kid
+struct menu_graphic_t graphic_env_atk = {
+	line :{
+		0b0000000000001100,
+		0b0000000000110011,
+		0b0000000011000000,
+		0b0000001100000000,
+		0b0000110000000000
+	}
 };
+
+menu_env_atk_c node_edit_env_atk = menu_env_atk_c(
+	&node_edit_env_stage_max,
+	&node_edit_env_back,
+	&node_edit_env_dec,
+	graphic_env_atk
+);
+
+struct menu_graphic_t graphic_env_dec = {
+	line :{
+		0b0011000000000000,
+		0b1100110000000000,
+		0b1100001100000000,
+		0b0000000011000000,
+		0b0000000000111111
+	}
+};
+
+menu_env_dec_c node_edit_env_dec = menu_env_dec_c(
+	&node_edit_env_stage_max,
+	&node_edit_env_atk,
+	&node_edit_env_sus,
+	graphic_env_dec
+);
+
+struct menu_graphic_t graphic_env_sus = {
+	line :{
+		0b1100000000000000,
+		0b0011000000000000,
+		0b0000111111110000,
+		0b0000000000001100,
+		0b0000000000000011
+	}
+};
+
+menu_env_sus_c node_edit_env_sus = menu_env_sus_c(
+	&node_edit_env_stage_max,
+	&node_edit_env_dec,
+	&node_edit_env_rel,
+	graphic_env_sus
+);
+
+struct menu_graphic_t graphic_env_rel = {
+	line :{
+		0b0000000000000000,
+		0b1111110000000000,
+		0b0000001100000000,
+		0b0000000011000000,
+		0b0000000000110000
+	}
+};
+
+menu_env_rel_c node_edit_env_rel = menu_env_rel_c(
+	&node_edit_env_stage_max,
+	&node_edit_env_sus,
+	&node_edit_env_back,
+	graphic_env_rel
+);
 
 // lvl4
-struct menuNode edit_env_atk_max_n = {
-	graphic :{	0b1100110011001100,
-				0b1111110011001100,
-				0b1100110000110000,
-				0b1100110011001100,
-				0b1100110011001100},
-	kid :		&edit_env_atk_max_n,
-	previous :	&edit_env_atk_back_n,
-	next :		&edit_env_atk_min_n,
-	function :	Set_Env_Atk_Max
-};
+menu_env_max_c node_edit_env_stage_max = menu_env_max_c(
+	&node_edit_env_stage_min,
+	&node_edit_env_stage_back,
+	&node_edit_env_stage_min,
+	graphic_rmax
+);
 
-struct menuNode edit_env_atk_min_n = {
-	graphic :{	0b1100110000000000,
-				0b1111110000000000,
-				0b1100110011110000,
-				0b1100110011001100,
-				0b1100110011001100},
-	kid :		&edit_env_atk_min_n,
-	previous :	&edit_env_atk_max_n,
-	next :		&edit_env_atk_bind_n,
-	function :	Set_Env_Atk_Min
-};
+menu_env_min_c node_edit_env_stage_min = menu_env_min_c(
+	&node_edit_env_stage_bind,
+	&node_edit_env_stage_max,
+	&node_edit_env_stage_bind,
+	graphic_rmin
+);
 
-struct menuNode edit_env_atk_bind_n = {
-	graphic :{	0b1111000011000000,
-				0b1100110000000000,
-				0b1111000011111100,
-				0b1100110011110011,
-				0b1111000011110011},
-	kid :		&edit_env_atk_bind_n,
-	previous :	&edit_env_atk_min_n,
-	next :		&edit_env_atk_back_n,
-	function :	Set_Env_Atk_Bind
-};
+menu_midi_env_c node_edit_env_stage_bind = menu_midi_env_c(
+	&node_edit_env_stage_back,
+	&node_edit_env_stage_min,
+	&node_edit_env_stage_back,
+	graphic_bind_midi
+);
 
-struct menuNode edit_env_atk_back_n = {
-	graphic :{	0b0000000011000000,
-				0b0000001111110000,
-				0b0000110011001100,
-				0b1100000011000000,
-				0b0000000011111111},
-	kid :		&edit_env_atk_n,
-	previous :	&edit_env_atk_bind_n,
-	next :		&edit_env_atk_max_n,
-	function :	Enter_Kid
-};
+menu_node_c node_edit_env_stage_back = menu_node_c(
+	&node_edit_env_back,
+	&node_edit_env_stage_bind,
+	&node_edit_env_stage_max,
+	graphic_back_2
+);
 
 // lvl3
-struct menuNode edit_env_dec_n = {
-	graphic :{	0b0011000000000000,
-				0b1100110000000000,
-				0b1100001100000000,
-				0b0000000011000000,
-				0b0000000000111111},
-	kid :		&edit_env_dec_max_n,
-	previous :	&edit_env_atk_n,
-	next :		&edit_env_sus_n,
-	function :	Enter_Kid
-};
-
-// lvl4
-struct menuNode edit_env_dec_max_n = {
-	graphic :{	0b1100110011001100,
-				0b1111110011001100,
-				0b1100110000110000,
-				0b1100110011001100,
-				0b1100110011001100},
-	kid :		&edit_env_dec_max_n,
-	previous :	&edit_env_dec_back_n,
-	next :		&edit_env_dec_min_n,
-	function :	Set_Env_Dec_Max
-};
-
-struct menuNode edit_env_dec_min_n = {
-	graphic :{	0b1100110000000000,
-				0b1111110000000000,
-				0b1100110011110000,
-				0b1100110011001100,
-				0b1100110011001100},
-	kid :		&edit_env_dec_min_n,
-	previous :	&edit_env_dec_max_n,
-	next :		&edit_env_dec_bind_n,
-	function :	Set_Env_Dec_Min
-};
-
-struct menuNode edit_env_dec_bind_n = {
-	graphic :{	0b1111000011000000,
-				0b1100110000000000,
-				0b1111000011111100,
-				0b1100110011110011,
-				0b1111000011110011},
-	kid :		&edit_env_dec_bind_n,
-	previous :	&edit_env_dec_min_n,
-	next :		&edit_env_dec_back_n,
-	function :	Set_Env_Dec_Bind
-};
-
-struct menuNode edit_env_dec_back_n = {
-	graphic :{	0b0000000011000000,
-				0b0000001111110000,
-				0b0000110011001100,
-				0b1100000011000000,
-				0b0000000011111111},
-	kid :		&edit_env_dec_n,
-	previous :	&edit_env_dec_bind_n,
-	next :		&edit_env_dec_max_n,
-	function :	Enter_Kid
-};
-
-// lvl3
-struct menuNode edit_env_sus_n = {
-	graphic :{	0b1100000000000000,
-				0b0011000000000000,
-				0b0000111111110000,
-				0b0000000000001100,
-				0b0000000000000011},
-	kid :		&edit_env_sus_max_n,
-	previous :	&edit_env_dec_n,
-	next :		&edit_env_rel_n,
-	function :	Enter_Kid
-};
-
-// lvl4
-struct menuNode edit_env_sus_max_n = {
-	graphic :{	0b1100110011001100,
-				0b1111110011001100,
-				0b1100110000110000,
-				0b1100110011001100,
-				0b1100110011001100},
-	kid :		&edit_env_sus_max_n,
-	previous :	&edit_env_sus_back_n,
-	next :		&edit_env_sus_min_n,
-	function :	Set_Env_Sus_Max
-};
-
-struct menuNode edit_env_sus_min_n = {
-	graphic :{	0b1100110000000000,
-				0b1111110000000000,
-				0b1100110011110000,
-				0b1100110011001100,
-				0b1100110011001100},
-	kid :		&edit_env_sus_min_n,
-	previous :	&edit_env_sus_max_n,
-	next :		&edit_env_sus_bind_n,
-	function :	Set_Env_Sus_Min
-};
-
-struct menuNode edit_env_sus_bind_n = {
-	graphic :{	0b1111000011000000,
-				0b1100110000000000,
-				0b1111000011111100,
-				0b1100110011110011,
-				0b1111000011110011},
-	kid :		&edit_env_sus_bind_n,
-	previous :	&edit_env_sus_min_n,
-	next :		&edit_env_sus_back_n,
-	function :	Set_Env_Sus_Bind
-};
-
-struct menuNode edit_env_sus_back_n = {
-	graphic :{	0b0000000011000000,
-				0b0000001111110000,
-				0b0000110011001100,
-				0b1100000011000000,
-				0b0000000011111111},
-	kid :		&edit_env_sus_n,
-	previous :	&edit_env_sus_bind_n,
-	next :		&edit_env_sus_max_n,
-	function :	Enter_Kid
-};
-
-// lvl3
-struct menuNode edit_env_rel_n = {
-	graphic :{	0b0000000000000000,
-				0b1111110000000000,
-				0b0000001100000000,
-				0b0000000011000000,
-				0b0000000000110000},
-	kid :		&edit_env_rel_max_n,
-	previous :	&edit_env_sus_n,
-	next :		&edit_env_back_n,
-	function :	Enter_Kid
-};
-
-// lvl4
-struct menuNode edit_env_rel_max_n = {
-	graphic :{	0b1100110011001100,
-				0b1111110011001100,
-				0b1100110000110000,
-				0b1100110011001100,
-				0b1100110011001100},
-	kid :		&edit_env_rel_max_n,
-	previous :	&edit_env_rel_back_n,
-	next :		&edit_env_rel_min_n,
-	function :	Set_Env_Rel_Max
-};
-
-struct menuNode edit_env_rel_min_n = {
-	graphic :{	0b1100110000000000,
-				0b1111110000000000,
-				0b1100110011110000,
-				0b1100110011001100,
-				0b1100110011001100},
-	kid :		&edit_env_rel_min_n,
-	previous :	&edit_env_rel_max_n,
-	next :		&edit_env_rel_bind_n,
-	function :	Set_Env_Rel_Min
-};
-
-struct menuNode edit_env_rel_bind_n = {
-	graphic :{	0b1111000011000000,
-				0b1100110000000000,
-				0b1111000011111100,
-				0b1100110011110011,
-				0b1111000011110011},
-	kid :		&edit_env_rel_bind_n,
-	previous :	&edit_env_rel_min_n,
-	next :		&edit_env_rel_back_n,
-	function :	Set_Env_Rel_Bind
-};
-
-struct menuNode edit_env_rel_back_n = {
-	graphic :{	0b0000000011000000,
-				0b0000001111110000,
-				0b0000110011001100,
-				0b1100000011000000,
-				0b0000000011111111},
-	kid :		&edit_env_rel_n,
-	previous :	&edit_env_rel_bind_n,
-	next :		&edit_env_rel_max_n,
-	function :	Enter_Kid
-};
-
-// lvl3
-struct menuNode edit_env_back_n = {
-	graphic :{	0b0000000011000000,
-				0b0000001111110000,
-				0b1100110011001100,
-				0b0000000011000000,
-				0b0000000011111111},
-	kid :		&edit_env_back,
-	previous :	&edit_env_rel_n,
-	next :		&edit_env_atk_n,
-	function :	Exit_Env
-};
-
-// lvl2
-struct menuNode edit_env_back = {
-	graphic :{	0b0000000011000000,
-				0b1100001111110000,
-				0b0000110011001100,
-				0b0000000011000000,
-				0b0000000011111111},
-	kid :		&edit_envelope,
-	previous :	&edit_env_3,
-	next :		&edit_env_0,
-	function :	Enter_Kid
-};
+menu_node_c node_edit_env_back = menu_node_c(
+	&node_edit_envelope,
+	&node_edit_env_rel,
+	&node_edit_env_atk,
+	graphic_back_1
+);
 
 // lvl1
-struct menuNode edit_back_n = {
-	graphic :{	0b1100000011000000,
-				0b0000001111110000,
-				0b0000110011001100,
-				0b0000000011000000,
-				0b0000000011111111},
-	kid :		&edit_n,
-	previous :	&edit_envelope,
-	next :		&edit_bend_n,
-	function :	Enter_Kid
-};
+menu_node_c node_edit_back = menu_node_c(
+	&node_edit,
+	&node_edit_envelope,
+	&node_edit_bend,
+	graphic_back_0
+);
 
 // lvl0
-struct menuNode save_n = {
-	graphic :{	0b0011111100000011,
-				0b1100001100000011,
-				0b0011000011001100,
-				0b0000110011001100,
-				0b1111000000110000},
-	kid :		&save_bind_pc_n,
-	previous :	&edit_n,
-	next :		&load_n,
-	function :	Enter_Kid
+struct menu_graphic_t graphic_save = {
+	line :{
+		0b0011111100000011,
+		0b1100001100000011,
+		0b0011000011001100,
+		0b0000110011001100,
+		0b1111000000110000
+	}
 };
+
+menu_node_c node_save = menu_node_c(
+	&node_save_slot,
+	&node_edit,
+	&node_load,
+	graphic_save
+);
 
 // lvl1
-struct menuNode save_bind_pc_n = {
-	graphic :{	0b1111000000111100,
-				0b1100110011000000,
-				0b1111000011000000,
-				0b1100000011000000,
-				0b1100000000111100},
-	kid :		&save_slot_n,
-	previous :	&save_back_n,
-	next :		&save_slot_n,
-	function :	Set_Save_PC
+// TODO: select slot
+struct menu_graphic_t graphic_save_slot = {
+	line :{
+		0b0000000011111111,
+		0b0000000011111111,
+		0b0000000000000011,
+		0b0000000011111111,
+		0b0000000011111111
+	}
 };
 
-struct menuNode save_slot_n = {
-	graphic :{	0b0000000011111111,
-				0b0000000011111111,
-				0b0000000000000011,
-				0b0000000011111111,
-				0b0000000011111111},
-	kid :		&save_back_n,
-	previous :	&save_bind_pc_n,
-	next :		&save_back_n,
-	function :	Set_Conf_Slot
+menu_node_c node_save_slot = menu_node_c(
+	&node_save_bind_pc,
+	&node_save_back,
+	&node_save_bind_pc,
+	graphic_save_slot
+);
+
+// TODO: bind MIDI
+struct menu_graphic_t graphic_bind_pc = {
+	line :{
+		0b1111000000111100,
+		0b1100110011000000,
+		0b1111000011000000,
+		0b1100000011000000,
+		0b1100000000111100
+	}
 };
 
-struct menuNode save_back_n = {
-	graphic :{	0b1100000011000000,
-				0b0000001111110000,
-				0b0000110011001100,
-				0b0000000011000000,
-				0b0000000011111111},
-	kid :		&save_back_abort_n,
-	previous :	&save_slot_n,
-	next :		&save_bind_pc_n,
-	function :	Enter_Kid
-};
+menu_node_c node_save_bind_pc = menu_node_c(
+	&node_save_back,
+	&node_save_slot,
+	&node_save_back,
+	graphic_bind_pc
+);
+
+menu_node_c node_save_back = menu_node_c(
+	&node_save_back_accept,
+	&node_save_bind_pc,
+	&node_save_slot,
+	graphic_back_0
+);
 
 // lvl2
-struct menuNode save_back_accept_n = {
-	graphic :{	0b0000000000000011,
-				0b0000000000001100,
-				0b0011000000110000,
-				0b0000110011000000,
-				0b0000001100000000},
-	kid :		&save_n,
-	previous :	&save_back_abort_n,
-	next :		&save_back_abort_n,
-	function :	Save_Config
-};
+// TODO: save to nvm
+menu_node_c node_save_back_accept = menu_node_c(
+	&node_save,
+	&node_save_back_abort,
+	&node_save_back_abort,
+	graphic_accept
+);
 
-struct menuNode save_back_abort_n = {
-	graphic :{	0b0000110000001100,
-				0b0000001100110000,
-				0b0000000011000000,
-				0b0000001100110000,
-				0b0000110000001100},
-	kid :		&save_n,
-	previous :	&save_back_accept_n,
-	next :		&save_back_accept_n,
-	function :	Enter_Kid
-};
+menu_node_c node_save_back_abort = menu_node_c(
+	&node_save,
+	&node_save_back_accept,
+	&node_save_back_accept,
+	graphic_abort
+);
 
 // lvl0
-struct menuNode load_n = {
-	graphic :{	0b1100000011110000,
-				0b1100000011001100,
-				0b1100000011001100,
-				0b1100000011001100,
-				0b1111110011110000},
-	kid :		&load_slot_n,
-	previous :	&save_n,
-	next :		&edit_n,
-	function :	Enter_Kid
+struct menu_graphic_t graphic_load = {
+	line :{
+		0b1100000011110000,
+		0b1100000011001100,
+		0b1100000011001100,
+		0b1100000011001100,
+		0b1111110011110000
+	}
+};
+
+menu_node_c node_load = menu_node_c(
+	&node_load_slot,
+	&node_save,
+	&node_edit,
+	graphic_load
+);
+
+// lvl0
+struct menu_graphic_t graphic_load_slot = {
+	line :{
+		0b0000000011111111,
+		0b0000000011111111,
+		0b0000000000000011,
+		0b0000000011111111,
+		0b0000000011111111
+	}
 };
 
 // lvl1
-struct menuNode load_slot_n = {
-	graphic :{	0b0000000011111111,
-				0b0000000011111111,
-				0b0000000000000011,
-				0b0000000011111111,
-				0b0000000011111111},
-	kid :		&load_back_n,
-	previous :	&load_back_n,
-	next :		&load_back_n,
-	function :	Set_Conf_Slot
-};
+// TODO: load from nvm
+menu_node_c node_load_slot = menu_node_c(
+	&node_load,
+	&node_load_back,
+	&node_load_back,
+	graphic_load_slot
+);
 
-struct menuNode load_back_n = {
-	graphic :{	0b1100000011000000,
-				0b0000001111110000,
-				0b0000110011001100,
-				0b0000000011000000,
-				0b0000000011111111},
-	kid :		&load_n,
-	previous :	&load_slot_n,
-	next :		&load_slot_n,
-	function :	Load_Config
-};
+menu_node_c node_load_back = menu_node_c(
+	&node_load,
+	&node_load_slot,
+	&node_load_slot,
+	graphic_back_0
+);
 
+// base node
+void menu_node_c::init(){
+	status = menu_status_t::Navigate;
+	screen_change = 1;
+}
+void menu_node_c::update(){
+	if (!screen_change) return;
+	screen_change = 0;
+	for (uint8_t i = 0; i < 5; i++)	{
+		LM_WriteRow(i, graphic.line[i]);
+	}
+}
 
+void menu_node_c::butt_up(){
+	current_node = node_next;
+	current_node->init();
+}
 
+void menu_node_c::butt_down(){
+	current_node = node_prev;
+	current_node->init();
+}
+
+void menu_node_c::butt_right(){
+	current_node = node_in;
+	current_node->init();
+}
+
+// int node
+void menu_int_c::update(){
+	if (status == menu_status_t::Edit_int) {
+		if (!screen_change) return;
+		screen_change = 0;
+		uint8_t temp_value = get_value();
+		uint8_t lo = temp_value & 0b111;
+		uint8_t mid = (temp_value >> 3) & 0b111;
+		uint8_t hi = temp_value >> 6;
+		LM_WriteRow(2, 0xffff >> (16-2*hi));
+		LM_WriteRow(3, 0xffff >> (16-2*mid));
+		LM_WriteRow(4, 0xffff >> (14-2*lo));
+	} else {
+		menu_node_c::update();
+	}
+}
+
+void menu_int_c::butt_up(){
+	if (status == menu_status_t::Edit_int){
+		uint32_t temp_value = get_value();
+		temp_value++;
+		set_value(temp_value);
+		screen_change = 1;
+	} else {
+		menu_node_c::butt_up();
+	}
+}
+
+void menu_int_c::butt_down(){
+	if (status == menu_status_t::Edit_int){
+		uint32_t temp_value = get_value();
+		temp_value--;
+		set_value(temp_value);
+		screen_change = 1;
+	} else {
+		menu_node_c::butt_down();
+	}
+}
+
+void menu_int_c::butt_right(){
+	if (status == menu_status_t::Edit_int) {
+		menu_node_c::butt_right();
+	} else {
+		status = menu_status_t::Edit_int;
+		screen_change = 1;
+		LM_WriteRow(0, 0xffff);
+		LM_WriteRow(1, 0);
+	}
+}
+
+// LFO shape node
+void menu_lfo_shape_c::init(){
+	status = menu_status_t::SetLFO;
+	screen_change = 1;
+}
+
+void menu_lfo_shape_c::update(){
+	if (!screen_change) return;
+	screen_change = 0;
+	WavShape_t tempShape = (WavShape_t) get_value();
+	switch(tempShape){
+		case WavShape_t::Square:
+			LM_WriteRow(0, 0b0011111111000011);
+			LM_WriteRow(1, 0b0011000011000011);
+			LM_WriteRow(2, 0b0011000011000011);
+			LM_WriteRow(3, 0b0011000011000011);
+			LM_WriteRow(4, 0b1111000011111111);
+			break;
+		case WavShape_t::Triangle:
+			LM_WriteRow(0, 0b0000000011000000);
+			LM_WriteRow(1, 0b0000001100110000);
+			LM_WriteRow(2, 0b0000110000001100);
+			LM_WriteRow(3, 0b0011000000000011);
+			LM_WriteRow(4, 0b1100000000000000);
+			break;
+		case WavShape_t::Sawtooth:
+			LM_WriteRow(0, 0b1100000011000000);
+			LM_WriteRow(1, 0b1111000011110000);
+			LM_WriteRow(2, 0b1100110011001100);
+			LM_WriteRow(3, 0b1100001111000011);
+			LM_WriteRow(4, 0b1100000011000000);
+			break;
+		case WavShape_t::Sine:
+			LM_WriteRow(0, 0b0000000000000011);
+			LM_WriteRow(1, 0b0000000000111100);
+			LM_WriteRow(2, 0b0000000000110000);
+			LM_WriteRow(3, 0b1100000011110000);
+			LM_WriteRow(4, 0b0011111100000000);
+			break;
+		case WavShape_t::SinSaw:
+			LM_WriteRow(0, 0b1111000000111100);
+			LM_WriteRow(1, 0b1100110000110011);
+			LM_WriteRow(2, 0b1100110000110000);
+			LM_WriteRow(3, 0b1100001100110000);
+			LM_WriteRow(4, 0b1100000011110000);
+			break;
+	}
+}
+
+void menu_lfo_shape_c::set_value(uint32_t val){
+	if (val >= 255){
+		val = 4;
+	} else if (val >= 5){
+		val = 0;
+	}
+	go->state.shape = (WavShape_t) val;
+}
+
+uint32_t menu_lfo_shape_c::get_value(){
+	return (uint32_t) go->state.shape;
+}
+
+// MIDI node
+void menu_wait_midi_c::update(){
+	if (status == menu_status_t::Wait_MIDI) {
+		uint8_t timer = (time_us_32() >> 18) & 0b1111;
+		LM_WriteRow(3, 0b0011001100110011 & ~(0b11 << timer));
+	} else {
+		menu_node_c::update();
+	}
+}
+
+void menu_wait_midi_c::butt_right(){
+	if (status == menu_status_t::Wait_MIDI){
+		midi_src->sourceType = ctrlType_t::none;
+		menu_node_c::butt_right();
+	} else {
+		status = menu_status_t::Wait_MIDI;
+		LM_WriteRow(0,0xffff);
+		LM_WriteRow(1,0);
+		LM_WriteRow(2,0);
+		LM_WriteRow(4,0);
+		screen_change = 1;
+	}
+}
+
+uint8_t menu_wait_midi_c::handle_midi(struct umpCVM* msg){
+	if (status != menu_status_t::Wait_MIDI) return 0;
+	switch(msg->status){
+		case PROGRAM_CHANGE:
+			if (!(midi_mask & 0b100)){
+				return 0;
+			}
+			// TODO: Set global bank?
+			midi_src->sourceType = ctrlType_t::program;
+			midi_src->sourceNum = msg->value;
+			break;
+		case NOTE_ON:
+		case NOTE_OFF:
+			if (!(midi_mask & 0b010)){
+				return 0;
+			}
+			midi_src->sourceType = ctrlType_t::key;
+			midi_src->sourceNum = msg->note;
+			break;
+		case CC:
+			if (!(midi_mask & 0b001)){
+				return 0;
+			}
+			midi_src->sourceType = ctrlType_t::controller;
+			midi_src->sourceNum = msg->index;
+			break;
+		default:
+			return 0;
+	}
+	midi_src->channel = msg->channel;
+	menu_node_c::butt_right();
+	return 1;
+}
+
+// edit 32-bit node
+void menu_32bit_c::update(){
+	if (status == menu_status_t::Navigate) {
+		menu_node_c::update();
+	} else {
+		if (!screen_change) return;
+		screen_change = 0;
+		uint16_t disp_line[4];
+		uint32_t temp_expand = get_value();
+		for (uint8_t i = 0; i < 4; i++){
+			disp_line[i] = 0;
+			for (uint8_t n = 0; n < 16; n += 2){
+				uint8_t temp = temp_expand & 1;
+				temp |= temp << 1;
+				temp_expand >>= 1;
+				disp_line[i] |= temp << n;
+			}
+		}
+		LM_WriteRow(3, disp_line[0]);
+		LM_WriteRow(2, disp_line[1]);
+		LM_WriteRow(1, disp_line[2]);
+		LM_WriteRow(0, disp_line[3]);
+	}
+}
+
+uint32_t menu_32bit_c::extrapolate_num (uint32_t in){
+	uint32_t tempResult = in & (0xffff'ffff << bit_pos);
+	uint8_t cleanIn = (in >> bit_pos) & 0xf;
+	int8_t i = bit_pos - 4;
+	for (; i > 0; i -= 4){
+		tempResult |= cleanIn << i;
+	}
+	tempResult |= cleanIn >> -i;
+	return tempResult;
+}
+
+void menu_32bit_c::butt_up(){
+	screen_change = 1;
+	if (status == menu_status_t::Edit_major_bit) {
+		bit_pos++;
+		if (bit_pos >= num_bits()) {
+			bit_pos = 0;
+		}
+		set_value(1 << bit_pos);
+	} else if (status == menu_status_t::Edit_minor_bit) {
+		uint32_t temp_val = get_value();
+		temp_val += 1 << bit_pos;
+		temp_val &= 0xffff'ffff >> (32-num_bits());
+		temp_val = extrapolate_num(temp_val);
+		set_value(temp_val);
+	} else {
+		menu_node_c::butt_down();
+	}
+}
+
+void menu_32bit_c::butt_down(){
+	screen_change = 1;
+	if (status == menu_status_t::Edit_major_bit) {
+		bit_pos--;
+		if (bit_pos < 0){
+			bit_pos = num_bits()-1;
+		}
+		set_value(1 << bit_pos);
+	} else if (status == menu_status_t::Edit_minor_bit) {
+		uint32_t temp_val = get_value();
+		temp_val -= 1 << bit_pos;
+		temp_val &= 0xffff'ffff >> (32-num_bits());
+		temp_val = extrapolate_num(temp_val);
+		set_value(temp_val);
+	} else {
+		menu_node_c::butt_down();
+	}
+}
+
+void menu_32bit_c::butt_right(){
+	if (status == menu_status_t::Edit_minor_bit){
+		menu_node_c::butt_right();
+	} else if (status == menu_status_t::Edit_major_bit) {
+		if (bit_pos > 3){
+			bit_pos -= 3;
+		} else {
+			bit_pos = 0;
+		}
+		status = menu_status_t::Edit_minor_bit;
+	} else {
+		status = menu_status_t::Edit_major_bit;
+		screen_change = 1;
+		LM_WriteRow(4, 0xffff);
+		// Find current MSb
+		uint32_t temp_val = get_value();
+		bit_pos = 0;
+		for (int8_t i = num_bits(); i > 0; --i){
+			if (temp_val & (1 << i)){
+				bit_pos = i;
+				break;
+			}
+		}
+	}
+}
+
+// edit 16-bit node
+void menu_16bit_c::update(){
+	if (status == menu_status_t::Navigate){
+		menu_node_c::update();
+	} else {
+		if (!screen_change) return;
+		screen_change = 0;
+		uint16_t disp_line[2];
+		uint16_t temp_expand = get_value();
+		for (uint8_t i = 0; i < 2; i++){
+			disp_line[i] = 0;
+			for (uint8_t n = 0; n < 16; n += 2){
+				uint8_t temp = temp_expand & 1;
+				temp |= temp << 1;
+				temp_expand >>= 1;
+				disp_line[i] |= temp << n;
+			}
+		}
+		LM_WriteRow(3, disp_line[0]);
+		LM_WriteRow(2, disp_line[1]);
+		LM_WriteRow(1, disp_line[0]);
+		LM_WriteRow(0, disp_line[1]);
+	}
+}
+
+// edit 8-bit node
+void menu_8bit_c::update(){
+	if (status == menu_status_t::Navigate){
+		menu_node_c::update();
+	} else {
+		if (!screen_change) return;
+		screen_change = 0;
+		uint16_t disp_line;
+		uint8_t temp_expand = get_value();
+		disp_line = 0;
+		for (uint8_t n = 0; n < 16; n += 2){
+			uint8_t temp = temp_expand & 1;
+			temp |= temp << 1;
+			temp_expand >>= 1;
+			disp_line |= temp << n;
+		}
+		LM_WriteRow(3, disp_line);
+		LM_WriteRow(2, disp_line);
+		LM_WriteRow(1, disp_line);
+		LM_WriteRow(0, disp_line);
+	}
+}
+
+// output select node
+void menu_select_out_c::init(){
+	num_out = 0;
+	go = &out_handler[0][0];
+	menu_node_c::init();
+}
+
+void menu_select_out_c::update(){
+	if (!screen_change) return;
+	screen_change = 0;
+	uint8_t x = num_out & 0b11;
+	uint8_t y = num_out >> 2;
+	LM_WriteRow(4, 0xffff);
+	for (uint8_t i = 0; i < 4; i++){
+		LM_WriteRow(i, 0b1111000000001111 | ((x == i) ? 0b10 << (2*(5 - y)) : 0));
+	}
+}
+
+void menu_select_out_c::butt_up(){
+	screen_change = 1;
+	if (num_out > 0){
+		num_out--;
+		uint8_t x = num_out & 0b11;
+		uint8_t y = num_out >> 2;
+		go = &out_handler[x][y];
+	} else {
+		menu_node_c::butt_up();
+	}
+}
+
+void menu_select_out_c::butt_down(){
+	screen_change = 1;
+	if (num_out < 15){
+		num_out++;
+		uint8_t x = num_out & 0b11;
+		uint8_t y = num_out >> 2;
+		go = &out_handler[x][y];
+	} else {
+		menu_node_c::butt_down();
+	}
+}
+
+// envelope select node
+void menu_select_env_c::init(){
+	num_out = 0;
+	menu_node_c::init();
+}
+
+void menu_select_env_c::update(){
+	if (!screen_change) return;
+	screen_change = 0;
+	uint16_t lines[5];
+	if (num_out == 0){
+		lines[0] = graphic.line[0] | 0b00001100;
+		lines[1] = graphic.line[1] | 0b00110011;
+		lines[2] = graphic.line[2] | 0b00110011;
+		lines[3] = graphic.line[3] | 0b00110011;
+		lines[4] = graphic.line[4] | 0b00001100;
+	} else if (num_out == 1){
+		lines[0] = graphic.line[0] | 0b00001100;
+		lines[1] = graphic.line[1] | 0b00001100;
+		lines[2] = graphic.line[2] | 0b00001100;
+		lines[3] = graphic.line[3] | 0b00001100;
+		lines[4] = graphic.line[4] | 0b00001100;
+	} else if (num_out == 2){
+		lines[0] = graphic.line[0] | 0b00111100;
+		lines[1] = graphic.line[1] | 0b00000011;
+		lines[2] = graphic.line[2] | 0b00001100;
+		lines[3] = graphic.line[3] | 0b00110000;
+		lines[4] = graphic.line[4] | 0b00111111;
+	} else if (num_out == 3){
+		lines[0] = graphic.line[0] | 0b00111100;
+		lines[1] = graphic.line[1] | 0b00000011;
+		lines[2] = graphic.line[2] | 0b00111100;
+		lines[3] = graphic.line[3] | 0b00000011;
+		lines[4] = graphic.line[4] | 0b00111100;
+	}
+	for (uint8_t i = 0; i < 5; i++){
+		LM_WriteRow(i, lines[i]);
+	}
+}
+
+void menu_select_env_c::butt_up(){
+	screen_change = 1;
+	if (num_out < 3){
+		num_out++;
+	} else {
+		menu_node_c::butt_up();
+	}
+}
+
+void menu_select_env_c::butt_down(){
+	screen_change = 1;
+	if (num_out > 0){
+		num_out--;
+	} else {
+		menu_node_c::butt_down();
+	}
+}
+
+void menu_select_env_c::butt_right(){
+	env = &envelopes[num_out];
+	menu_node_c::butt_right();
+}
+
+// type select node
+void menu_type_select_c::butt_right(){
+	switch (go->state.type){
+	case GOType_t::DC:
+		current_node = &node_edit_sel_type_cv;
+		break;
+	case GOType_t::Gate:
+		current_node = &node_edit_sel_type_gate;
+		break;
+	case GOType_t::CLK:
+		current_node = &node_edit_sel_type_clk;
+		break;
+	case GOType_t::Envelope:
+		current_node = &node_edit_sel_type_envelope;
+		break;
+	case GOType_t::LFO:
+		current_node = &node_edit_sel_type_lfo;
+		break;
+	case GOType_t::Pressure:
+		current_node = &node_edit_sel_type_pressure;
+		break;
+	case GOType_t::Velocity:
+		current_node = &node_edit_sel_type_velocity;
+		break;
+	default:
+		break;
+	}
+	current_node->init();
+}
