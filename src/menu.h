@@ -13,6 +13,7 @@
 #include "pico/stdlib.h"
 #include "umpProcessor.h"
 #include "utils.h"
+#include "memory.h"
 
 struct menu_graphic_t {
 	const uint16_t line[5];
@@ -26,6 +27,12 @@ enum menu_status_t {
 	Edit_int,
 	Wait_MIDI
 };
+
+void menu_init();
+uint8_t menu_service();
+uint8_t menu_midi(struct umpCVM* msg);
+
+menu_status_t get_menu_state();
 
 // Base node with navigation
 class menu_node_c {
@@ -56,6 +63,7 @@ protected:
 	static ctrlSource_t* midi_src;
 	static uint8_t screen_change;
 	static menu_status_t status;
+	static uint8_t mem_slot;
 	const menu_graphic_t graphic;
 };
 
@@ -155,6 +163,24 @@ public:
 	}
 };
 
+class menu_conf_save_c : public menu_node_c {
+public:
+	using menu_node_c::menu_node_c;
+	virtual void butt_right();
+};
+
+class menu_conf_backup_c : public menu_node_c {
+public:
+	using menu_node_c::menu_node_c;
+	virtual void butt_right();
+};
+
+class menu_restore_backup_c : public menu_node_c {
+public:
+	using menu_node_c::menu_node_c;
+	virtual void butt_right();
+};
+
 class menu_int_c : public menu_node_c {
 public:
 	using menu_node_c::menu_node_c;
@@ -219,6 +245,31 @@ protected:
 	virtual uint32_t get_value(){return key_handler.get_current_bend();}
 };
 
+class menu_mem_slot_c : public menu_int_c {
+public:
+	using menu_int_c::menu_int_c;
+protected:
+	virtual void set_value(uint32_t val){
+		if (val > 250){
+			val = MAX_MEM_SLOT-1;
+		} else if (val >= MAX_MEM_SLOT) {
+			val = 0;
+		}
+		mem_slot = val;
+	}
+	virtual uint32_t get_value(){return mem_slot;}
+};
+
+class menu_load_slot_c : public menu_mem_slot_c {
+public:
+	using menu_mem_slot_c::menu_mem_slot_c;
+protected:
+	virtual void set_value(uint32_t val){
+		menu_mem_slot_c::set_value(val);
+		mem_read_config(mem_slot);
+	}
+};
+
 class menu_wait_midi_c : public menu_node_c {
 public:
 	using menu_node_c::menu_node_c;
@@ -252,12 +303,7 @@ public:
 class menu_midi_save_c : public menu_wait_midi_c{
 public:
 	using menu_wait_midi_c::menu_wait_midi_c;
-	virtual void init(){
-		menu_wait_midi_c::init();
-		// TODO
-		//midi_src = &go->state.gen_source;
-		midi_mask = 0b100;
-	}
+	virtual void init();
 };
 
 class menu_32bit_c : public menu_node_c {
@@ -402,12 +448,5 @@ public:
 		menu_node_c::butt_right();
 	}
 };
-
-void menu_init();
-uint8_t menu_service();
-uint8_t menu_midi(struct umpCVM* msg);
-
-menu_status_t get_menu_state();
-
 
 #endif /* MENU_H_ */

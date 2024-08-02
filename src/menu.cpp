@@ -21,9 +21,12 @@ Env_stage_t* menu_node_c::env_stage;
 ctrlSource_t* menu_node_c::midi_src;
 uint8_t menu_node_c::screen_change;
 menu_status_t menu_node_c::status;
+uint8_t menu_node_c::mem_slot;
 
-uint8_t confSlot;
-ctrlSource_t confPC;
+ctrlSource_t conf_pc;
+ConfigNVM_t load_backup;
+ConfigNVM_t mem_buff;
+
 uint8_t butt_state;
 uint8_t butt_state_debounced;
 uint32_t butt_timer;
@@ -64,22 +67,19 @@ extern menu_env_min_c node_edit_env_stage_min;
 extern menu_midi_env_c node_edit_env_stage_bind;
 extern menu_node_c node_edit_env_stage_back;
 extern menu_node_c node_edit_env_back;
+extern menu_group_c node_edit_group;
 extern menu_node_c node_edit_back;
 extern menu_node_c node_save;
-extern menu_node_c node_save_slot;	// TODO: select NVM slot
-extern menu_node_c node_save_bind_pc;	// TODO: menu_midi_save_c
+extern menu_mem_slot_c node_save_slot;
+extern menu_midi_save_c node_save_bind_pc;
 extern menu_node_c node_save_back;
-extern menu_node_c node_save_back_accept;	// TODO: save to NVM
+extern menu_conf_save_c node_save_back_accept;
 extern menu_node_c node_save_back_abort;
-extern menu_node_c node_load;
-extern menu_node_c node_load_slot;	// TODO: load NVM
+extern menu_conf_backup_c node_load;
+extern menu_load_slot_c node_load_slot;
 extern menu_node_c node_load_back;
-extern menu_group_c node_edit_group;
-
-//void Set_Conf_Slot()		{ menuStatus = Edit_int; var_edit = &confSlot; max_edit = MAX_SLOTS; }
-//void Set_Save_PC()		{ menuStatus = Wait_MIDI; var_edit = &confPC; midiTypeMask = 0b100; }
-//void Save_Config()		{ needSave = true; Enter_Kid(); }
-//void Load_Config()		{ needLoad = true; Enter_Kid(); }
+extern menu_node_c node_load_back_accept;
+extern menu_restore_backup_c node_load_back_abort;
 
 // Used to bind MIDI sources in configuration
 uint8_t menu_midi(struct umpCVM* msg){
@@ -808,7 +808,6 @@ menu_node_c node_save = menu_node_c(
 );
 
 // lvl1
-// TODO: select slot
 struct menu_graphic_t graphic_save_slot = {
 	line :{
 		0b0000000011111111,
@@ -819,14 +818,13 @@ struct menu_graphic_t graphic_save_slot = {
 	}
 };
 
-menu_node_c node_save_slot = menu_node_c(
+menu_mem_slot_c node_save_slot = menu_mem_slot_c(
 	&node_save_bind_pc,
 	&node_save_back,
 	&node_save_bind_pc,
 	graphic_save_slot
 );
 
-// TODO: bind MIDI
 struct menu_graphic_t graphic_bind_pc = {
 	line :{
 		0b1111000000111100,
@@ -837,7 +835,7 @@ struct menu_graphic_t graphic_bind_pc = {
 	}
 };
 
-menu_node_c node_save_bind_pc = menu_node_c(
+menu_midi_save_c node_save_bind_pc = menu_midi_save_c(
 	&node_save_back,
 	&node_save_slot,
 	&node_save_back,
@@ -852,8 +850,7 @@ menu_node_c node_save_back = menu_node_c(
 );
 
 // lvl2
-// TODO: save to nvm
-menu_node_c node_save_back_accept = menu_node_c(
+menu_conf_save_c node_save_back_accept = menu_conf_save_c(
 	&node_save,
 	&node_save_back_abort,
 	&node_save_back_abort,
@@ -878,7 +875,7 @@ struct menu_graphic_t graphic_load = {
 	}
 };
 
-menu_node_c node_load = menu_node_c(
+menu_conf_backup_c node_load = menu_conf_backup_c(
 	&node_load_slot,
 	&node_save,
 	&node_edit,
@@ -897,8 +894,7 @@ struct menu_graphic_t graphic_load_slot = {
 };
 
 // lvl1
-// TODO: load from nvm
-menu_node_c node_load_slot = menu_node_c(
+menu_load_slot_c node_load_slot = menu_load_slot_c(
 	&node_load,
 	&node_load_back,
 	&node_load_back,
@@ -906,10 +902,24 @@ menu_node_c node_load_slot = menu_node_c(
 );
 
 menu_node_c node_load_back = menu_node_c(
-	&node_load,
+	&node_load_back_accept,
 	&node_load_slot,
 	&node_load_slot,
 	graphic_back_0
+);
+
+menu_node_c node_load_back_accept = menu_node_c(
+	&node_load,
+	&node_load_back_abort,
+	&node_load_back_abort,
+	graphic_accept
+);
+
+menu_restore_backup_c node_load_back_abort = menu_restore_backup_c(
+	&node_load,
+	&node_load_back_accept,
+	&node_load_back_accept,
+	graphic_abort
 );
 
 // base node
@@ -938,6 +948,32 @@ void menu_node_c::butt_down(){
 void menu_node_c::butt_right(){
 	current_node = node_in;
 	current_node->init();
+}
+
+// mem conf nodes
+void menu_conf_save_c::butt_right(){
+	if (conf_pc.sourceType == ctrlType_t::none){
+		mem_write_config(&mem_buff, mem_slot, -1);
+	} else {
+		mem_write_config(&mem_buff, mem_slot, conf_pc.sourceNum);
+	}
+	menu_node_c::butt_right();
+}
+
+void menu_conf_backup_c::butt_right(){
+	GO_Get_Config(&load_backup);
+	menu_node_c::butt_right();
+}
+
+void menu_restore_backup_c::butt_right(){
+	GO_Set_Config(&load_backup);
+	menu_node_c::butt_right();
+}
+
+void menu_midi_save_c::init(){
+		menu_wait_midi_c::init();
+		midi_src = &conf_pc;
+		midi_mask = 0b100;
 }
 
 // int node
