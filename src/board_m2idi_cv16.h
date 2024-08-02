@@ -9,67 +9,67 @@
 #endif
 
 // --- LED MATRIX ---
-#ifndef LEDC1 
+#ifndef LEDC1
 #define LEDC1 14
 #endif
-#ifndef LEDC2 
+#ifndef LEDC2
 #define LEDC2 16
 #endif
-#ifndef LEDC3 
+#ifndef LEDC3
 #define LEDC3 17
 #endif
-#ifndef LEDC4 
+#ifndef LEDC4
 #define LEDC4 18
 #endif
-#ifndef LEDC5 
+#ifndef LEDC5
 #define LEDC5 20
 #endif
-#ifndef LEDC6 
+#ifndef LEDC6
 #define LEDC6 21
 #endif
-#ifndef LEDC7 
+#ifndef LEDC7
 #define LEDC7 22
 #endif
-#ifndef LEDC8 
+#ifndef LEDC8
 #define LEDC8 23
 #endif
-#ifndef LEDR1 
+#ifndef LEDR1
 #define LEDR1 29
 #endif
-#ifndef LEDR2 
+#ifndef LEDR2
 #define LEDR2 28
 #endif
-#ifndef LEDR3 
+#ifndef LEDR3
 #define LEDR3 27
 #endif
-#ifndef LEDR4 
+#ifndef LEDR4
 #define LEDR4 26
 #endif
-#ifndef LEDR5 
+#ifndef LEDR5
 #define LEDR5 19
 #endif
 
 // no PICO_DEFAULT_WS2812_PIN
 
 // --- BUTTON ---
-#ifndef BUTT1 
+#ifndef BUTT1
 #define BUTT1 2
 #endif
-#ifndef BUTT2 
+#ifndef BUTT2
 #define BUTT2 1
 #endif
-#ifndef BUTT3 
+#ifndef BUTT3
 #define BUTT3 0
 #endif
 
 // MUX pins
-#ifndef M2IDI_MUXA_PIN 
+#ifndef M2IDI_MUXA_PIN
 #define M2IDI_MUXA_PIN 8
 #endif
-#ifndef M2IDI_MUXB_PIN 
+#ifndef M2IDI_MUXB_PIN
 #define M2IDI_MUXB_PIN 9
 #endif
-#ifndef M2IDI_MUXINH_PIN 
+#ifndef M2IDI_MUXINH_PIN
 #define M2IDI_MUXINH_PIN 10
 #endif
 
@@ -105,6 +105,9 @@
 #ifndef M2IDI_DAC_SPI_CSN_PIN
 #define M2IDI_DAC_SPI_CSN_PIN 13
 #endif
+
+// --- RAM ---
+#define RAM_SIZE 32000 // in bytes
 
 // --- FLASH ---
 

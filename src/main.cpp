@@ -17,6 +17,7 @@
 #include "led_matrix.h"
 #include "generic_output.h"
 #include "menu.h"
+#include "memory.h"
 #include <hardware/pio.h>
 #include "ring_buffer.h"
 
@@ -26,7 +27,6 @@ void CAN_Receive_Header(CAN_Rx_msg_t* data);
 void CAN_Receive_Data(char* data, uint8_t length);
 void dma0_irq_handler ();
 void dma1_irq_handler ();
-void eeprom_handler();
 
 void midi_cvm_handler(struct umpCVM msg);
 void midi_com_handler(struct umpGeneric msg);
@@ -59,8 +59,8 @@ int main(void){
     CAN.Set_Rx_Header_Callback(CAN_Receive_Header);
     CAN.Set_Rx_Data_Callback(CAN_Receive_Data);
 
-	EEPROM.init(EEPROM_CONF, EEPROM_SECTIONS, 2);
-	EEPROM.set_callback(eeprom_handler);
+	mem_handler = &EEPROM;
+	mem_init();
 
     MIDI.setSystem(midi_com_handler);
 	MIDI.setCVM(midi_cvm_handler);
@@ -129,10 +129,6 @@ void CAN_Receive_Data(char* data, uint8_t length){
 	}
 }
 
-void eeprom_handler(){
-
-}
-
 void midi_cvm_handler(struct umpCVM msg){
 	if (msg.umpGroup != current_group){
 		return;
@@ -158,8 +154,8 @@ void midi_stream_discovery(uint8_t majVer, uint8_t minVer, uint8_t filter){
 	if(filter & 0x2) {
 		//std::array<uint32_t, 4> ump = UMPMessage::mtFMidiEndpointDeviceInfoNotify(
 		//{MIDI_MFRID & 0xff, (MIDI_MFRID >> 8) & 0xff, (MIDI_MFRID >> 16) & 0xff},
-		//{MIDI_FAMID & 0xff, (MIDI_FAMID >> 8) & 0xff}, 
-		//{DEVICE_MODELID & 0xff, (DEVICE_MODELID >> 8) & 0xff}, 
+		//{MIDI_FAMID & 0xff, (MIDI_FAMID >> 8) & 0xff},
+		//{DEVICE_MODELID & 0xff, (DEVICE_MODELID >> 8) & 0xff},
 		//{DEVICE_VERSIONID & 0xff, (DEVICE_VERSIONID >> 8) & 0xff, (DEVICE_VERSIONID >> 16) & 0xff, (DEVICE_VERSIONID >> 24) & 0xff});
 		//sendUMP( ump.data(), 4);
 	}
@@ -171,7 +167,7 @@ void midi_stream_discovery(uint8_t majVer, uint8_t minVer, uint8_t filter){
 			//sendUMP(ump.data(),4);
 		//}
 	}
-	
+
 	if(filter & 0x8) {
 		// TODO: read MCU unique ID
 		//int8_t piiLength = sizeof(PRODUCT_INSTANCE_ID);
@@ -180,7 +176,7 @@ void midi_stream_discovery(uint8_t majVer, uint8_t minVer, uint8_t filter){
 		//	//sendUMP(ump.data(),4);
 		//}
 	}
-	
+
 	if(filter & 0x10){
 		//std::array<uint32_t, 4> ump = UMPMessage::mtFNotifyProtocol(0x2,false,false);
 		//sendUMP(ump.data(),4);
@@ -233,7 +229,7 @@ void main1(void) {
     pwm_clear_irq(PWM_INH_SLICE);
     pwm_set_irq_enabled(PWM_INH_SLICE, true);
 	pwm_set_enabled(PWM_INH_SLICE, true);
-    
+
     gpio_init(M2IDI_MUXA_PIN);
     gpio_init(M2IDI_MUXB_PIN);
     gpio_set_dir(M2IDI_MUXA_PIN, GPIO_OUT);

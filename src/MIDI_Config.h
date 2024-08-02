@@ -3,7 +3,7 @@
  *
  * Created: 15/10/2021 22:31:05
  *  Author: GuavTek
- */ 
+ */
 
 // Configurations for MIDI application
 
@@ -14,24 +14,6 @@
 #include "dac_spi.h"
 #include "MCP2517.h"
 #include "eeprom_cat.h"
-
-// Define EEPROM layout
-const eeprom_cat_conf_t EEPROM_CONF = {
-	.maxAddr = 0x1fff
-};
-
-// TODO: finalize layout
-// CC lookup table?
-const eeprom_cat_section_t EEPROM_SECTIONS[2] = {
-	{	// Header, 320 byte
-		.offset = 0x0000,
-		.objectSize = 8 // Contains 40 chunks
-	},
-	{	// Main
-		.offset = 0x0140,
-		.objectSize = 3 // sizeof(muxstate)
-	}
-};
 
 // Define CAN filters
 const CAN_Filter_t CAN_FLT0 = {
