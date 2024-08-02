@@ -3,7 +3,7 @@
  *
  * Created: 19/07/2021 18:10:09
  *  Author: GuavTek
- */ 
+ */
 
 
 #ifndef GENERIC_OUTPUT_H_
@@ -64,28 +64,27 @@ struct GenOut_base {
 	enum GOType_t type = GOType_t::DC;
 	uint16_t max_range;
 	uint16_t min_range;
+	uint8_t key_lane;
 	struct ctrlSource_t gen_source;
 	union {
 		// DC (CC, pressure, velocity, gate, and keys)
 		struct {
-			
 		};
-		
+
 		// LFO (and clk)
 		struct {
 			enum WavShape_t shape;
-			uint32_t freq_max;
-			uint32_t freq_min;
+			uint8_t freq_max;
+			uint8_t freq_min;
 		};
-		
+
 		// Envelope
 		struct {
 			uint8_t env_num;
-			
 		};
-		
+
 	};
-	
+
 };
 
 // The data to store in RAM
@@ -95,9 +94,11 @@ struct GenOut_t : GenOut_base {
 	union {
 		struct {
 			uint32_t freq_current;
+			uint32_t freq_max;
+			uint32_t freq_min;
 			int8_t direction;
 		};
-		
+
 		struct {
 			EnvStage_t envelope_stage;
 		};
@@ -203,14 +204,13 @@ class generic_output_c {
 	void handle_realtime(umpGeneric* msg);
 	void handle_cvm(umpCVM* msg);
 	void set_type(GOType_t type);
-	void set_key_lane(uint8_t lane) {key_lane = lane;}
-	uint8_t get_key_lane() {return key_lane;}
+	void set_key_lane(uint8_t lane) {state.key_lane = lane;}
+	uint8_t get_key_lane() {return state.key_lane;}
 	inline uint16_t get() {return state.currentOut;};
 	GenOut_t state;
 	generic_output_c() {current_handler = &dc_handler;};
 	protected:
 	uint8_t num_cc;
-	uint8_t key_lane;
 	base_output_c* current_handler;
 	static dc_output_c dc_handler;
 	static lfo_output_c lfo_handler;
@@ -275,13 +275,13 @@ extern generic_output_c out_handler[4][4];
 extern env_handler_c envelopes[4];
 extern uint8_t midi_group;
 
-// TODO: remove
-extern uint8_t bendRange;
-
 void GO_Init();
 
 void GO_Service();
 void GO_Service(uint8_t x);
+
+void GO_Get_Config(ConfigNVM_t* conf);
+void GO_Set_Config(ConfigNVM_t* conf);
 
 void GO_MIDI_Voice(struct umpCVM* msg);
 

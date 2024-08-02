@@ -3,7 +3,7 @@
  *
  * Created: 19/07/2021 18:09:51
  *  Author: GuavTek
- */ 
+ */
 
 #include "generic_output.h"
 #include "led_matrix.h"
@@ -14,8 +14,6 @@
 bool needScan = false;
 
 env_handler_c envelopes[4];
-
-uint8_t bendRange; // TODO: remove and fix bendrange editing
 
 dc_output_c generic_output_c::dc_handler = dc_output_c();
 lfo_output_c generic_output_c::lfo_handler = lfo_output_c();
@@ -32,7 +30,7 @@ key_handler_c key_handler = key_handler_c();
 constexpr struct freqs_t {
     constexpr freqs_t() : midi() {
         for (auto i = 0; i < 128; i++){
-            midi[i] = 440.0 * pow(2.0, (i-69)/12.0) * pow(2.0, 32.0) / out_rate; 
+            midi[i] = 440.0 * pow(2.0, (i-69)/12.0) * pow(2.0, 32.0) / out_rate;
 		}
     }
     uint32_t midi[128];
@@ -41,7 +39,7 @@ constexpr struct freqs_t {
 
 //template <uint32_t i>
 //struct PrintConst;
-//PrintConst<FREQS.midi[8]> p;
+//PrintConst<sizeof(ConfigNVM_t)> p;
 
 uint8_t midi_group = 1;
 
@@ -135,7 +133,7 @@ void Scan_Matrix(){
 			lane_map[i+1] = 0;
 		}
 	}
-	
+
 	// Subscribe to keylanes
 	for(uint8_t x = 0; x < 4; x++){
 		for (uint8_t y = 0; y < 4; y++){
@@ -148,7 +146,7 @@ void Scan_Matrix(){
 			}
 		}
 	}
-	
+
 	needScan = false;
 }
 
@@ -189,16 +187,16 @@ inline uint16_t Note_To_Output(uint8_t note){
 		tempOut >>= FIXED_POINT_POS;	// Round to int
 		tempOut += 0x7fff;
 	}
-	
+
 	// Add bend
 	tempOut += key_handler.get_current_bend();
-	
+
 	if (tempOut < 0){
 		tempOut = 0;
 	} else if (tempOut > 0xffff){
 		tempOut = 0xffff;
 	}
-	
+
 	return (uint16_t) tempOut;
 }
 
@@ -238,7 +236,7 @@ void GO_Init(){
 			out_handler[x][y].state.min_range = 0;
 		}
 	}
-	
+
 	// Temporary settings
 	out_handler[0][3].set_type(GOType_t::LFO);
 	out_handler[0][3].state.shape = WavShape_t::Sawtooth;
@@ -257,7 +255,7 @@ void GO_Init(){
 	out_handler[1][2].state.gen_source.channel = 1;
 	out_handler[1][2].state.gen_source.sourceNum = 10;
 	out_handler[1][2].state.gen_source.sourceType = ctrlType_t::controller;
-	
+
 	out_handler[0][1].set_type(GOType_t::LFO);
 	out_handler[0][1].state.shape = WavShape_t::Square;
 	out_handler[0][1].state.max_range = 0xffff;
@@ -270,10 +268,10 @@ void GO_Init(){
 	out_handler[0][2].state.min_range = 0;
 	out_handler[0][2].state.direction = -1;
 	out_handler[0][2].state.freq_current = FREQS.midi[69]; // 0x0020 << 16;
-	
+
 	key_handler.set_key_channel(1);
 	key_handler.set_bend_range(11);
-	
+
 	out_handler[3][0].set_type(GOType_t::LFO);
 	out_handler[3][0].state.gen_source.sourceType = ctrlType_t::key;
 	out_handler[3][0].state.gen_source.channel = 0;
@@ -323,7 +321,7 @@ void GO_Init(){
 	out_handler[1][3].state.max_range = 0xffff;
 	out_handler[1][3].state.currentOut = 0xffff;
 	out_handler[1][3].state.min_range = 0;
-	
+
 	envelopes[0].env.att.current = 0x3000'0000;
 	envelopes[0].env.att.max = 0x3000'0000;
 	envelopes[0].env.att.min = 255;
@@ -348,14 +346,128 @@ void GO_Init(){
 	envelopes[0].env.rel.source.sourceType = ctrlType_t::controller;
 	envelopes[0].env.rel.source.channel = 0;
 	envelopes[0].env.rel.source.sourceNum = 27;
-	
+
 	// TODO: Load setup from NVM
-	
-	
+
+
 	// Fill out utility variables
 	Scan_Matrix();
-	
+
 }
+
+void GO_Get_Config(ConfigNVM_t* conf){
+	conf->bendRange = key_handler.get_current_bend();
+	for (uint8_t i = 0; i < 4; i++){
+		conf->env[i].att.max = uint32_to_ufloat8(envelopes[i].env.att.max);
+		conf->env[i].att.min = uint32_to_ufloat8(envelopes[i].env.att.min);
+		conf->env[i].att.source.channel = envelopes[i].env.att.source.channel;
+		conf->env[i].att.source.sourceNum = envelopes[i].env.att.source.sourceNum;
+		conf->env[i].att.source.sourceType = envelopes[i].env.att.source.sourceType;
+		conf->env[i].dec.max = uint32_to_ufloat8(envelopes[i].env.dec.max);
+		conf->env[i].dec.min = uint32_to_ufloat8(envelopes[i].env.dec.min);
+		conf->env[i].dec.source.channel = envelopes[i].env.dec.source.channel;
+		conf->env[i].dec.source.sourceNum = envelopes[i].env.dec.source.sourceNum;
+		conf->env[i].dec.source.sourceType = envelopes[i].env.dec.source.sourceType;
+		conf->env[i].sus.max = uint32_to_ufloat8(envelopes[i].env.sus.max);
+		conf->env[i].sus.min = uint32_to_ufloat8(envelopes[i].env.sus.min);
+		conf->env[i].sus.source.channel = envelopes[i].env.sus.source.channel;
+		conf->env[i].sus.source.sourceNum = envelopes[i].env.sus.source.sourceNum;
+		conf->env[i].sus.source.sourceType = envelopes[i].env.sus.source.sourceType;
+		conf->env[i].rel.max = uint32_to_ufloat8(envelopes[i].env.rel.max);
+		conf->env[i].rel.min = uint32_to_ufloat8(envelopes[i].env.rel.min);
+		conf->env[i].rel.source.channel = envelopes[i].env.rel.source.channel;
+		conf->env[i].rel.source.sourceNum = envelopes[i].env.rel.source.sourceNum;
+		conf->env[i].rel.source.sourceType = envelopes[i].env.rel.source.sourceType;
+	}
+	for (uint8_t i = 0; i < 16; i++){
+		uint8_t x = i & 0b11;
+		uint8_t y = i >> 2;
+		conf->matrix[x][y].type = out_handler[x][y].state.type;
+		conf->matrix[x][y].max_range = out_handler[x][y].state.max_range;
+		conf->matrix[x][y].min_range = out_handler[x][y].state.min_range;
+		conf->matrix[x][y].key_lane = out_handler[x][y].get_key_lane();
+		conf->matrix[x][y].gen_source.channel = out_handler[x][y].state.gen_source.channel;
+		conf->matrix[x][y].gen_source.sourceNum = out_handler[x][y].state.gen_source.sourceNum;
+		conf->matrix[x][y].gen_source.sourceType = out_handler[x][y].state.gen_source.sourceType;
+		switch (conf->matrix[x][y].type){
+		case GOType_t::LFO:
+		case GOType_t::CLK:
+			conf->matrix[x][y].shape = out_handler[x][y].state.shape;
+			conf->matrix[x][y].freq_max = uint32_to_ufloat8(out_handler[x][y].state.freq_max);
+			conf->matrix[x][y].freq_min = uint32_to_ufloat8(out_handler[x][y].state.freq_min);
+			break;
+		case GOType_t::Envelope:
+			conf->matrix[x][y].env_num = out_handler[x][y].state.env_num;
+		default:
+			break;
+		}
+	}
+}
+
+void GO_Set_Config(ConfigNVM_t* conf){
+	key_handler.set_bend_range(conf->bendRange);
+	for (uint8_t i = 0; i < 4; i++){
+		envelopes[i].env.att.max = ufloat8_to_uint32(conf->env[i].att.max);
+		envelopes[i].env.att.min = ufloat8_to_uint32(conf->env[i].att.min);
+		envelopes[i].env.att.source.channel = conf->env[i].att.source.channel;
+		envelopes[i].env.att.source.sourceNum = conf->env[i].att.source.sourceNum;
+		envelopes[i].env.att.source.sourceType = conf->env[i].att.source.sourceType;
+		envelopes[i].env.dec.max = ufloat8_to_uint32(conf->env[i].dec.max);
+		envelopes[i].env.dec.min = ufloat8_to_uint32(conf->env[i].dec.min);
+		envelopes[i].env.dec.source.channel = conf->env[i].dec.source.channel;
+		envelopes[i].env.dec.source.sourceNum = conf->env[i].dec.source.sourceNum;
+		envelopes[i].env.dec.source.sourceType = conf->env[i].dec.source.sourceType;
+		envelopes[i].env.sus.max = ufloat8_to_uint32(conf->env[i].sus.max);
+		envelopes[i].env.sus.min = ufloat8_to_uint32(conf->env[i].sus.min);
+		envelopes[i].env.sus.source.channel = conf->env[i].sus.source.channel;
+		envelopes[i].env.sus.source.sourceNum = conf->env[i].sus.source.sourceNum;
+		envelopes[i].env.sus.source.sourceType = conf->env[i].sus.source.sourceType;
+		envelopes[i].env.rel.max = ufloat8_to_uint32(conf->env[i].rel.max);
+		envelopes[i].env.rel.min = ufloat8_to_uint32(conf->env[i].rel.min);
+		envelopes[i].env.rel.source.channel = conf->env[i].rel.source.channel;
+		envelopes[i].env.rel.source.sourceNum = conf->env[i].rel.source.sourceNum;
+		envelopes[i].env.rel.source.sourceType = conf->env[i].rel.source.sourceType;
+	}
+	for (uint8_t i = 0; i < 16; i++){
+		uint8_t x = i & 0b11;
+		uint8_t y = i >> 2;
+		out_handler[x][y].state.type = conf->matrix[x][y].type;
+		uint16_t rmax = conf->matrix[x][y].max_range;
+		uint16_t rmin = conf->matrix[x][y].min_range;
+		out_handler[x][y].state.max_range = rmax;
+		out_handler[x][y].state.min_range = rmin;
+		out_handler[x][y].state.currentOut = ((rmax-rmin)>>1) + rmin;
+		out_handler[x][y].state.key_lane = conf->matrix[x][y].key_lane;
+		out_handler[x][y].state.gen_source.channel = conf->matrix[x][y].gen_source.channel;
+		out_handler[x][y].state.gen_source.sourceNum = conf->matrix[x][y].gen_source.sourceNum;
+		out_handler[x][y].state.gen_source.sourceType = conf->matrix[x][y].gen_source.sourceType;
+		uint32_t fmax;
+		uint32_t fmin;
+		switch (out_handler[x][y].state.type){
+		case GOType_t::Gate:
+			out_handler[x][y].state.currentOut = rmin;
+			break;
+		case GOType_t::LFO:
+		case GOType_t::CLK:
+			out_handler[x][y].state.currentOut = rmin;
+			out_handler[x][y].state.shape = conf->matrix[x][y].shape;
+			fmax = ufloat8_to_uint32(conf->matrix[x][y].freq_max);
+			fmin = ufloat8_to_uint32(conf->matrix[x][y].freq_min);
+			out_handler[x][y].state.freq_max = fmax;
+			out_handler[x][y].state.freq_min = fmin;
+			out_handler[x][y].state.freq_current = ((fmax-fmin)>>1) + fmin;
+			out_handler[x][y].state.direction = 1;
+			break;
+		case GOType_t::Envelope:
+			out_handler[x][y].state.currentOut = rmin;
+			out_handler[x][y].state.env_num = conf->matrix[x][y].env_num;
+			out_handler[x][y].state.envelope_stage = EnvStage_t::idle;
+		default:
+			break;
+		}
+	}
+}
+
 
 void generic_output_c::update(){
 	current_handler->update(&state);
@@ -384,7 +496,7 @@ void generic_output_c::set_type(GOType_t type){
 		break;
 	case GOType_t::CLK:
 		current_handler = &clk_handler;
-		//state.freq_current=12; 
+		//state.freq_current=12;
 		break;
 	case GOType_t::Pressure:
 		current_handler = &pressure_handler;
@@ -424,7 +536,7 @@ void lfo_output_c::update(GenOut_t* go){
 		} else {
 			go->currentOut = Rescale_16bit(go->outCount >> 16, go->min_range, go->max_range);
 		}
-		
+
 		if (go->direction == 1){
 			uint32_t remain = (0xFFFF'FFFF << 16) - go->outCount;
 			if (remain <= (2*go->freq_current)){
@@ -555,13 +667,13 @@ void lfo_output_c::handle_cvm(GenOut_t* genout, umpCVM* msg){
 			src_current = (genout->gen_source.channel << 0) | (genout->gen_source.sourceNum << 8);
 		} else {
 			return;
-		}	
+		}
 		if ( src_current == criteria ){
 			// Wave generation
 			uint64_t span = genout->freq_max - genout->freq_min + 1;
 			uint64_t scaled = msg->value * span;
 			genout->freq_current = (scaled >> 32) + genout->freq_min;
-		}	
+		}
 	} else if (genout->gen_source.sourceType == ctrlType_t::key){
 		// TODO: allow detuning and sub-audible oscillators
 		// TODO: handle range limiting
@@ -656,9 +768,9 @@ void key_handler_c::start_note(uint8_t lane, umpCVM* msg){
 	for (uint8_t i = 0; i < num_outputs[lane]; i++){
 		lanes[lane][i]->handle_cvm(msg);
 	}
-	
+
 	key_playing[lane] = msg->note;
-	
+
 	// Start common outputs
 	start_note(msg);
 }
@@ -676,7 +788,7 @@ void key_handler_c::stop_note(uint8_t lane, umpCVM* msg){
 	}
 
 	key_playing[lane] = -1;
-	
+
 	// Check lanestates, to know if shared outputs should be turned off
 	bool foundActive = false;
 	for (uint8_t j = 0; j < num_lanes; j++){
@@ -696,7 +808,7 @@ void key_handler_c::stop_note(uint8_t lane, umpCVM* msg){
 		stop_note(msg);
 	}
 }
-	
+
 void key_handler_c::stop_note(umpCVM* msg){
 	// Handle shared outputs
 	for (uint8_t j = 0; j < num_coms; j++){
@@ -722,7 +834,7 @@ uint8_t key_handler_c::handle_cvm(umpCVM* msg){
 						lanes[l][i]->handle_cvm(msg);
 					}
 					break;
-				} 
+				}
 			}
 		} else if(channel == msg->channel) {
 			if (num_lanes == 0) {
@@ -753,9 +865,9 @@ uint8_t key_handler_c::handle_cvm(umpCVM* msg){
 					}
 				}
 			}
-			
+
 			tempLane &= 0x7f;
-				
+
 			// Update starting lane for Round-robin arbitration
 			next_lane = tempLane + 1;
 			if (num_lanes == 0){
@@ -763,13 +875,13 @@ uint8_t key_handler_c::handle_cvm(umpCVM* msg){
 			} else if (next_lane >= num_lanes) {
 				next_lane -= num_lanes;
 			}
-				
+
 			if (key_playing[tempLane] >= 0) {
 				// Note already playing in lane. Push to queue
 				note_queue[queue_index++].note = key_playing[tempLane];
 			}
 			start_note(tempLane, msg);
-		}	
+		}
 		return 1;
 	} else if (msg->status == NOTE_OFF){
 		if (msg->channel == 9){
@@ -781,7 +893,7 @@ uint8_t key_handler_c::handle_cvm(umpCVM* msg){
 						lanes[l][i]->handle_cvm(msg);
 					}
 					break;
-				} 
+				}
 			}
 		} else if(channel == msg->channel) {
 			// Look for note in queue
@@ -796,7 +908,7 @@ uint8_t key_handler_c::handle_cvm(umpCVM* msg){
 			for (; i < queue_index; i++){
 				note_queue[i] = note_queue[i+1];
 			}
-				
+
 			if (num_lanes == 0){
 				// Unison mode
 				if (key_playing[0] != msg->note) return 1;
@@ -821,7 +933,7 @@ uint8_t key_handler_c::handle_cvm(umpCVM* msg){
 					break;
 				}
 			}
-				
+
 			if (tempLane != 0x80){
 				if (queue_index > 0){
 					// Start last note which was put in queue
@@ -835,7 +947,7 @@ uint8_t key_handler_c::handle_cvm(umpCVM* msg){
 					stop_note(tempLane, msg);
 				}
 			}
-		}	
+		}
 		return 1;
 	} else if (msg->status == PITCH_BEND){
 		if (channel == msg->channel) {
@@ -901,9 +1013,9 @@ void env_handler_c::handle_cvm(umpCVM* msg){
 		else if (i == 1) stage = &env.dec;
 		else if (i == 2) stage = &env.sus;
 		else if (i == 3) stage = &env.rel;
-		uint32_t src_current = 
-			( uint8_t(stage->source.sourceType) << 0 ) | 
-			( stage->source.channel << 8 ) | 
+		uint32_t src_current =
+			( uint8_t(stage->source.sourceType) << 0 ) |
+			( stage->source.channel << 8 ) |
 			( stage->source.sourceNum << 16 );
 		if (src_current == criteria){
 			set_stage(msg->value, stage);
@@ -938,7 +1050,7 @@ void GO_MIDI_Voice(struct umpCVM* msg){
 	if(msg->umpGroup != midi_group){
 		return;
 	}
-	
+
 	// Handle special messages
 	if (msg->status == CC){
 		if ((msg->index == 120)||(msg->index == 123)){
@@ -949,7 +1061,7 @@ void GO_MIDI_Voice(struct umpCVM* msg){
 			return;
 		}
 	}
-	
+
 	// Handle note messages
 	if (key_handler.handle_cvm(msg)) {
 		return;
@@ -966,7 +1078,7 @@ void GO_MIDI_Voice(struct umpCVM* msg){
 		// Envelope handler only deal with CC
 		return;
 	}
-	
+
 
 	// Search envelopes
 	for (uint8_t i = 0; i < 4; i++){
@@ -996,7 +1108,7 @@ void GO_MIDI_Realtime(struct umpGeneric* msg){
 void GO_Service(){
 	// Update configuration when needed
 	if (needScan) Scan_Matrix();
-	
+
 	for (uint8_t x = 0; x < 4; x++){
 		for (uint8_t y = 0; y < 4; y++){
 			out_handler[x][y].update();
@@ -1007,7 +1119,7 @@ void GO_Service(){
 void GO_Service(uint8_t x){
 	// Update configuration when needed
 	if (needScan) Scan_Matrix();
-	
+
 	for (uint8_t y = 0; y < 4; y++){
 		out_handler[x][y].update();
 	}
@@ -1016,7 +1128,7 @@ void GO_Service(uint8_t x){
 // Return sine output from linear input
 uint16_t base_output_c::TriSine(uint16_t in){
 	// Smoothstep approximation
-	// In**1	
+	// In**1
 	uint32_t tempIn = in;
 	int32_t tempOut = 0;
 	// In**2
@@ -1034,14 +1146,14 @@ uint16_t base_output_c::TriSine(uint16_t in){
 	tempIn *= in;
 	tempIn >>= 16;
 	tempOut += 6*tempIn;
-	
+
 	// Clamp output
 	if (tempOut > 0xFFFF){
 		tempOut = 0xFFFF;
 	} else if (tempOut < 0) {
 		tempOut = 0;
 	}
-	
+
 	return tempOut;
 }
 
