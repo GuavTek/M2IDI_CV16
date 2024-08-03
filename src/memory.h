@@ -47,6 +47,7 @@ void mem_init();
 void mem_update();
 void mem_read_config(uint8_t slot_num);
 void mem_read_config_pc(uint32_t pc_num);
+void mem_confirm_load(uint8_t slot_num);
 void mem_write_config(uint8_t slot_num, int32_t pc_num);
 
 #endif /* MEMORY_H_ */

@@ -77,7 +77,7 @@ extern menu_node_c node_save_back_abort;
 extern menu_conf_backup_c node_load;
 extern menu_load_slot_c node_load_slot;
 extern menu_node_c node_load_back;
-extern menu_node_c node_load_back_accept;
+extern menu_conf_load_c node_load_back_accept;
 extern menu_restore_backup_c node_load_back_abort;
 
 // Used to bind MIDI sources in configuration
@@ -907,7 +907,7 @@ menu_node_c node_load_back = menu_node_c(
 	graphic_back_0
 );
 
-menu_node_c node_load_back_accept = menu_node_c(
+menu_conf_load_c node_load_back_accept = menu_conf_load_c(
 	&node_load,
 	&node_load_back_abort,
 	&node_load_back_abort,
@@ -956,6 +956,11 @@ void menu_conf_save_c::butt_right(){
 	} else {
 		mem_write_config(mem_slot, conf_pc.sourceNum);
 	}
+	menu_node_c::butt_right();
+}
+
+void menu_conf_load_c::butt_right(){
+	mem_confirm_load(mem_slot);
 	menu_node_c::butt_right();
 }
 

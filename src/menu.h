@@ -169,6 +169,12 @@ public:
 	virtual void butt_right();
 };
 
+class menu_conf_load_c : public menu_node_c {
+public:
+	using menu_node_c::menu_node_c;
+	virtual void butt_right();
+};
+
 class menu_conf_backup_c : public menu_node_c {
 public:
 	using menu_node_c::menu_node_c;

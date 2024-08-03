@@ -57,13 +57,20 @@ void mem_init(){
 }
 
 void mem_read_config(uint8_t slot_num){
-	// Update header config on manual load
-	pend_head = true;
 	pend_slot = slot_num;
 	if (mem_handler->read_data((char*) &mem_buff, 3, slot_num)) {
 		is_reading = true;
 	} else {
 		pend_read = true;
+	}
+}
+
+void mem_confirm_load(uint8_t slot_num){
+	// Update header config on manual load
+	head_buff[0] = pend_slot;
+	if (!mem_handler->write_data(head_buff, 0, 1)) {
+		pend_head = true;
+		pend_slot = slot_num;
 	}
 }
 
@@ -95,12 +102,7 @@ int8_t mem_pc2slot(uint32_t pc_num){
 void mem_read_config_pc(uint32_t pc_num){
 	int8_t slot_num = mem_pc2slot(pc_num);
 	if (slot_num < 0) return;
-	pend_slot = slot_num;
-	if (mem_handler->read_data((char*) &mem_buff, 3, slot_num)) {
-		is_reading = true;
-	} else {
-		pend_read = true;
-	}
+	mem_read_config(slot_num);
 }
 
 void mem_update(){
