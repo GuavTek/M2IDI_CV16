@@ -99,6 +99,7 @@ int main(void){
 				CAN.Check_Rx();
 			}
 		}
+		mem_update();
     }
 }
 

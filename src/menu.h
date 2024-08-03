@@ -53,7 +53,7 @@ public:
 	virtual uint8_t handle_midi(struct umpCVM* msg){return 0;}
 protected:
 	virtual void set_value(uint32_t val){}
-	virtual uint32_t get_value(){}
+	virtual uint32_t get_value(){return 0;}
 	menu_node_c* node_prev;
 	menu_node_c* node_next;
 	menu_node_c* node_in;

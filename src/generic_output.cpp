@@ -228,6 +228,12 @@ inline void Reset_All_Controllers(){
 }
 
 void GO_Init(){
+	// Fill out utility variables
+	Scan_Matrix();
+
+}
+
+void GO_Default_Config(){
 	// Set default values
 	for (uint8_t x = 0; x < 4; x++){
 		for (uint8_t y = 0; y < 4; y++){
@@ -346,10 +352,6 @@ void GO_Init(){
 	envelopes[0].env.rel.source.sourceType = ctrlType_t::controller;
 	envelopes[0].env.rel.source.channel = 0;
 	envelopes[0].env.rel.source.sourceNum = 27;
-
-	// Fill out utility variables
-	Scan_Matrix();
-
 }
 
 void GO_Get_Config(ConfigNVM_t* conf){

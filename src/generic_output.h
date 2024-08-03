@@ -282,6 +282,7 @@ void GO_Service(uint8_t x);
 
 void GO_Get_Config(ConfigNVM_t* conf);
 void GO_Set_Config(ConfigNVM_t* conf);
+void GO_Default_Config();
 
 void GO_MIDI_Voice(struct umpCVM* msg);
 
