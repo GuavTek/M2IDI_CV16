@@ -347,9 +347,6 @@ void GO_Init(){
 	envelopes[0].env.rel.source.channel = 0;
 	envelopes[0].env.rel.source.sourceNum = 27;
 
-	// TODO: Load setup from NVM
-
-
 	// Fill out utility variables
 	Scan_Matrix();
 
