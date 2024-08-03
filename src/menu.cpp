@@ -25,7 +25,6 @@ uint8_t menu_node_c::mem_slot;
 
 ctrlSource_t conf_pc;
 ConfigNVM_t load_backup;
-ConfigNVM_t mem_buff;
 
 uint8_t butt_state;
 uint8_t butt_state_debounced;
@@ -953,9 +952,9 @@ void menu_node_c::butt_right(){
 // mem conf nodes
 void menu_conf_save_c::butt_right(){
 	if (conf_pc.sourceType == ctrlType_t::none){
-		mem_write_config(&mem_buff, mem_slot, -1);
+		mem_write_config(mem_slot, -1);
 	} else {
-		mem_write_config(&mem_buff, mem_slot, conf_pc.sourceNum);
+		mem_write_config(mem_slot, conf_pc.sourceNum);
 	}
 	menu_node_c::butt_right();
 }

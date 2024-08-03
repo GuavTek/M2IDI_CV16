@@ -37,7 +37,7 @@ const eeprom_cat_section_t EEPROM_SECTIONS[2] = {
 
 void mem_init();
 void mem_read_config(uint8_t slot_num);
-void mem_write_config(ConfigNVM_t* conf, uint8_t slot_num, int32_t pc_num);
+void mem_write_config(uint8_t slot_num, int32_t pc_num);
 int8_t mem_pc2slot(uint32_t pc_num);
 
 #endif /* MEMORY_H_ */
