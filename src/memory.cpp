@@ -29,13 +29,17 @@ void mem_init(){
 		// Initialize header
 		// Set version number
 		head_buff[0] = 1;
+		head_buff[1] = 0;
+		head_buff[2] = 0;
+		head_buff[3] = 0;
 		mem_handler->write_data(head_buff, 0, 0);
 		while(mem_handler->is_busy());
 		// Set previous config as none
 		head_buff[0] = 250;
 		mem_handler->write_data(head_buff, 0, 1);
 		while(mem_handler->is_busy());
-
+		// load default config
+		GO_Default_Config();
 	} else {
 		// Fetch other header data
 		mem_handler->read_data(head_buff, 0, 1);
