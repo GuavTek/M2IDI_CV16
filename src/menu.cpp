@@ -540,7 +540,7 @@ struct menu_graphic_t graphic_edit_clk = {
 
 menu_type_clk_c node_edit_sel_type_clk = menu_type_clk_c(
 	&node_edit_sel_bind,
-	&node_edit_sel_type_velocity,
+	&node_edit_sel_type_pressure,
 	&node_edit_sel_type_lfo,
 	graphic_edit_clk
 );
@@ -636,7 +636,7 @@ menu_key_lane_c node_edit_sel_lane = menu_key_lane_c(
 
 menu_node_c node_edit_sel_back = menu_node_c(
 	&node_edit_select,
-	&node_edit_sel_bind,
+	&node_edit_sel_lane,
 	&node_edit_sel_max_range,
 	graphic_back_1
 );
@@ -894,14 +894,14 @@ struct menu_graphic_t graphic_load_slot = {
 
 // lvl1
 menu_load_slot_c node_load_slot = menu_load_slot_c(
-	&node_load,
+	&node_load_back_accept,
 	&node_load_back,
 	&node_load_back,
 	graphic_load_slot
 );
 
 menu_node_c node_load_back = menu_node_c(
-	&node_load_back_accept,
+	&node_load,
 	&node_load_slot,
 	&node_load_slot,
 	graphic_back_0
