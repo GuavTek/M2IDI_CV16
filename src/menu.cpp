@@ -1037,45 +1037,49 @@ void menu_lfo_shape_c::init(){
 }
 
 void menu_lfo_shape_c::update(){
-	if (!screen_change) return;
-	screen_change = 0;
-	WavShape_t tempShape = (WavShape_t) get_value();
-	switch(tempShape){
-		case WavShape_t::Square:
-			LM_WriteRow(0, 0b0011111111000011);
-			LM_WriteRow(1, 0b0011000011000011);
-			LM_WriteRow(2, 0b0011000011000011);
-			LM_WriteRow(3, 0b0011000011000011);
-			LM_WriteRow(4, 0b1111000011111111);
-			break;
-		case WavShape_t::Triangle:
-			LM_WriteRow(0, 0b0000000011000000);
-			LM_WriteRow(1, 0b0000001100110000);
-			LM_WriteRow(2, 0b0000110000001100);
-			LM_WriteRow(3, 0b0011000000000011);
-			LM_WriteRow(4, 0b1100000000000000);
-			break;
-		case WavShape_t::Sawtooth:
-			LM_WriteRow(0, 0b1100000011000000);
-			LM_WriteRow(1, 0b1111000011110000);
-			LM_WriteRow(2, 0b1100110011001100);
-			LM_WriteRow(3, 0b1100001111000011);
-			LM_WriteRow(4, 0b1100000011000000);
-			break;
-		case WavShape_t::Sine:
-			LM_WriteRow(0, 0b0000000000000011);
-			LM_WriteRow(1, 0b0000000000111100);
-			LM_WriteRow(2, 0b0000000000110000);
-			LM_WriteRow(3, 0b1100000011110000);
-			LM_WriteRow(4, 0b0011111100000000);
-			break;
-		case WavShape_t::SinSaw:
-			LM_WriteRow(0, 0b1111000000111100);
-			LM_WriteRow(1, 0b1100110000110011);
-			LM_WriteRow(2, 0b1100110000110000);
-			LM_WriteRow(3, 0b1100001100110000);
-			LM_WriteRow(4, 0b1100000011110000);
-			break;
+	if (status == menu_status_t::Edit_int) {
+		if (!screen_change) return;
+		screen_change = 0;
+		WavShape_t tempShape = (WavShape_t) get_value();
+		switch(tempShape){
+			case WavShape_t::Square:
+				LM_WriteRow(0, 0b0011111111000011);
+				LM_WriteRow(1, 0b0011000011000011);
+				LM_WriteRow(2, 0b0011000011000011);
+				LM_WriteRow(3, 0b0011000011000011);
+				LM_WriteRow(4, 0b1111000011111111);
+				break;
+			case WavShape_t::Triangle:
+				LM_WriteRow(0, 0b0000000011000000);
+				LM_WriteRow(1, 0b0000001100110000);
+				LM_WriteRow(2, 0b0000110000001100);
+				LM_WriteRow(3, 0b0011000000000011);
+				LM_WriteRow(4, 0b1100000000000000);
+				break;
+			case WavShape_t::Sawtooth:
+				LM_WriteRow(0, 0b1100000011000000);
+				LM_WriteRow(1, 0b1111000011110000);
+				LM_WriteRow(2, 0b1100110011001100);
+				LM_WriteRow(3, 0b1100001111000011);
+				LM_WriteRow(4, 0b1100000011000000);
+				break;
+			case WavShape_t::Sine:
+				LM_WriteRow(0, 0b0000000000000011);
+				LM_WriteRow(1, 0b0000000000111100);
+				LM_WriteRow(2, 0b0000000000110000);
+				LM_WriteRow(3, 0b1100000011110000);
+				LM_WriteRow(4, 0b0011111100000000);
+				break;
+			case WavShape_t::SinSaw:
+				LM_WriteRow(0, 0b1111000000111100);
+				LM_WriteRow(1, 0b1100110000110011);
+				LM_WriteRow(2, 0b1100110000110000);
+				LM_WriteRow(3, 0b1100001100110000);
+				LM_WriteRow(4, 0b1100000011110000);
+				break;
+		}
+	} else {
+		menu_node_c::update();
 	}
 }
 
