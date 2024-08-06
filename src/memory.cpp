@@ -15,11 +15,11 @@ bool pend_read = false;
 bool pend_head = false;
 bool is_reading = false;
 
-void mem_update();
+void mem_cb();
 
 void mem_init(){
 	mem_handler->init(EEPROM_CONF, EEPROM_SECTIONS, 4);
-	mem_handler->set_callback(mem_update);
+	mem_handler->set_callback(mem_cb);
 
 	while(mem_handler->is_busy());
 	// Memory layout version
@@ -133,8 +133,12 @@ void mem_update(){
 			pend_slot = -1;
 		}
 	}
+}
+
+void mem_cb(){
 	if (is_reading){
 		is_reading = false;
 		GO_Set_Config(&mem_buff);
 	}
+	mem_update();
 }
