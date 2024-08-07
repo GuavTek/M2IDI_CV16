@@ -398,7 +398,7 @@ void GO_Get_Config(ConfigNVM_t* conf){
 		conf->matrix[x][y].gen_source.channel = out_handler[x][y].state.gen_source.channel;
 		conf->matrix[x][y].gen_source.sourceNum = out_handler[x][y].state.gen_source.sourceNum;
 		conf->matrix[x][y].gen_source.sourceType = out_handler[x][y].state.gen_source.sourceType;
-		switch (conf->matrix[x][y].type){
+		switch (out_handler[x][y].state.type){
 		case GOType_t::LFO:
 		case GOType_t::CLK:
 			conf->matrix[x][y].shape = out_handler[x][y].state.shape;
@@ -407,6 +407,7 @@ void GO_Get_Config(ConfigNVM_t* conf){
 			break;
 		case GOType_t::Envelope:
 			conf->matrix[x][y].env_num = out_handler[x][y].state.env_num;
+			break;
 		default:
 			break;
 		}
@@ -475,6 +476,7 @@ void GO_Set_Config(ConfigNVM_t* conf){
 			break;
 		}
 	}
+	needScan = true;
 }
 
 
