@@ -167,13 +167,16 @@ ufloat8_t uint32_to_ufloat8(uint32_t in){
 	uint8_t mant = 0;
 	if (in < 0x8) {
 		exp = 0x1f;
+		mant = in;
 	} else {
-		for (; exp > 0; exp--){
-			mant = (in >> exp) & 0x0f;
-			if (mant >= 0x8){
+		// Find MSb
+		for (exp = 31; exp > 3; exp--){
+			if (in & (1 << exp)){
 				break;
 			}
 		}
+		exp -= 3;
+		mant = (in >> exp) & 0x0f;
 	}
 	return ((mant & 0x07) | (exp << 3));
 }
