@@ -153,13 +153,18 @@ void Scan_Matrix(){
 // Low precision floating point to save memory space
 #define ufloat8_t uint8_t
 uint32_t ufloat8_to_uint32(ufloat8_t in){
-	uint8_t exp = in >> 3;
+	int8_t exp = in >> 3;
 	uint8_t mant = in & 0x07;
 	if (exp > 29){
 		return mant;
 	}
-	mant |= 0x08;
-	return mant << exp;
+	uint32_t out_val = 0x08 << exp;
+	// Extend value increase dynamic range
+	for (; exp > 0; exp -= 3){
+		out_val |= mant << exp;
+	}
+	out_val |= mant >> -exp;
+	return out_val;
 }
 
 ufloat8_t uint32_to_ufloat8(uint32_t in){
