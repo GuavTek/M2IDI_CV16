@@ -1205,7 +1205,7 @@ void menu_32bit_c::butt_up(){
 		temp_val = extrapolate_num(temp_val);
 		set_value(temp_val);
 	} else {
-		menu_node_c::butt_down();
+		menu_node_c::butt_up();
 	}
 }
 
