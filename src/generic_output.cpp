@@ -260,6 +260,8 @@ void GO_Default_Config(){
 	out_handler[0][3].state.min_range = 0;
 	out_handler[0][3].state.direction = -1;
 	out_handler[0][3].state.freq_current = 0x0008 << 16;
+	out_handler[0][3].state.freq_max = 0x0010 << 16;
+	out_handler[0][3].state.freq_min = 0x0002 << 16;
 	out_handler[1][2].set_type(GOType_t::LFO);
 	out_handler[1][2].state.shape = WavShape_t::Sawtooth;
 	out_handler[1][2].state.max_range = 0xffff;
@@ -278,12 +280,16 @@ void GO_Default_Config(){
 	out_handler[0][1].state.min_range = 0;
 	out_handler[0][1].state.direction = 1;
 	out_handler[0][1].state.freq_current = FREQS.f1Hz; // 0x0040 << 16;
+	out_handler[0][1].state.freq_max = FREQS.f1Hz;
+	out_handler[0][1].state.freq_min = FREQS.f1Hz;
 	out_handler[0][2].set_type(GOType_t::LFO);
 	out_handler[0][2].state.shape = WavShape_t::Triangle;
 	out_handler[0][2].state.max_range = 0xffff;
 	out_handler[0][2].state.min_range = 0;
 	out_handler[0][2].state.direction = -1;
 	out_handler[0][2].state.freq_current = FREQS.midi[69]; // 0x0020 << 16;
+	out_handler[0][2].state.freq_max = 0x0010 << 16;
+	out_handler[0][2].state.freq_min = 0x0002 << 16;
 
 	key_handler.set_key_channel(1);
 	key_handler.set_bend_range(11);
@@ -311,6 +317,8 @@ void GO_Default_Config(){
 	out_handler[3][3].state.max_range = 0xffff;
 	out_handler[3][3].state.min_range = 0;
 	out_handler[3][3].state.freq_current = 23;
+	out_handler[3][3].state.freq_min = 23;
+	out_handler[3][3].state.freq_max = 23;
 	out_handler[2][0].set_type(GOType_t::LFO);
 	out_handler[2][0].state.gen_source.sourceType = ctrlType_t::key;
 	out_handler[2][0].state.gen_source.channel = 0;
@@ -417,23 +425,35 @@ void GO_Get_Config(ConfigNVM_t* conf){
 void GO_Set_Config(ConfigNVM_t* conf){
 	key_handler.set_bend_range(conf->bendRange);
 	for (uint8_t i = 0; i < 4; i++){
-		envelopes[i].env.att.max = ufloat8_to_uint32(conf->env[i].att.max);
-		envelopes[i].env.att.min = ufloat8_to_uint32(conf->env[i].att.min);
+		uint32_t temp_max = ufloat8_to_uint32(conf->env[i].att.max);
+		uint32_t temp_min = ufloat8_to_uint32(conf->env[i].att.min);
+		envelopes[i].env.att.max = temp_max;
+		envelopes[i].env.att.min = temp_min;
+		envelopes[i].env.att.current = ((temp_max-temp_min) >> 1) + temp_min;
 		envelopes[i].env.att.source.channel = conf->env[i].att.source.channel;
 		envelopes[i].env.att.source.sourceNum = conf->env[i].att.source.sourceNum;
 		envelopes[i].env.att.source.sourceType = conf->env[i].att.source.sourceType;
-		envelopes[i].env.dec.max = ufloat8_to_uint32(conf->env[i].dec.max);
-		envelopes[i].env.dec.min = ufloat8_to_uint32(conf->env[i].dec.min);
+		temp_max = ufloat8_to_uint32(conf->env[i].dec.max);
+		temp_min = ufloat8_to_uint32(conf->env[i].dec.min);
+		envelopes[i].env.dec.max = temp_max;
+		envelopes[i].env.dec.min = temp_min;
+		envelopes[i].env.dec.current = ((temp_max-temp_min) >> 1) + temp_min;
 		envelopes[i].env.dec.source.channel = conf->env[i].dec.source.channel;
 		envelopes[i].env.dec.source.sourceNum = conf->env[i].dec.source.sourceNum;
 		envelopes[i].env.dec.source.sourceType = conf->env[i].dec.source.sourceType;
-		envelopes[i].env.sus.max = ufloat8_to_uint32(conf->env[i].sus.max);
-		envelopes[i].env.sus.min = ufloat8_to_uint32(conf->env[i].sus.min);
+		temp_max = ufloat8_to_uint32(conf->env[i].sus.max);
+		temp_min = ufloat8_to_uint32(conf->env[i].sus.min);
+		envelopes[i].env.sus.max = temp_max;
+		envelopes[i].env.sus.min = temp_min;
+		envelopes[i].env.sus.current = ((temp_max-temp_min) >> 1) + temp_min;
 		envelopes[i].env.sus.source.channel = conf->env[i].sus.source.channel;
 		envelopes[i].env.sus.source.sourceNum = conf->env[i].sus.source.sourceNum;
 		envelopes[i].env.sus.source.sourceType = conf->env[i].sus.source.sourceType;
-		envelopes[i].env.rel.max = ufloat8_to_uint32(conf->env[i].rel.max);
-		envelopes[i].env.rel.min = ufloat8_to_uint32(conf->env[i].rel.min);
+		temp_max = ufloat8_to_uint32(conf->env[i].rel.max);
+		temp_min = ufloat8_to_uint32(conf->env[i].rel.min);
+		envelopes[i].env.rel.max = temp_max;
+		envelopes[i].env.rel.min = temp_min;
+		envelopes[i].env.rel.current = ((temp_max-temp_min) >> 1) + temp_min;
 		envelopes[i].env.rel.source.channel = conf->env[i].rel.source.channel;
 		envelopes[i].env.rel.source.sourceNum = conf->env[i].rel.source.sourceNum;
 		envelopes[i].env.rel.source.sourceType = conf->env[i].rel.source.sourceType;
@@ -446,7 +466,6 @@ void GO_Set_Config(ConfigNVM_t* conf){
 		uint16_t rmin = conf->matrix[x][y].min_range;
 		out_handler[x][y].state.max_range = rmax;
 		out_handler[x][y].state.min_range = rmin;
-		out_handler[x][y].state.currentOut = ((rmax-rmin)>>1) + rmin;
 		out_handler[x][y].state.key_lane = conf->matrix[x][y].key_lane;
 		out_handler[x][y].state.gen_source.channel = conf->matrix[x][y].gen_source.channel;
 		out_handler[x][y].state.gen_source.sourceNum = conf->matrix[x][y].gen_source.sourceNum;
@@ -465,14 +484,23 @@ void GO_Set_Config(ConfigNVM_t* conf){
 			fmin = ufloat8_to_uint32(conf->matrix[x][y].freq_min);
 			out_handler[x][y].state.freq_max = fmax;
 			out_handler[x][y].state.freq_min = fmin;
-			out_handler[x][y].state.freq_current = ((fmax-fmin)>>1) + fmin;
-			out_handler[x][y].state.direction = 1;
+			if (out_handler[x][y].state.gen_source.sourceType == ctrlType_t::key) {
+				out_handler[x][y].state.freq_current = FREQS.midi[60];
+			} else {
+				out_handler[x][y].state.freq_current = ((fmax-fmin)>>1) + fmin;
+			}
+			if (out_handler[x][y].state.shape == WavShape_t::Square){
+				out_handler[x][y].state.direction = 1;
+			} else {
+				out_handler[x][y].state.direction = -1;
+			}
 			break;
 		case GOType_t::Envelope:
 			out_handler[x][y].state.currentOut = rmin;
 			out_handler[x][y].state.env_num = conf->matrix[x][y].env_num;
 			out_handler[x][y].state.envelope_stage = EnvStage_t::idle;
 		default:
+			out_handler[x][y].state.currentOut = ((rmax-rmin)>>1) + rmin;
 			break;
 		}
 	}

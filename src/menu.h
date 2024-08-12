@@ -420,6 +420,8 @@ protected:
 	virtual uint32_t get_value(){return go->state.freq_current;}
 	virtual void set_value(uint32_t val){
 		go->state.freq_current = val;
+		go->state.freq_max = val;
+		go->state.freq_min = val;
 	}
 };
 
