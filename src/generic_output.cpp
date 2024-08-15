@@ -147,6 +147,14 @@ void Scan_Matrix(){
 		}
 	}
 
+	for (uint8_t i = 0; i < 8; i++){
+		if (lane_map[i+1] > 0){
+			key_handler.lane_map[i] = lane_map[i+1]-1;
+		} else {
+			key_handler.lane_map[i] = 0;
+		}
+	}
+
 	needScan = false;
 }
 
@@ -678,12 +686,14 @@ void dc_output_c::handle_cvm(GenOut_t* genout, umpCVM* msg){
 			return;
 		}
 		break;
+	case PITCH_BEND_PERNOTE:
 	case PITCH_BEND:
 		// update v/oct outputs
 		criteria = ( key_handler.get_key_channel() << 0 ) | ( uint8_t(ctrlType_t::key) << 8 );
 		src_current = ( genout->gen_source.channel << 0 ) | ( uint8_t(genout->gen_source.sourceType) << 8 );
 		if ( src_current == criteria ){
 			genout->currentOut = Note_To_Output(genout->gen_source.sourceNum);
+			genout->currentOut += key_handler.get_current_bend(genout->key_lane);
 		}
 		break;
 	default:
@@ -692,7 +702,7 @@ void dc_output_c::handle_cvm(GenOut_t* genout, umpCVM* msg){
 }
 
 // TODO: use CC/NRPN lookup table
-// TODO: handle RPN for poly pitch bend
+// TODO: handle RPN for poly modulation
 // TODO: handle note on attribute data for microtonal
 void lfo_output_c::handle_cvm(GenOut_t* genout, umpCVM* msg){
 	uint32_t criteria;
@@ -723,6 +733,7 @@ void lfo_output_c::handle_cvm(GenOut_t* genout, umpCVM* msg){
 			// Bend must be taken account of at note start too
 		}
 		int64_t tempBend = key_handler.get_current_bend();
+		tempBend += key_handler.get_current_bend(genout->key_lane);
 		tempBend *= FIXED_VOLT_PER_INT;	// int * fixed-point, no need to right-shift
 		tempBend = fp_exp2(tempBend);
 		tempBend *= FREQS.midi[genout->gen_source.sourceNum];
@@ -780,10 +791,12 @@ void key_handler_c::reset(){
 	channel = 1;
 	num_lanes = 0;
 	num_coms = 0;
+	current_bend = 0;
 	for (uint8_t i = 0; i < 8; i++){
 		num_outputs[i] = 0;
 		key_playing[i] = -1;
 		drum_note[i] = -1;
+		bend_per_note[i] = 0;
 	}
 }
 
@@ -804,11 +817,11 @@ void key_handler_c::stop_notes(){
 }
 
 void key_handler_c::start_note(uint8_t lane, umpCVM* msg){
+	key_playing[lane] = msg->note;
+	bend_per_note[lane] = 0;
 	for (uint8_t i = 0; i < num_outputs[lane]; i++){
 		lanes[lane][i]->handle_cvm(msg);
 	}
-
-	key_playing[lane] = msg->note;
 
 	// Start common outputs
 	start_note(msg);
@@ -1009,6 +1022,24 @@ uint8_t key_handler_c::handle_cvm(umpCVM* msg){
 			// Don't apply bend from other channels
 			return 1;
 		}
+	} else if (msg->status == PITCH_BEND_PERNOTE){
+		if (channel == msg->channel) {
+			int8_t temp_lane = -1;
+			for (uint8_t i = 0; i < num_lanes; i++){
+				if (msg->note == key_playing[i]){
+					temp_lane = i;
+					break;
+				}
+			}
+			if (temp_lane >= 0){
+				uint16_t tempBend = Rescale_16bit(msg->value >> 16, min_bend, max_bend);
+				bend_per_note[temp_lane] = tempBend - 0x7fff;
+				for (uint8_t i = 0; i < num_outputs[temp_lane]; i++){
+					lanes[temp_lane][i]->handle_cvm(msg);
+				}
+			}
+		}
+		return 1;
 	} else if (msg->channel != channel) {
 		// Don't apply pressure or from other channels
 		if (msg->status == KEY_PRESSURE){

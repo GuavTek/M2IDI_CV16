@@ -234,11 +234,12 @@ class key_handler_c {
 	void set_bend_range(uint8_t range);
 	uint8_t get_bend_range();
 	inline int16_t get_current_bend() {return current_bend;}
+	inline int16_t get_current_bend(uint8_t lane){return bend_per_note[lane_map[lane]];}
 	uint8_t handle_cvm(umpCVM* msg);
 	uint8_t subscribe_key(generic_output_c* handler);
 	uint8_t subscribe_key(generic_output_c* handler, uint8_t lane);
 	uint8_t subscribe_drum(generic_output_c* handler);
-
+	uint8_t lane_map[8];
 	protected:
 	void start_note(uint8_t lane, umpCVM* msg);
 	void start_note(umpCVM* msg);
@@ -248,6 +249,7 @@ class key_handler_c {
 	key_note_t note_queue[32];
 	uint8_t next_lane = 0;
 	int16_t current_bend = 0;
+	int16_t bend_per_note[8];
 	uint16_t max_bend;
 	uint16_t min_bend;
 	uint8_t channel;
