@@ -232,6 +232,7 @@ class key_handler_c {
 	inline void set_key_channel(uint8_t num) {channel = num;}
 	inline uint8_t get_key_channel() {return channel;}
 	void set_bend_range(uint8_t range);
+	uint8_t get_bend_range();
 	inline int16_t get_current_bend() {return current_bend;}
 	uint8_t handle_cvm(umpCVM* msg);
 	uint8_t subscribe_key(generic_output_c* handler);

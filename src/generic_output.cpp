@@ -373,7 +373,7 @@ void GO_Default_Config(){
 }
 
 void GO_Get_Config(ConfigNVM_t* conf){
-	conf->bendRange = key_handler.get_current_bend();
+	conf->bendRange = key_handler.get_bend_range();
 	for (uint8_t i = 0; i < 4; i++){
 		conf->env[i].att.max = uint32_to_ufloat8(envelopes[i].env.att.max);
 		conf->env[i].att.min = uint32_to_ufloat8(envelopes[i].env.att.min);
@@ -860,6 +860,18 @@ void key_handler_c::set_bend_range(uint8_t range){
 	// Configure note bend range
 	max_bend = 0x7fff + span;
 	min_bend = 0x7fff - span;
+}
+
+uint8_t key_handler_c::get_bend_range(){
+	uint32_t span = max_bend - 0x7fff;
+	// Find the current bend range setting
+	uint8_t i;
+	for (i = 2; i <= 36; i++){
+		if (span < ((i * FIXED_INT_PER_NOTE) >> FIXED_POINT_POS)){
+			break;
+		}
+	}
+	return i - 2;
 }
 
 uint8_t key_handler_c::handle_cvm(umpCVM* msg){
