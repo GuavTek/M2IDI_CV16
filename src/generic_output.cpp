@@ -10,6 +10,7 @@
 #include "umpProcessor.h"
 #include "utils.h"
 #include "math.h"
+#include "rp_rand.h"
 
 bool needScan = false;
 
@@ -567,6 +568,8 @@ void lfo_output_c::update(GenOut_t* go){
 	} else if (go->shape == WavShape_t::SinSaw){
 		go->outCount -= go->freq_current;
 		go->currentOut = Rescale_16bit(TriSine(go->outCount >> 16), go->min_range, go->max_range);
+	} else if (go->shape == WavShape_t::SuperSaw){
+		// TODO
 	} else if (go->shape == WavShape_t::Square){
 		go->outCount -= go->freq_current*2;
 		uint32_t remain = go->outCount;
@@ -576,6 +579,13 @@ void lfo_output_c::update(GenOut_t* go){
 			} else {
 				go->currentOut = go->min_range;
 			}
+		}
+	} else if (go->shape == WavShape_t::Noise){
+		// TODO: other colors?
+		go->outCount -= go->freq_current;
+		uint32_t remain = go->outCount;
+		if (remain < go->freq_current){
+			go->currentOut = Rescale_16bit(rp_rand.get(), go->min_range, go->max_range);
 		}
 	} else {
 		if (go->shape == WavShape_t::Sine){

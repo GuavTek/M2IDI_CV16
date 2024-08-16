@@ -1077,6 +1077,20 @@ void menu_lfo_shape_c::update(){
 				LM_WriteRow(3, 0b1100001100110000);
 				LM_WriteRow(4, 0b1100000011110000);
 				break;
+			case WavShape_t::SuperSaw:
+				LM_WriteRow(0, 0b1100000000000000);
+				LM_WriteRow(1, 0b1111001100000011);
+				LM_WriteRow(2, 0b1100110011000011);
+				LM_WriteRow(3, 0b1100000000110011);
+				LM_WriteRow(4, 0b0000000000001111);
+				break;
+			case WavShape_t::Noise:
+				LM_WriteRow(0, 0b0000000000110000);
+				LM_WriteRow(1, 0b0011001100110011);
+				LM_WriteRow(2, 0b1111111111111111);
+				LM_WriteRow(3, 0b0000110011000000);
+				LM_WriteRow(4, 0b0000110000000000);
+				break;
 		}
 	} else {
 		menu_node_c::update();
@@ -1086,7 +1100,7 @@ void menu_lfo_shape_c::update(){
 void menu_lfo_shape_c::set_value(uint32_t val){
 	if (val >= 255){
 		val = 4;
-	} else if (val >= 5){
+	} else if (val >= 7){
 		val = 0;
 	}
 	go->state.shape = (WavShape_t) val;

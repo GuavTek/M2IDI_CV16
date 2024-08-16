@@ -51,7 +51,9 @@ enum class WavShape_t : uint8_t {
 	Triangle = 1,
 	Sawtooth = 2,
 	Sine = 3,
-	SinSaw = 4
+	SinSaw = 4,
+	SuperSaw = 5,
+	Noise = 6
 };
 
 struct GridPos_t {

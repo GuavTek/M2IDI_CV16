@@ -20,6 +20,7 @@
 #include "memory.h"
 #include <hardware/pio.h>
 #include "ring_buffer.h"
+#include "rp_rand.h"
 
 void main1(void);
 void dac_pwm_handler();
@@ -51,6 +52,7 @@ uint32_t smiley_timer = 0;
 int main(void){
 	// Board init
 	set_sys_clock_khz(120000, true);
+	rp_rand.init(100);
     SPI_CAN.Init(SPI_CAN_CONF);
 	irq_set_exclusive_handler(DMA_IRQ_1, dma1_irq_handler);
 	irq_set_enabled(DMA_IRQ_1, true);
