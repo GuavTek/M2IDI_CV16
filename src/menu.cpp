@@ -991,7 +991,7 @@ void menu_int_c::update(){
 		uint8_t hi = temp_value >> 6;
 		LM_WriteRow(2, 0xffff >> (16-2*hi));
 		LM_WriteRow(3, 0xffff >> (16-2*mid));
-		LM_WriteRow(4, 0xffff >> (14-2*lo));
+		LM_WriteRow(4, 0xffff >> (16-2*lo));
 	} else {
 		menu_node_c::update();
 	}
