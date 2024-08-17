@@ -236,7 +236,9 @@ class key_handler_c {
 	void set_bend_range(uint8_t range);
 	uint8_t get_bend_range();
 	inline int16_t get_current_bend() {return current_bend;}
-	inline int16_t get_current_bend(uint8_t lane){return bend_per_note[lane_map[lane]];}
+	inline int16_t get_current_bend(uint8_t lane){
+		if (lane == 0) return 0;
+		return bend_per_note[lane_map[lane-1]];}
 	uint8_t handle_cvm(umpCVM* msg);
 	uint8_t subscribe_key(generic_output_c* handler);
 	uint8_t subscribe_key(generic_output_c* handler, uint8_t lane);

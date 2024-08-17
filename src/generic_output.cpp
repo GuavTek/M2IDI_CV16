@@ -938,6 +938,7 @@ uint8_t key_handler_c::handle_cvm(umpCVM* msg){
 		} else if(channel == msg->channel) {
 			if (num_lanes == 0) {
 				// Unison mode
+				next_lane = 0;
 				if (key_playing[0] >= 0) {
 					// Note already playing in lane. Push to queue
 					note_queue[queue_index++].note = key_playing[0];
@@ -969,9 +970,7 @@ uint8_t key_handler_c::handle_cvm(umpCVM* msg){
 
 			// Update starting lane for Round-robin arbitration
 			next_lane = tempLane + 1;
-			if (num_lanes == 0){
-				next_lane = 0;
-			} else if (next_lane >= num_lanes) {
+			if (next_lane >= num_lanes) {
 				next_lane -= num_lanes;
 			}
 
@@ -1094,10 +1093,10 @@ uint8_t key_handler_c::subscribe_key(generic_output_c* handler, uint8_t lane){
 	if (lane == 0){
 		com_out[num_coms++] = handler;
 	} else {
-		if (num_outputs[lane] >= 4){
+		if (num_outputs[lane-1] >= 4){
 			return 0;
 		}
-		lanes[lane][num_outputs[lane]++] = handler;
+		lanes[lane-1][num_outputs[lane-1]++] = handler;
 		if (num_lanes < lane){
 			num_lanes = lane;
 		}
