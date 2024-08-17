@@ -1099,7 +1099,7 @@ void menu_lfo_shape_c::update(){
 
 void menu_lfo_shape_c::set_value(uint32_t val){
 	if (val >= 255){
-		val = 4;
+		val = 6;
 	} else if (val >= 7){
 		val = 0;
 	}
