@@ -764,9 +764,14 @@ void lfo_output_c::handle_cvm(GenOut_t* genout, umpCVM* msg){
 		if (msg->status == NOTE_ON){
 			//genout->freq_current = FREQS.midi[msg->note];
 			genout->gen_source.sourceNum = msg->note;
+			if (genout->shape == WavShape_t::Noise){
+				genout->currentOut = Rescale_16bit(rp_rand.get(), genout->min_range, genout->max_range);
+			}
 		} else if (msg->status == PITCH_BEND){
 			// Bend must be taken account of at note start too
 		}
+		if (genout->shape == WavShape_t::Noise) return;
+		// Calculate frequency
 		int64_t tempBend = key_handler.get_current_bend();
 		tempBend += key_handler.get_current_bend(genout->key_lane);
 		tempBend *= FIXED_VOLT_PER_INT;	// int * fixed-point, no need to right-shift
