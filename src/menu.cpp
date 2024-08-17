@@ -1195,9 +1195,9 @@ void menu_32bit_c::update(){
 
 uint32_t menu_32bit_c::extrapolate_num (uint32_t in){
 	uint32_t tempResult = in & (0xffff'ffff << bit_pos);
-	uint8_t cleanIn = (in >> bit_pos) & 0xf;
-	int8_t i = bit_pos - 4;
-	for (; i > 0; i -= 4){
+	uint8_t cleanIn = (in >> bit_pos) & 0x7;
+	int8_t i = bit_pos - 3;
+	for (; i > 0; i -= 3){
 		tempResult |= cleanIn << i;
 	}
 	tempResult |= cleanIn >> -i;
