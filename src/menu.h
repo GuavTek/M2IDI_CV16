@@ -242,13 +242,13 @@ public:
 protected:
 	virtual void set_value(uint32_t val){
 		if (val > 250){
-			val = 12;
-		} else if (val > 12) {
+			val = 8;
+		} else if (val > 8) {
 			val = 0;
 		}
-		key_handler.set_bend_range(val);
+		go->state.key_lane = val;
 	}
-	virtual uint32_t get_value(){return key_handler.get_current_bend();}
+	virtual uint32_t get_value(){return go->state.key_lane;}
 };
 
 class menu_mem_slot_c : public menu_int_c {
