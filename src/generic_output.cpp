@@ -450,6 +450,15 @@ void GO_Get_Config(ConfigNVM_t* conf){
 		case GOType_t::Envelope:
 			conf->matrix[x][y].env_num = out_handler[x][y].state.env_num;
 			break;
+		case GOType_t::DC:
+			if (out_handler[x][y].state.gen_source.sourceType == ctrlType_t::none){
+				conf->matrix[x][y].max_range = out_handler[x][y].state.currentOut;
+				conf->matrix[x][y].min_range = out_handler[x][y].state.currentOut;
+			} else {
+				conf->matrix[x][y].max_range = out_handler[x][y].state.max_range;
+				conf->matrix[x][y].min_range = out_handler[x][y].state.min_range;
+			}
+			break;
 		default:
 			break;
 		}
