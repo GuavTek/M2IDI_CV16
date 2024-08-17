@@ -384,23 +384,43 @@ void GO_Default_Config(){
 void GO_Get_Config(ConfigNVM_t* conf){
 	conf->bendRange = key_handler.get_bend_range();
 	for (uint8_t i = 0; i < 4; i++){
-		conf->env[i].att.max = uint32_to_ufloat8(envelopes[i].env.att.max);
-		conf->env[i].att.min = uint32_to_ufloat8(envelopes[i].env.att.min);
+		if (envelopes[i].env.att.source.sourceType == ctrlType_t::none){
+			conf->env[i].att.max = uint32_to_ufloat8(envelopes[i].env.att.current);
+			conf->env[i].att.min = uint32_to_ufloat8(envelopes[i].env.att.current);
+		} else {
+			conf->env[i].att.max = uint32_to_ufloat8(envelopes[i].env.att.max);
+			conf->env[i].att.min = uint32_to_ufloat8(envelopes[i].env.att.min);
+		}
 		conf->env[i].att.source.channel = envelopes[i].env.att.source.channel;
 		conf->env[i].att.source.sourceNum = envelopes[i].env.att.source.sourceNum;
 		conf->env[i].att.source.sourceType = envelopes[i].env.att.source.sourceType;
-		conf->env[i].dec.max = uint32_to_ufloat8(envelopes[i].env.dec.max);
-		conf->env[i].dec.min = uint32_to_ufloat8(envelopes[i].env.dec.min);
+		if (envelopes[i].env.dec.source.sourceType == ctrlType_t::none){
+			conf->env[i].dec.max = uint32_to_ufloat8(envelopes[i].env.dec.current);
+			conf->env[i].dec.min = uint32_to_ufloat8(envelopes[i].env.dec.current);
+		} else {
+			conf->env[i].dec.max = uint32_to_ufloat8(envelopes[i].env.dec.max);
+			conf->env[i].dec.min = uint32_to_ufloat8(envelopes[i].env.dec.min);
+		}
 		conf->env[i].dec.source.channel = envelopes[i].env.dec.source.channel;
 		conf->env[i].dec.source.sourceNum = envelopes[i].env.dec.source.sourceNum;
 		conf->env[i].dec.source.sourceType = envelopes[i].env.dec.source.sourceType;
-		conf->env[i].sus.max = uint32_to_ufloat8(envelopes[i].env.sus.max);
-		conf->env[i].sus.min = uint32_to_ufloat8(envelopes[i].env.sus.min);
+		if (envelopes[i].env.sus.source.sourceType == ctrlType_t::none){
+			conf->env[i].sus.max = uint32_to_ufloat8(envelopes[i].env.sus.current);
+			conf->env[i].sus.min = uint32_to_ufloat8(envelopes[i].env.sus.current);
+		} else {
+			conf->env[i].sus.max = uint32_to_ufloat8(envelopes[i].env.sus.max);
+			conf->env[i].sus.min = uint32_to_ufloat8(envelopes[i].env.sus.min);
+		}
 		conf->env[i].sus.source.channel = envelopes[i].env.sus.source.channel;
 		conf->env[i].sus.source.sourceNum = envelopes[i].env.sus.source.sourceNum;
 		conf->env[i].sus.source.sourceType = envelopes[i].env.sus.source.sourceType;
-		conf->env[i].rel.max = uint32_to_ufloat8(envelopes[i].env.rel.max);
-		conf->env[i].rel.min = uint32_to_ufloat8(envelopes[i].env.rel.min);
+		if (envelopes[i].env.rel.source.sourceType == ctrlType_t::none){
+			conf->env[i].rel.max = uint32_to_ufloat8(envelopes[i].env.rel.current);
+			conf->env[i].rel.min = uint32_to_ufloat8(envelopes[i].env.rel.current);
+		} else {
+			conf->env[i].rel.max = uint32_to_ufloat8(envelopes[i].env.rel.max);
+			conf->env[i].rel.min = uint32_to_ufloat8(envelopes[i].env.rel.min);
+		}
 		conf->env[i].rel.source.channel = envelopes[i].env.rel.source.channel;
 		conf->env[i].rel.source.sourceNum = envelopes[i].env.rel.source.sourceNum;
 		conf->env[i].rel.source.sourceType = envelopes[i].env.rel.source.sourceType;
@@ -419,8 +439,13 @@ void GO_Get_Config(ConfigNVM_t* conf){
 		case GOType_t::LFO:
 		case GOType_t::CLK:
 			conf->matrix[x][y].shape = out_handler[x][y].state.shape;
-			conf->matrix[x][y].freq_max = uint32_to_ufloat8(out_handler[x][y].state.freq_max);
-			conf->matrix[x][y].freq_min = uint32_to_ufloat8(out_handler[x][y].state.freq_min);
+			if (out_handler[x][y].state.gen_source.sourceType == ctrlType_t::none){
+				conf->matrix[x][y].freq_max = uint32_to_ufloat8(out_handler[x][y].state.freq_current);
+				conf->matrix[x][y].freq_min = uint32_to_ufloat8(out_handler[x][y].state.freq_current);
+			} else {
+				conf->matrix[x][y].freq_max = uint32_to_ufloat8(out_handler[x][y].state.freq_max);
+				conf->matrix[x][y].freq_min = uint32_to_ufloat8(out_handler[x][y].state.freq_min);
+			}
 			break;
 		case GOType_t::Envelope:
 			conf->matrix[x][y].env_num = out_handler[x][y].state.env_num;
