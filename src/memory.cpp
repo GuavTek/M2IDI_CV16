@@ -71,7 +71,7 @@ void mem_read_config(uint8_t slot_num){
 
 void mem_confirm_load(uint8_t slot_num){
 	// Update header config on manual load
-	head_buff[0] = pend_slot;
+	head_buff[0] = slot_num;
 	if (!mem_handler->write_data(head_buff, 0, 1)) {
 		pend_head = true;
 		pend_slot = slot_num;
