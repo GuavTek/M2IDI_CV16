@@ -470,7 +470,7 @@ void GO_Set_Config(ConfigNVM_t* conf){
 	for (uint8_t i = 0; i < 16; i++){
 		uint8_t x = i & 0b11;
 		uint8_t y = i >> 2;
-		out_handler[x][y].state.type = conf->matrix[x][y].type;
+		out_handler[x][y].set_type(conf->matrix[x][y].type);
 		uint16_t rmax = conf->matrix[x][y].max_range;
 		uint16_t rmin = conf->matrix[x][y].min_range;
 		out_handler[x][y].state.max_range = rmax;
