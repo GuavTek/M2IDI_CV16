@@ -784,15 +784,12 @@ void lfo_output_c::handle_cvm(GenOut_t* genout, umpCVM* msg){
 	uint32_t criteria;
 	uint32_t src_current;
 	uint32_t mod_current;
+	criteria = ( msg->channel << 0 ) | ( msg->index << 8 ); // TODO: handle banks?
 	if (genout->gen_source.sourceType == ctrlType_t::controller){
 		if (msg->status == CC){
-			criteria = ( msg->channel << 0 ) | ( msg->index << 8 );
 			src_current = (genout->gen_source.channel << 0) | (genout->gen_source.sourceNum << 8);
-			mod_current = (genout->mod_source.channel << 0) | (genout->mod_source.sourceNum << 8);
 		} else if (msg->status == NRPN){	// TODO: per-note CC
-			criteria = ( msg->channel << 0 ) | ( msg->index << 8 );	// TODO: handle banks?
 			src_current = (genout->gen_source.channel << 0) | (genout->gen_source.sourceNum << 8);
-			mod_current = (genout->mod_source.channel << 0) | (genout->mod_source.sourceNum << 8);
 		} else {
 			return;
 		}
@@ -801,11 +798,6 @@ void lfo_output_c::handle_cvm(GenOut_t* genout, umpCVM* msg){
 			uint64_t span = genout->freq_max - genout->freq_min + 1;
 			uint64_t scaled = msg->value * span;
 			genout->freq_current = (scaled >> 32) + genout->freq_min;
-		} else if (mod_current == criteria) {
-			// Wave modification
-			uint64_t span = genout->mod_max - genout->mod_min + 1;
-			uint64_t scaled = msg->value * span;
-			genout->mod_current = (scaled >> 32) + genout->mod_min;
 		}
 	} else if (genout->gen_source.sourceType == ctrlType_t::key){
 		// TODO: allow detuning and sub-audible oscillators
@@ -828,6 +820,19 @@ void lfo_output_c::handle_cvm(GenOut_t* genout, umpCVM* msg){
 		tempBend *= FREQS.midi[genout->gen_source.sourceNum];
 		tempBend >>= FIXED_POINT_POS;
 		genout->freq_current = tempBend;
+	}
+	if (genout->mod_source.sourceType == ctrlType_t::controller){
+		if (msg->status == CC){
+			src_current = (genout->mod_source.channel << 0) | (genout->mod_source.sourceNum << 8);
+		} else {
+			return;
+		}
+		if (src_current == criteria) {
+			// Wave modification
+			uint64_t span = genout->mod_max - genout->mod_min + 1;
+			uint64_t scaled = msg->value * span;
+			genout->mod_current = (scaled >> 32) + genout->mod_min;
+		}
 	}
 }
 
