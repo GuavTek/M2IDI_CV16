@@ -49,6 +49,9 @@ extern menu_type_lfo_c node_edit_sel_type_lfo;
 extern menu_lfo_shape_c node_edit_sel_type_lfo_shape;
 extern menu_freq_max_c node_edit_sel_type_lfo_fmax;
 extern menu_freq_min_c node_edit_sel_type_lfo_fmin;
+extern menu_mod_max_c node_edit_sel_type_lfo_mmax;
+extern menu_mod_min_c node_edit_sel_type_lfo_mmin;
+extern menu_midi_mod_c node_edit_sel_type_lfo_mmidi;
 extern menu_node_c node_edit_sel_type_lfo_back;
 extern menu_node_c node_edit_sel_type_back;
 extern menu_max_range_c node_edit_sel_max_range;
@@ -158,6 +161,9 @@ menu_status_t get_menu_state(){
 ||||- shape
 ||||- max_frequency
 ||||- min_frequency
+||||- max_mod
+||||- min_mod
+||||- bind_mod
 ||||- return
 |||- clk
 |||- velocity
@@ -309,6 +315,26 @@ struct menu_graphic_t graphic_fmin = {
 		0b1111001100110011,
 		0b1100000011111100,
 		0b1100000000110000
+	}
+};
+
+struct menu_graphic_t graphic_mmax = {
+	line :{
+		0b0100010000110000,
+		0b1111110011111100,
+		0b1100110000110011,
+		0b1100110000110000,
+		0b1100110000110000
+	}
+};
+
+struct menu_graphic_t graphic_mmin = {
+	line :{
+		0b0100010000110000,
+		0b1111110000110000,
+		0b1100110000110011,
+		0b1100110011111100,
+		0b1100110000110000
 	}
 };
 
@@ -588,15 +614,47 @@ menu_freq_max_c node_edit_sel_type_lfo_fmax = menu_freq_max_c(
 );
 
 menu_freq_min_c node_edit_sel_type_lfo_fmin = menu_freq_min_c(
-	&node_edit_sel_type_lfo_back,
+	&node_edit_sel_type_lfo_mmax,
 	&node_edit_sel_type_lfo_fmax,
-	&node_edit_sel_type_lfo_back,
+	&node_edit_sel_type_lfo_mmax,
 	graphic_fmin
 );
 
+menu_mod_max_c node_edit_sel_type_lfo_mmax = menu_mod_max_c(
+	&node_edit_sel_type_lfo_mmin,
+	&node_edit_sel_type_lfo_fmin,
+	&node_edit_sel_type_lfo_mmin,
+	graphic_mmax
+);
+
+menu_mod_min_c node_edit_sel_type_lfo_mmin = menu_mod_min_c(
+	&node_edit_sel_type_lfo_mmidi,
+	&node_edit_sel_type_lfo_mmax,
+	&node_edit_sel_type_lfo_mmidi,
+	graphic_mmin
+);
+
+struct menu_graphic_t graphic_bind_mod = {
+	line :{
+		0b1100000011110000,
+		0b1100000011001100,
+		0b1100000011110000,
+		0b1100000011001100,
+		0b1111110011001100
+	}
+};
+
+menu_midi_mod_c node_edit_sel_type_lfo_mmidi = menu_midi_mod_c(
+	&node_edit_sel_type_lfo_back,
+	&node_edit_sel_type_lfo_mmin,
+	&node_edit_sel_type_lfo_back,
+	graphic_bind_mod
+);
+
+
 menu_node_c node_edit_sel_type_lfo_back = menu_node_c(
 	&node_edit_sel_bind,
-	&node_edit_sel_type_lfo_fmin,
+	&node_edit_sel_type_lfo_mmidi,
 	&node_edit_sel_type_lfo_shape,
 	graphic_back_3
 );

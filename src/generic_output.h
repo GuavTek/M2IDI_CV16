@@ -78,6 +78,9 @@ struct GenOut_base {
 			enum WavShape_t shape;
 			uint8_t freq_max;
 			uint8_t freq_min;
+			uint8_t mod_max;
+			uint8_t mod_min;
+			struct ctrlSource_t mod_source;
 		};
 
 		// Envelope
@@ -98,6 +101,9 @@ struct GenOut_t : GenOut_base {
 			uint32_t freq_current;
 			uint32_t freq_max;
 			uint32_t freq_min;
+			uint32_t mod_current;	// For square width etc
+			uint32_t mod_max;
+			uint32_t mod_min;
 			int8_t direction;
 		};
 

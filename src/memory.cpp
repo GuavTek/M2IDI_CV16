@@ -5,7 +5,10 @@ const uint32_t MAX_MEM_SLOT = ((RAM_SIZE-0x300-256*sizeof(ctrlSource_t))/sizeof(
 eeprom_cat_c* mem_handler;
 ConfigNVM_t mem_buff;
 uint32_t slot_pc[128];
-char head_buff[4];
+static union{
+	char head_buff[4];
+	uint32_t head_word;
+};
 
 // Pending writes
 int8_t pend_slot;
@@ -25,13 +28,10 @@ void mem_init(){
 	// Memory layout version
 	mem_handler->read_data(head_buff, 0, 0);
 	while(mem_handler->is_busy());
-	if (head_buff[0] != 1){
+	if (head_word != (1 | (sizeof(ConfigNVM_t) << 16))){
 		// Initialize header
 		// Set version number
-		head_buff[0] = 1;
-		head_buff[1] = 0;
-		head_buff[2] = 0;
-		head_buff[3] = 0;
+		head_word = 1 | (sizeof(ConfigNVM_t) << 16);
 		mem_handler->write_data(head_buff, 0, 0);
 		while(mem_handler->is_busy());
 		// Set previous config as none

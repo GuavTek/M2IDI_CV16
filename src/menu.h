@@ -296,6 +296,16 @@ public:
 	}
 };
 
+class menu_midi_mod_c : public menu_wait_midi_c{
+public:
+	using menu_wait_midi_c::menu_wait_midi_c;
+	virtual void init(){
+		menu_wait_midi_c::init();
+		midi_src = &go->state.mod_source;
+		midi_mask = 0b001;
+	}
+};
+
 class menu_midi_out_c : public menu_wait_midi_c{
 public:
 	using menu_wait_midi_c::menu_wait_midi_c;
@@ -366,6 +376,28 @@ protected:
 	virtual void set_value(uint32_t val){
 		go->state.freq_min = val;
 		go->state.freq_current = val;
+	}
+};
+
+class menu_mod_max_c : public menu_32bit_c {
+public:
+	using menu_32bit_c::menu_32bit_c;
+protected:
+	virtual uint32_t get_value(){return go->state.mod_max;}
+	virtual void set_value(uint32_t val){
+		go->state.mod_max = val;
+		go->state.mod_current = val;
+	}
+};
+
+class menu_mod_min_c : public menu_32bit_c {
+public:
+	using menu_32bit_c::menu_32bit_c;
+protected:
+	virtual uint32_t get_value(){return go->state.mod_min;}
+	virtual void set_value(uint32_t val){
+		go->state.mod_min = val;
+		go->state.mod_current = val;
 	}
 };
 

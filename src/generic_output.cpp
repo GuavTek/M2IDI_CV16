@@ -262,12 +262,12 @@ void GO_Default_Config(){
 		}
 	}
 
-	// Temporary settings
 	out_handler[0][3].set_type(GOType_t::LFO);
 	out_handler[0][3].state.shape = WavShape_t::Sawtooth;
 	out_handler[0][3].state.max_range = 0x7fff;
 	out_handler[0][3].state.min_range = 0;
 	out_handler[0][3].state.direction = -1;
+	out_handler[0][3].state.mod_current = 0x8000'0000;
 	out_handler[0][3].state.freq_current = 0x0008 << 16;
 	out_handler[0][3].state.freq_max = 0x0010 << 16;
 	out_handler[0][3].state.freq_min = 0x0002 << 16;
@@ -276,6 +276,7 @@ void GO_Default_Config(){
 	out_handler[1][2].state.max_range = 0xffff;
 	out_handler[1][2].state.min_range = 0x7fff;
 	out_handler[1][2].state.direction = -1;
+	out_handler[1][2].state.mod_current = 0x8000'0000;
 	out_handler[1][2].state.freq_current = 0x0010 << 16;
 	out_handler[1][2].state.freq_max = 0x01000000;
 	out_handler[1][2].state.freq_min = 0x00001000;
@@ -288,6 +289,7 @@ void GO_Default_Config(){
 	out_handler[0][1].state.max_range = 0xffff;
 	out_handler[0][1].state.min_range = 0;
 	out_handler[0][1].state.direction = 1;
+	out_handler[0][1].state.mod_current = 0x8000'0000;
 	out_handler[0][1].state.freq_current = FREQS.f1Hz; // 0x0040 << 16;
 	out_handler[0][1].state.freq_max = FREQS.f1Hz;
 	out_handler[0][1].state.freq_min = FREQS.f1Hz;
@@ -296,6 +298,7 @@ void GO_Default_Config(){
 	out_handler[0][2].state.max_range = 0xffff;
 	out_handler[0][2].state.min_range = 0;
 	out_handler[0][2].state.direction = -1;
+	out_handler[0][2].state.mod_current = 0x8000'0000;
 	out_handler[0][2].state.freq_current = FREQS.midi[69]; // 0x0020 << 16;
 	out_handler[0][2].state.freq_max = 0x0010 << 16;
 	out_handler[0][2].state.freq_min = 0x0002 << 16;
@@ -308,6 +311,7 @@ void GO_Default_Config(){
 	out_handler[3][0].state.gen_source.channel = 0;
 	out_handler[3][0].state.shape = WavShape_t::Triangle;
 	out_handler[3][0].state.direction = -1;
+	out_handler[3][0].state.mod_current = 0x8000'0000;
 	out_handler[3][0].state.max_range = 0xffff;
 	out_handler[3][0].state.min_range = 0;
 	out_handler[3][1].set_type(GOType_t::Gate);
@@ -333,6 +337,7 @@ void GO_Default_Config(){
 	out_handler[2][0].state.gen_source.channel = 0;
 	out_handler[2][0].state.shape = WavShape_t::Triangle;
 	out_handler[2][0].state.direction = -1;
+	out_handler[2][0].state.mod_current = 0x8000'0000;
 	out_handler[2][0].state.max_range = 0xffff;
 	out_handler[2][0].state.min_range = 0;
 	out_handler[2][1].set_type(GOType_t::Gate);
@@ -446,6 +451,16 @@ void GO_Get_Config(ConfigNVM_t* conf){
 				conf->matrix[x][y].freq_max = uint32_to_ufloat8(out_handler[x][y].state.freq_max);
 				conf->matrix[x][y].freq_min = uint32_to_ufloat8(out_handler[x][y].state.freq_min);
 			}
+			if (out_handler[x][y].state.gen_source.sourceType == ctrlType_t::none){
+				conf->matrix[x][y].mod_max = uint32_to_ufloat8(out_handler[x][y].state.mod_current);
+				conf->matrix[x][y].mod_min = uint32_to_ufloat8(out_handler[x][y].state.mod_current);
+			} else {
+				conf->matrix[x][y].mod_max = uint32_to_ufloat8(out_handler[x][y].state.mod_max);
+				conf->matrix[x][y].mod_min = uint32_to_ufloat8(out_handler[x][y].state.mod_min);
+			}
+			conf->matrix[x][y].mod_source.channel = out_handler[x][y].state.mod_source.channel;
+			conf->matrix[x][y].mod_source.sourceNum = out_handler[x][y].state.mod_source.sourceNum;
+			conf->matrix[x][y].mod_source.sourceType = out_handler[x][y].state.mod_source.sourceType;
 			break;
 		case GOType_t::Envelope:
 			conf->matrix[x][y].env_num = out_handler[x][y].state.env_num;
@@ -532,6 +547,14 @@ void GO_Set_Config(ConfigNVM_t* conf){
 			} else {
 				out_handler[x][y].state.freq_current = ((fmax-fmin)>>1) + fmin;
 			}
+			fmax = ufloat8_to_uint32(conf->matrix[x][y].mod_max);
+			fmin = ufloat8_to_uint32(conf->matrix[x][y].mod_min);
+			out_handler[x][y].state.mod_max = fmax;
+			out_handler[x][y].state.mod_min = fmin;
+			out_handler[x][y].state.mod_current = ((fmax-fmin)>>1) + fmin;
+			out_handler[x][y].state.mod_source.channel = conf->matrix[x][y].mod_source.channel;
+			out_handler[x][y].state.mod_source.sourceNum = conf->matrix[x][y].mod_source.sourceNum;
+			out_handler[x][y].state.mod_source.sourceType = conf->matrix[x][y].mod_source.sourceType;
 			if (out_handler[x][y].state.shape == WavShape_t::Square){
 				out_handler[x][y].state.direction = 1;
 			} else {
@@ -603,19 +626,25 @@ void lfo_output_c::update(GenOut_t* go){
 		go->outCount -= go->freq_current;
 		go->currentOut = Rescale_16bit(TriSine(go->outCount >> 16), go->min_range, go->max_range);
 	} else if (go->shape == WavShape_t::SuperSaw){
-		// TODO
+		// TODO? this is not a good supersaw, should this be mod setting for regular saw?
+		uint32_t temp_out;
+		go->outCount -= go->freq_current;
+		temp_out = (go->outCount >> 16) + (go->outCount >> 18);
+		if (temp_out > 0x9000){
+			temp_out -= 0x3fff;
+		} else if (temp_out > 0x2800'0000){
+			temp_out -= 0x1fff;
+		}
+		go->currentOut = Rescale_16bit(temp_out, go->min_range, go->max_range);
 	} else if (go->shape == WavShape_t::Square){
-		go->outCount -= go->freq_current*2;
-		uint32_t remain = go->outCount;
-		if (remain < (go->freq_current*2)){
-			if (go->currentOut == go->min_range){
-				go->currentOut = go->max_range;
-			} else {
-				go->currentOut = go->min_range;
-			}
+		go->outCount -= go->freq_current;
+		if (go->outCount > go->mod_current){
+			go->currentOut = go->max_range;
+		} else {
+			go->currentOut = go->min_range;
 		}
 	} else if (go->shape == WavShape_t::Noise){
-		// TODO: other colors?
+		// TODO: other colors? use mod setting?
 		go->outCount -= go->freq_current;
 		uint32_t remain = go->outCount;
 		if (remain < go->freq_current){
@@ -627,7 +656,10 @@ void lfo_output_c::update(GenOut_t* go){
 		} else {
 			go->currentOut = Rescale_16bit(go->outCount >> 16, go->min_range, go->max_range);
 		}
-
+		// TODO: use mod setting to create uneven wave
+		// Note: symmetry limit is inf:0.5 if freq is preserved
+		// 2:0.75
+		uint32_t sym = go->mod_current;
 		if (go->direction == 1){
 			uint32_t remain = (0xFFFF'FFFF << 16) - go->outCount;
 			if (remain <= (2*go->freq_current)){
