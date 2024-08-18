@@ -138,6 +138,10 @@ void midi_cvm_handler(struct umpCVM msg){
 	}
 	menu_midi(&msg);
 	GO_MIDI_Voice(&msg);
+	if (msg.status == PROGRAM_CHANGE){
+		uint32_t pc = msg.value;	// TODO: handle bank
+		mem_read_config_pc(pc);
+	}
 }
 
 void midi_com_handler(struct umpGeneric msg){

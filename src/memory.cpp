@@ -82,8 +82,9 @@ void mem_write_config(uint8_t slot_num, int32_t pc_num){
 	pend_slot = slot_num;
 	pend_head = true;
 	GO_Get_Config(&mem_buff);
-	if (pc_num > 0) {
+	if (pc_num >= 0) {
 		pend_conf = true;
+		slot_pc[slot_num] = pc_num;
 		if (!mem_handler->write_data((char*) &slot_pc[slot_num], 2, slot_num)) {
 			pend_pc = true;
 		}
