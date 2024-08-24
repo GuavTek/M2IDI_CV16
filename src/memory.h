@@ -13,6 +13,7 @@
 #include "pico/stdlib.h"
 #include "generic_output.h"
 #include "eeprom_cat.h"
+#include "board_m2idi_cv16.h"
 
 extern eeprom_cat_c* mem_handler;
 extern const uint32_t MAX_MEM_SLOT;

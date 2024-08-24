@@ -480,6 +480,7 @@ void GO_Get_Config(ConfigNVM_t* conf){
 	}
 }
 
+// TODO: program change set value to min or max
 void GO_Set_Config(ConfigNVM_t* conf){
 	key_handler.set_bend_range(conf->bendRange);
 	for (uint8_t i = 0; i < 4; i++){
@@ -618,6 +619,7 @@ void generic_output_c::set_type(GOType_t type){
 	}
 }
 
+// TODO: Maybe sine-ification and quantization can be part of the shape variable?
 void lfo_output_c::update(GenOut_t* go){
 	if (go->shape == WavShape_t::Sawtooth){
 		go->outCount -= go->freq_current;
@@ -645,6 +647,7 @@ void lfo_output_c::update(GenOut_t* go){
 		}
 	} else if (go->shape == WavShape_t::Noise){
 		// TODO: other colors? use mod setting?
+		// TODO: enable/disable quantization
 		go->outCount -= go->freq_current;
 		uint32_t remain = go->outCount;
 		if (remain < go->freq_current){
@@ -736,6 +739,7 @@ void envelope_output_c::update(GenOut_t* go){
 
 // TODO: handle RPN for poly pitch bend
 // TODO: handle note on attribute data for microtonal
+// TODO: handle range limiting
 void dc_output_c::handle_cvm(GenOut_t* genout, umpCVM* msg){
 	uint32_t src_current;
 	uint32_t criteria;
@@ -789,6 +793,7 @@ void dc_output_c::handle_cvm(GenOut_t* genout, umpCVM* msg){
 // TODO: use CC/NRPN lookup table
 // TODO: handle RPN for poly modulation
 // TODO: handle note on attribute data for microtonal
+// TODO? program change
 void lfo_output_c::handle_cvm(GenOut_t* genout, umpCVM* msg){
 	uint32_t criteria;
 	uint32_t src_current;
@@ -1187,6 +1192,7 @@ uint8_t key_handler_c::subscribe_drum(generic_output_c* handler){
 	}
 }
 
+// TODO? program change
 void env_handler_c::handle_cvm(umpCVM* msg){
 	// TODO: controlnum -> control lookup table
 	uint16_t controlNum = msg->index;
