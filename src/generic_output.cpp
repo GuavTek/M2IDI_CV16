@@ -648,7 +648,16 @@ void lfo_output_c::update(GenOut_t* go){
 		go->outCount -= go->freq_current;
 		uint32_t remain = go->outCount;
 		if (remain < go->freq_current){
-			go->currentOut = Rescale_16bit(rp_rand.get(), go->min_range, go->max_range);
+			uint32_t temp_rand = rp_rand.get();
+			bool quantize = 1;
+			if (quantize) {
+				temp_rand &= 0x7f;
+				temp_rand *= FIXED_INT_PER_NOTE;
+				temp_rand >>= FIXED_POINT_POS;
+			}
+			// TODO: quantized notes get detuned
+			temp_rand = Rescale_16bit(temp_rand, go->min_range, go->max_range);
+			go->currentOut = temp_rand;
 		}
 	} else {
 		if (go->shape == WavShape_t::Sine){
