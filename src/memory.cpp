@@ -85,7 +85,8 @@ void mem_write_config(uint8_t slot_num, int32_t pc_num){
 	if (pc_num >= 0) {
 		pend_conf = true;
 		slot_pc[slot_num] = pc_num;
-		if (!mem_handler->write_data((char*) &slot_pc[slot_num], 2, slot_num)) {
+		head_word = pc_num;
+		if (!mem_handler->write_data(head_buff, 2, slot_num)) {
 			pend_pc = true;
 		}
 	} else {
@@ -113,7 +114,8 @@ void mem_read_config_pc(uint32_t pc_num){
 void mem_update(){
 	if (pend_slot >= 0){
 		if (pend_pc){
-			if (mem_handler->write_data((char*) &slot_pc[pend_slot], 2, pend_slot)) {
+			head_word = slot_pc[pend_slot];
+			if (mem_handler->write_data(head_buff, 2, pend_slot)) {
 				pend_pc = false;
 			}
 		} else if (pend_conf){
