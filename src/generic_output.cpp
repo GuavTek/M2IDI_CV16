@@ -730,6 +730,9 @@ void envelope_output_c::update(GenOut_t* go){
 				go->outCount -= tempEnv->get(EnvStage_t::release);
 			}
 			break;
+		case EnvStage_t::sustain:
+			// sustain
+			go->outCount = tempEnv->get(EnvStage_t::sustain) << 16;
 		default:
 			break;
 	}
