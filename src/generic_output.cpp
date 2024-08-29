@@ -648,7 +648,6 @@ void lfo_output_c::update(GenOut_t* go){
 	} else if (go->shape == WavShape_t::Noise){
 		// TODO: other colors? use mod setting?
 		// TODO: enable/disable quantization
-		go->outCount -= go->freq_current;
 		uint32_t remain = go->outCount;
 		if (remain < go->freq_current){
 			uint32_t temp_rand = rp_rand.get();
@@ -662,6 +661,18 @@ void lfo_output_c::update(GenOut_t* go){
 			temp_rand = Rescale_16bit(temp_rand, go->min_range, go->max_range);
 			go->currentOut = temp_rand;
 		}
+		go->outCount -= go->freq_current;
+	} else if (go->shape == WavShape_t::randGate) {
+		uint32_t remain = go->outCount;
+		if (remain < go->freq_current){
+			uint32_t temp_rand = rp_rand.get();
+			if (temp_rand < go->mod_current) {
+				go->currentOut = go->max_range;
+			} else {
+				go->currentOut = go->min_range;
+			}
+		}
+		go->outCount -= go->freq_current;
 	} else {
 		if (go->shape == WavShape_t::Sine){
 			go->currentOut = Rescale_16bit(TriSine(go->outCount >> 16), go->min_range, go->max_range);

@@ -53,7 +53,8 @@ enum class WavShape_t : uint8_t {
 	Sine = 3,
 	SinSaw = 4,
 	SuperSaw = 5,
-	Noise = 6
+	Noise = 6,
+	randGate = 7
 };
 
 struct GridPos_t {
