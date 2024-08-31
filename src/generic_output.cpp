@@ -1235,18 +1235,29 @@ uint32_t env_handler_c::get(EnvStage_t stage){
 	return 0;
 }
 
-// TODO: fix scaling
 void env_handler_c::set_stage(uint32_t val, Env_stage_t* stage){
 	if (stage->max > stage->min){
-		uint32_t diff = stage->max - stage->min;
-		uint32_t span = diff * 0x0101 + 1;
-		uint32_t scaled = (val >> 16) * span;
-		stage->current = 0x0101 * stage->min + (scaled >> 16);
+		uint32_t span = stage->max - stage->min;
+		uint32_t span_lo = span & 0xffff;
+		uint32_t span_hi = span >> 16;
+		uint32_t val_lo = val & 0xffff;
+		uint32_t val_hi = val >> 16;
+		uint32_t scaled = span_hi * val_hi;
+		scaled += (span_lo * val_hi) >> 16;
+		scaled += (span_hi * val_lo) >> 16;
+		scaled += scaled >> 16;
+		stage->current = stage->min + scaled;
 	} else {
-		uint32_t diff = stage->min - stage->max;
-		uint32_t span = diff * 0x0101 + 1;
-		uint32_t scaled = (val >> 16) * span;
-		stage->current = 0x0101 * stage->min - (scaled >> 16);
+		uint32_t span = stage->min - stage->max;
+		uint32_t span_lo = span & 0xffff;
+		uint32_t span_hi = span >> 16;
+		uint32_t val_lo = val & 0xffff;
+		uint32_t val_hi = val >> 16;
+		uint32_t scaled = span_hi * val_hi;
+		scaled += (span_lo * val_hi) >> 16;
+		scaled += (span_hi * val_lo) >> 16;
+		scaled += scaled >> 16;
+		stage->current = stage->min - scaled;
 	}
 }
 
