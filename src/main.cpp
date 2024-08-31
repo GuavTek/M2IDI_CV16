@@ -138,7 +138,7 @@ void midi_cvm_handler(struct umpCVM msg){
 	}
 	menu_midi(&msg);
 	GO_MIDI_Voice(&msg);
-	if (msg.status == PROGRAM_CHANGE){
+	if ((msg.status == PROGRAM_CHANGE) && (!block_conf_pc)){
 		uint32_t pc = msg.value;	// TODO: handle bank
 		mem_read_config_pc(pc);
 	}

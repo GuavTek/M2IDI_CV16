@@ -26,6 +26,7 @@ uint8_t menu_node_c::mem_slot;
 ctrlSource_t conf_pc;
 ConfigNVM_t load_backup;
 
+bool block_conf_pc;
 uint8_t butt_state;
 uint8_t butt_state_debounced;
 uint32_t butt_timer;
@@ -71,7 +72,7 @@ extern menu_node_c node_edit_env_stage_back;
 extern menu_node_c node_edit_env_back;
 extern menu_group_c node_edit_group;
 extern menu_node_c node_edit_back;
-extern menu_node_c node_save;
+extern menu_block_pc_c node_save;
 extern menu_mem_slot_c node_save_slot;
 extern menu_midi_save_c node_save_bind_pc;
 extern menu_node_c node_save_back;
@@ -857,7 +858,7 @@ struct menu_graphic_t graphic_save = {
 	}
 };
 
-menu_node_c node_save = menu_node_c(
+menu_block_pc_c node_save = menu_block_pc_c(
 	&node_save_slot,
 	&node_edit,
 	&node_load,
@@ -1023,6 +1024,7 @@ void menu_conf_load_c::butt_right(){
 }
 
 void menu_conf_backup_c::butt_right(){
+	block_conf_pc = 1;
 	GO_Get_Config(&load_backup);
 	menu_node_c::butt_right();
 }

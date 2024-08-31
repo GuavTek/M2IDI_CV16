@@ -28,6 +28,8 @@ enum menu_status_t {
 	Wait_MIDI
 };
 
+extern bool block_conf_pc;
+
 void menu_init();
 uint8_t menu_service();
 uint8_t menu_midi(struct umpCVM* msg);
@@ -163,6 +165,19 @@ public:
 	}
 };
 
+class menu_block_pc_c : public menu_node_c {
+public:
+	using menu_node_c::menu_node_c;
+	virtual void init(){
+		block_conf_pc = 0;
+		menu_node_c::init();
+	}
+	virtual void butt_right(){
+		block_conf_pc = 1;
+		menu_node_c::butt_right();
+	}
+};
+
 class menu_conf_save_c : public menu_node_c {
 public:
 	using menu_node_c::menu_node_c;
@@ -178,6 +193,10 @@ public:
 class menu_conf_backup_c : public menu_node_c {
 public:
 	using menu_node_c::menu_node_c;
+	virtual void init(){
+		block_conf_pc = 0;
+		menu_node_c::init();
+	}
 	virtual void butt_right();
 };
 
