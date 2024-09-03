@@ -950,9 +950,35 @@ void key_handler_c::start_note(uint8_t lane, umpCVM* msg){
 }
 
 void key_handler_c::start_note(umpCVM* msg){
-	// Handle shared outputs
+	umpCVM tempMsg;
+	tempMsg.status = NOTE_ON;
+	tempMsg.value = msg->value;
+	tempMsg.note = 0;
+	// TODO: make the note finding configurable
+	if (1) {
+		// Max note
+		for (uint8_t l = 0; l < num_lanes; l++){
+			if (key_playing[l] < 0) continue;
+			if (key_playing[l] > tempMsg.note){
+				tempMsg.note = key_playing[l];
+			}
+		}
+	} else if (0) {
+		// Min note
+		for (uint8_t l = 0; l < num_lanes; l++){
+			if (key_playing[l] < 0) continue;
+			if (key_playing[l] < tempMsg.note){
+				tempMsg.note = key_playing[l];
+			}
+		}
+	} else if (0) {
+		// Last started note
+		tempMsg.note = msg->note;
+	}
+	// Start shared outputs
 	for (uint8_t i = 0; i < num_coms; i++){
-		com_out[i]->handle_cvm(msg);
+		// TODO: should note finding be configurable per output?
+		com_out[i]->handle_cvm(&tempMsg);
 	}
 }
 
@@ -972,12 +998,7 @@ void key_handler_c::stop_note(uint8_t lane, umpCVM* msg){
 		}
 	}
 	if (foundActive){
-		for (uint8_t j = 0; j < num_coms; j++){
-			if ( com_out[j]->state.type == GOType_t::Envelope ){
-				// Re-trigger envelope
-				com_out[j]->state.envelope_stage = EnvStage_t::attack;
-			}
-		}
+		start_note(msg);
 	} else {
 		stop_note(msg);
 	}
