@@ -9,6 +9,7 @@ static union{
 	char head_buff[4];
 	uint32_t head_word;
 };
+int8_t current_slot;
 
 // Pending writes
 int8_t pend_slot;
@@ -40,6 +41,7 @@ void mem_init(){
 		while(mem_handler->is_busy());
 		// load default config
 		GO_Default_Config();
+		current_slot = -1;
 	} else {
 		// Fetch other header data
 		mem_handler->read_data(head_buff, 0, 1);
@@ -47,7 +49,9 @@ void mem_init(){
 		if (head_buff[0] == 250){
 			// No previous config, load default
 			GO_Default_Config();
+			current_slot = -1;
 		} else {
+			current_slot = head_buff[0];
 			// Load last used config for outputs
 			mem_read_config(head_buff[0]);
 			while(mem_handler->is_busy());
@@ -107,7 +111,7 @@ int8_t mem_pc2slot(uint32_t pc_num){
 
 void mem_read_config_pc(uint32_t pc_num){
 	int8_t slot_num = mem_pc2slot(pc_num);
-	if (slot_num < 0) return;
+	if ((slot_num < 0)||(slot_num == current_slot)) return;
 	mem_read_config(slot_num);
 }
 
@@ -133,6 +137,7 @@ void mem_update(){
 				pend_head = false;
 			}
 		} else {
+			current_slot = pend_slot;
 			pend_slot = -1;
 		}
 	}
