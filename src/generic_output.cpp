@@ -620,6 +620,7 @@ void generic_output_c::set_type(GOType_t type){
 }
 
 // TODO: Maybe sine-ification and quantization can be part of the shape variable?
+// TODO? XOR pulse noise (metallic sounding)
 void lfo_output_c::update(GenOut_t* go){
 	if (go->shape == WavShape_t::Sawtooth){
 		go->outCount -= go->freq_current;
