@@ -16,22 +16,24 @@
 #include "eeprom_cat.h"
 
 // Define CAN filters
+// Regular input
 const CAN_Filter_t CAN_FLT0 = {
 	.enabled = true,
 	.fifoDestination = 1,
 	.extendedID = false,
-	.ID = (0 << 10),
+	.ID = 0,	// Default to group 0
 	.matchBothIDTypes = false,
-	.maskID = 1 << 10
+	.maskID = 0b1111 << 7
 };
 
+// Groupless input, match extended ID
 const CAN_Filter_t CAN_FLT1 = {
 	.enabled = true,
 	.fifoDestination = 1,
-	.extendedID = false,
-	.ID = (1 << 10) | 420,
+	.extendedID = true,
+	.ID = 0,
 	.matchBothIDTypes = false,
-	.maskID = 0x7ff
+	.maskID = 0xffffffff << 11
 };
 
 // Define FIFO configurations

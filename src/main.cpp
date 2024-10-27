@@ -2,6 +2,7 @@
 #include "pico/stdlib.h"
 #include "board_m2idi_cv16.h"
 #include "pico/multicore.h"
+#include <hardware/clocks.h>
 #include <hardware/spi.h>
 #include <hardware/irq.h>
 #include <hardware/pwm.h>
@@ -42,6 +43,7 @@ fast_max5134_c DAC = fast_max5134_c(&SPI_DAC, 0);
 umpProcessor MIDI;
 ring_buffer_c<64, uint32_t> midi_buffer = ring_buffer_c<64, uint32_t>();
 
+bool group_updated;
 uint8_t current_group;
 uint8_t dac_processed;
 uint8_t dac_output;
@@ -69,6 +71,7 @@ int main(void){
 	MIDI.setSysEx(midi_data_handler);
 	MIDI.setMidiEndpoint(midi_stream_discovery);
 	current_group = 1;
+	group_updated = true;
 
     menu_init();
 
@@ -79,6 +82,12 @@ int main(void){
     sleep_ms(500);
     multicore_launch_core1(main1);
     while (true){
+		if (group_updated){
+			group_updated = false;
+			CAN_Filter_t tempFilt = CAN_FLT0;
+			tempFilt.ID = (current_group & 0xF) << 7;
+			CAN.Reconfigure_Filter(&tempFilt, 0);
+		}
         if (menu_service())	{
 			// Inactivity timeout
 			smiley_timer = time_us_32() + 30000000;

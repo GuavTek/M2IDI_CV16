@@ -3,11 +3,11 @@
  *
  * Created: 26/05/2024
  *  Author: GuavTek
- */ 
+ */
 
 #include <stdio.h>
 #include <stdlib.h>
-#include "DAC_SPI.h"
+#include "dac_spi.h"
 
 void DAC_SPI_C::Init(const dac_spi_config_t config){
     // Calculate clock, pio needs 2 clock cycles per SPI bit
@@ -15,7 +15,7 @@ void DAC_SPI_C::Init(const dac_spi_config_t config){
     // Initialize pio
     uint32_t offset = pio_add_program(pio, &spi_tx_cs_program);
     pio_spi_cs_init(pio, pio_sm, offset, 24, clk_div, config.polarity, config.pin_ck, config.pin_tx);
-	
+
 	currentState = Idle;
 }
 
