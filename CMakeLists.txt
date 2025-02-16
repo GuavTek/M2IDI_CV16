@@ -11,6 +11,7 @@ set(PICO_BOARD_HEADER_DIRS ${PROJECT_SOURCE_DIR}/src)
 
 # initialize the Raspberry Pi Pico SDK
 pico_sdk_init()
+add_compile_definitions(PICO_XOSC_STARTUP_DELAY_MULTIPLIER=64)
 
 # rest of your project
 file(GLOB src_list CONFIGURE_DEPENDS "src/*.cpp")
