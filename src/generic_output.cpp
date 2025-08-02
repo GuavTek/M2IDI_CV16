@@ -1218,14 +1218,15 @@ uint8_t key_handler_c::subscribe_drum(generic_output_c* handler){
 	for (int8_t l = 7; l >= num_lanes; l--){
 		if ( note == drum_note[l] ){
 			lanes[l][num_outputs[l]++] = handler;
-			break;
+			return 1;
 		} else if (drum_note[l] == -1){
 			// New lane
 			drum_note[l] = note;
 			lanes[l][num_outputs[l]++] = handler;
-			break;
+			return 1;
 		}
 	}
+	return 0;
 }
 
 // TODO? program change
