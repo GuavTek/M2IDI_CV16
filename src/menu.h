@@ -341,6 +341,23 @@ public:
 	virtual void init();
 };
 
+class menu_bool_c : public menu_node_c {
+public:
+	using menu_node_c::menu_node_c;
+	virtual void update();
+	virtual void butt_right();
+};
+
+class menu_env_disable_c : public menu_bool_c {
+public:
+	using menu_bool_c::menu_bool_c;
+protected:
+	virtual uint32_t get_value(){return env_stage->disable;}
+	virtual void set_value(uint32_t val){
+		env_stage->disable = val;
+	}
+};
+
 class menu_32bit_c : public menu_node_c {
 public:
 	using menu_node_c::menu_node_c;

@@ -65,6 +65,7 @@ extern menu_env_atk_c node_edit_env_atk;
 extern menu_env_dec_c node_edit_env_dec;
 extern menu_env_sus_c node_edit_env_sus;
 extern menu_env_rel_c node_edit_env_rel;
+extern menu_env_disable_c node_edit_env_stage_disable;
 extern menu_env_max_c node_edit_env_stage_max;
 extern menu_env_min_c node_edit_env_stage_min;
 extern menu_midi_env_c node_edit_env_stage_bind;
@@ -181,11 +182,13 @@ menu_status_t get_menu_state(){
 ||||- bind
 ||||- return
 |||- decay
+||||- disable
 ||||- max
 ||||- min
 ||||- bind
 ||||- return
 |||- sustain
+||||- disable
 ||||- max
 ||||- min
 ||||- bind
@@ -762,7 +765,7 @@ struct menu_graphic_t graphic_env_dec = {
 };
 
 menu_env_dec_c node_edit_env_dec = menu_env_dec_c(
-	&node_edit_env_stage_max,
+	&node_edit_env_stage_disable,
 	&node_edit_env_atk,
 	&node_edit_env_sus,
 	graphic_env_dec
@@ -779,7 +782,7 @@ struct menu_graphic_t graphic_env_sus = {
 };
 
 menu_env_sus_c node_edit_env_sus = menu_env_sus_c(
-	&node_edit_env_stage_max,
+	&node_edit_env_stage_disable,
 	&node_edit_env_dec,
 	&node_edit_env_rel,
 	graphic_env_sus
@@ -803,9 +806,16 @@ menu_env_rel_c node_edit_env_rel = menu_env_rel_c(
 );
 
 // lvl4
+menu_env_disable_c node_edit_env_stage_disable = menu_env_disable_c(
+	&node_edit_env_stage_disable,
+	&node_edit_env_stage_back,
+	&node_edit_env_stage_max,
+	graphic_blank
+);
+
 menu_env_max_c node_edit_env_stage_max = menu_env_max_c(
 	&node_edit_env_stage_min,
-	&node_edit_env_stage_back,
+	&node_edit_env_stage_disable,
 	&node_edit_env_stage_min,
 	graphic_rmax
 );
@@ -827,7 +837,7 @@ menu_midi_env_c node_edit_env_stage_bind = menu_midi_env_c(
 menu_node_c node_edit_env_stage_back = menu_node_c(
 	&node_edit_env_back,
 	&node_edit_env_stage_bind,
-	&node_edit_env_stage_max,
+	&node_edit_env_stage_disable,
 	graphic_back_2
 );
 
@@ -1233,6 +1243,26 @@ uint8_t menu_wait_midi_c::handle_midi(struct umpCVM* msg){
 	midi_src->channel = msg->channel;
 	menu_node_c::butt_right();
 	return 1;
+}
+
+void menu_bool_c::update(){
+	if (!screen_change) return;
+	screen_change = 0;
+	struct menu_graphic_t* gfx;
+	if (get_value()){
+		gfx = &graphic_accept;
+	} else {
+		gfx = &graphic_abort;
+	}
+	for (uint8_t i = 0; i < 5; i++){
+		LM_WriteRow(i, gfx->line[i]);
+	}
+
+}
+
+void menu_bool_c::butt_right(){
+	screen_change = 1;
+	set_value(!get_value());
 }
 
 // edit 32-bit node

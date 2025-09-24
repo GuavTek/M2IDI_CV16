@@ -135,7 +135,7 @@ void Scan_Matrix(){
 		}
 	}
 
-	// Subscribe to keylanes
+	// Subscribe to keylanes and drumlanes
 	for(uint8_t x = 0; x < 4; x++){
 		for (uint8_t y = 0; y < 4; y++){
 			if (out_handler[x][y].state.gen_source.sourceType == ctrlType_t::key){
@@ -406,6 +406,7 @@ void GO_Get_Config(ConfigNVM_t* conf){
 			conf->env[i].dec.max = uint32_to_ufloat8(envelopes[i].env.dec.max);
 			conf->env[i].dec.min = uint32_to_ufloat8(envelopes[i].env.dec.min);
 		}
+		conf->env[i].dec_disable = envelopes[i].env.dec.disable;
 		conf->env[i].dec.source.channel = envelopes[i].env.dec.source.channel;
 		conf->env[i].dec.source.sourceNum = envelopes[i].env.dec.source.sourceNum;
 		conf->env[i].dec.source.sourceType = envelopes[i].env.dec.source.sourceType;
@@ -416,6 +417,7 @@ void GO_Get_Config(ConfigNVM_t* conf){
 			conf->env[i].sus.max = uint32_to_ufloat8(envelopes[i].env.sus.max);
 			conf->env[i].sus.min = uint32_to_ufloat8(envelopes[i].env.sus.min);
 		}
+		conf->env[i].sus_disable = envelopes[i].env.sus.disable;
 		conf->env[i].sus.source.channel = envelopes[i].env.sus.source.channel;
 		conf->env[i].sus.source.sourceNum = envelopes[i].env.sus.source.sourceNum;
 		conf->env[i].sus.source.sourceType = envelopes[i].env.sus.source.sourceType;
@@ -494,6 +496,7 @@ void GO_Set_Config(ConfigNVM_t* conf){
 		envelopes[i].env.att.source.sourceType = conf->env[i].att.source.sourceType;
 		temp_max = ufloat8_to_uint32(conf->env[i].dec.max);
 		temp_min = ufloat8_to_uint32(conf->env[i].dec.min);
+		envelopes[i].env.dec.disable = conf->env[i].dec_disable;
 		envelopes[i].env.dec.max = temp_max;
 		envelopes[i].env.dec.min = temp_min;
 		envelopes[i].env.dec.current = ((temp_max-temp_min) >> 1) + temp_min;
@@ -502,6 +505,7 @@ void GO_Set_Config(ConfigNVM_t* conf){
 		envelopes[i].env.dec.source.sourceType = conf->env[i].dec.source.sourceType;
 		temp_max = ufloat8_to_uint32(conf->env[i].sus.max);
 		temp_min = ufloat8_to_uint32(conf->env[i].sus.min);
+		envelopes[i].env.sus.disable = conf->env[i].sus_disable;
 		envelopes[i].env.sus.max = temp_max;
 		envelopes[i].env.sus.min = temp_min;
 		envelopes[i].env.sus.current = ((temp_max-temp_min) >> 1) + temp_min;
@@ -716,7 +720,13 @@ void envelope_output_c::update(GenOut_t* go){
 			// attack
 			remain = (0xFFFF'FFFF << 16) - go->outCount;
 			if (remain <= tempEnv->get(EnvStage_t::attack)){
-				go->envelope_stage = EnvStage_t::decay;
+				if (tempEnv->enabled(EnvStage_t::decay)){
+					go->envelope_stage = EnvStage_t::decay;
+				} else if (tempEnv->enabled(EnvStage_t::sustain)){
+					go->envelope_stage = EnvStage_t::sustain;
+				} else {
+					go->envelope_stage = EnvStage_t::release;
+				}
 				go->outCount = 0xFFFF'FFFF << 16;
 			} else {
 				go->outCount += tempEnv->get(EnvStage_t::attack);
@@ -727,7 +737,11 @@ void envelope_output_c::update(GenOut_t* go){
 			tempSus = tempEnv->get(EnvStage_t::sustain) << 16;
 			remain = go->outCount - tempSus;
 			if (remain <= tempEnv->get(EnvStage_t::decay)){
-				go->envelope_stage = EnvStage_t::sustain;
+				if (tempEnv->enabled(EnvStage_t::sustain)){
+					go->envelope_stage = EnvStage_t::sustain;
+				} else {
+					go->envelope_stage = EnvStage_t::release;
+				}
 				go->outCount = tempSus;
 			} else {
 				go->outCount -= tempEnv->get(EnvStage_t::decay);
@@ -1256,6 +1270,14 @@ uint32_t env_handler_c::get(EnvStage_t stage){
 	else if (stage == EnvStage_t::sustain) return env.sus.current;
 	else if (stage == EnvStage_t::release) return env.rel.current;
 	return 0;
+}
+
+bool env_handler_c::enabled(EnvStage_t stage){
+	if (stage == EnvStage_t::attack) return !env.att.disable;
+	else if (stage == EnvStage_t::decay) return !env.dec.disable;
+	else if (stage == EnvStage_t::sustain) return !env.sus.disable;
+	else if (stage == EnvStage_t::release) return !env.rel.disable;
+	return false;
 }
 
 void env_handler_c::set_stage(uint32_t val, Env_stage_t* stage){

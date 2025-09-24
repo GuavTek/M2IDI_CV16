@@ -122,6 +122,8 @@ struct Env_stage_base {
 
 // Envelope data saved in NVM
 struct Env_base {
+	uint8_t dec_disable : 1;
+	uint8_t sus_disable : 1;
 	Env_stage_base att;
 	Env_stage_base dec;
 	Env_stage_base sus;
@@ -133,6 +135,7 @@ struct Env_stage_t {
 	uint32_t max;
 	uint32_t min;
 	uint32_t current;
+	uint8_t disable;
 };
 
 // Envelope data to store in RAM
@@ -277,6 +280,7 @@ class env_handler_c {
 	public:
 	void handle_cvm(umpCVM* msg);
 	uint32_t get(EnvStage_t stage);
+	bool enabled(EnvStage_t stage);
 	Env_t env;
 	protected:
 	void set_stage(uint32_t val, Env_stage_t* stage);
