@@ -311,7 +311,7 @@ public:
 	virtual void init(){
 		menu_wait_midi_c::init();
 		midi_src = &env_stage->source;
-		midi_mask = 0b001;
+		midi_mask = 0b011;
 	}
 };
 

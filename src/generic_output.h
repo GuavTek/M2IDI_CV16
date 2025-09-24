@@ -110,6 +110,9 @@ struct GenOut_t : GenOut_base {
 
 		struct {
 			EnvStage_t envelope_stage;
+			uint32_t env_value;
+			uint32_t env_velocity;
+			uint16_t env_sustain;
 		};
 	};
 };
@@ -279,10 +282,12 @@ class key_handler_c {
 class env_handler_c {
 	public:
 	void handle_cvm(umpCVM* msg);
-	uint32_t get(EnvStage_t stage);
+	uint32_t get(EnvStage_t stage, uint32_t vel);
+	void set_go(GenOut_t* handler, EnvStage_t stage);
 	bool enabled(EnvStage_t stage);
 	Env_t env;
 	protected:
+	uint32_t get_stage(uint32_t val, Env_stage_t* stage);
 	void set_stage(uint32_t val, Env_stage_t* stage);
 };
 
