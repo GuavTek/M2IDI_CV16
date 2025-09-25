@@ -115,7 +115,7 @@ void Scan_Matrix(){
 					active_lanes |= 1 << (out_handler[x][y].get_key_lane()-1);
 				}
 				if (found_channel) continue;
-				if (out_handler[x][y].state.gen_source.channel != 9){
+				if (out_handler[x][y].state.gen_source.channel != DRUM_CHANNEL){
 					key_handler.set_key_channel(out_handler[x][y].state.gen_source.channel);
 					found_channel = true;
 				}
@@ -141,7 +141,7 @@ void Scan_Matrix(){
 			if (out_handler[x][y].state.gen_source.sourceType == ctrlType_t::key){
 				if (out_handler[x][y].state.gen_source.channel == key_handler.get_key_channel()){
 					key_handler.subscribe_key(&out_handler[x][y], lane_map[out_handler[x][y].get_key_lane()]);
-				} else if (out_handler[x][y].state.gen_source.channel == 9){
+				} else if (out_handler[x][y].state.gen_source.channel == DRUM_CHANNEL){
 					key_handler.subscribe_drum(&out_handler[x][y]);
 				}
 			}
@@ -888,6 +888,11 @@ void envelope_output_c::handle_cvm(GenOut_t* genout, umpCVM* msg){
 		envelopes[genout->env_num].set_go(genout, EnvStage_t::attack);
 	} else if (msg->status == NOTE_OFF) {
 		envelopes[genout->env_num].set_go(genout, EnvStage_t::release);
+	} else if (msg->status == CHANNEL_PRESSURE) {
+		genout->env_sustain = envelopes[genout->env_num].get(EnvStage_t::sustain, msg->value);
+	} else if (msg->status == KEY_PRESSURE) {
+		// Assume key manager has already checked note/channel
+		genout->env_sustain = envelopes[genout->env_num].get(EnvStage_t::sustain, msg->value);
 	}
 }
 
@@ -1048,166 +1053,188 @@ uint8_t key_handler_c::get_bend_range(){
 }
 
 uint8_t key_handler_c::handle_cvm(umpCVM* msg){
+	if (msg->channel == DRUM_CHANNEL){
+		return handle_cvm_drum(msg);
+	} else if (msg->channel == channel) {
+		return handle_cvm_key(msg);
+	} else if (msg->status == PITCH_BEND_PERNOTE){
+		// Don't apply bend from other channels
+		return 1;
+	} else if (msg->status == PITCH_BEND){
+		return 1;
+	} else if (msg->status == KEY_PRESSURE){
+		// Don't apply pressure from other channels
+		return 1;
+	} else if (msg->status == CHANNEL_PRESSURE) {
+		return 1;
+	}
+	return 0;
+}
+
+
+uint8_t key_handler_c::handle_cvm_key(umpCVM* msg){
 	if (msg->status == NOTE_ON){
-		if (msg->channel == 9){
-			// Drum channel
-			for (int8_t l = 7; l >= num_lanes; l--){
-				if ( msg->note == drum_note[l] ){
-					key_playing[l] = drum_note[l];
-					for (uint8_t i = 0; i < num_outputs[l]; i++){
-						lanes[l][i]->handle_cvm(msg);
-					}
-					break;
-				}
+		if (num_lanes == 0) {
+			// Unison mode
+			next_lane = 0;
+			if (key_playing[0] >= 0) {
+				// Note already playing in lane. Push to queue
+				note_queue[queue_index++].note = key_playing[0];
 			}
-		} else if(channel == msg->channel) {
-			if (num_lanes == 0) {
-				// Unison mode
-				next_lane = 0;
-				if (key_playing[0] >= 0) {
-					// Note already playing in lane. Push to queue
-					note_queue[queue_index++].note = key_playing[0];
-				}
-				start_note(0, msg);
+			start_note(0, msg);
+			return 1;
+		}
+		// Polyphonic mode
+		uint8_t tempLane = 0x80 | next_lane;
+		for (uint8_t l = 0; l < num_lanes; l++){
+			uint8_t lane = next_lane + l;
+			if (lane >= num_lanes) {
+				lane -= num_lanes;
+			}
+			if (key_playing[lane] == msg->note){
+				// Note is already playing
 				return 1;
 			}
-			// Polyphonic mode
-			uint8_t tempLane = 0x80 | next_lane;
-			for (uint8_t l = 0; l < num_lanes; l++){
-				uint8_t lane = next_lane + l;
-				if (lane >= num_lanes) {
-					lane -= num_lanes;
-				}
-				if (key_playing[lane] == msg->note){
-					// Note is already playing
-					return 1;
-				}
-				if (tempLane & 0x80){
-					if (key_playing[lane] < 0){
-						// Found an unused lane
-						tempLane = lane;
-						//break;
-					}
+			if (tempLane & 0x80){
+				if (key_playing[lane] < 0){
+					// Found an unused lane
+					tempLane = lane;
+					//break;
 				}
 			}
-
-			tempLane &= 0x7f;
-
-			// Update starting lane for Round-robin arbitration
-			next_lane = tempLane + 1;
-			if (next_lane >= num_lanes) {
-				next_lane -= num_lanes;
-			}
-
-			if (key_playing[tempLane] >= 0) {
-				// Note already playing in lane. Push to queue
-				note_queue[queue_index++].note = key_playing[tempLane];
-			}
-			start_note(tempLane, msg);
 		}
+
+		tempLane &= 0x7f;
+
+		// Update starting lane for Round-robin arbitration
+		next_lane = tempLane + 1;
+		if (next_lane >= num_lanes) {
+			next_lane -= num_lanes;
+		}
+
+		if (key_playing[tempLane] >= 0) {
+			// Note already playing in lane. Push to queue
+			note_queue[queue_index++].note = key_playing[tempLane];
+		}
+		start_note(tempLane, msg);
 		return 1;
 	} else if (msg->status == NOTE_OFF){
-		if (msg->channel == 9){
-			// Drum channel
-			for (int8_t l = 7; l >= num_lanes; l--){
-				if ( msg->note == drum_note[l] ){
-					key_playing[l] = drum_note[l];
-					for (uint8_t i = 0; i < num_outputs[l]; i++){
-						lanes[l][i]->handle_cvm(msg);
-					}
-					break;
-				}
+		// Look for note in queue
+		uint8_t i;
+		for (i = 0; i < queue_index; i++){
+			if (note_queue[i].note == msg->note){
+				queue_index--;
+				break;
 			}
-		} else if(channel == msg->channel) {
-			// Look for note in queue
-			uint8_t i;
-			for (i = 0; i < queue_index; i++){
-				if (note_queue[i].note == msg->note){
-					queue_index--;
-					break;
-				}
-			}
-			// Overwrite that note
-			for (; i < queue_index; i++){
-				note_queue[i] = note_queue[i+1];
-			}
+		}
+		// Overwrite that note
+		for (; i < queue_index; i++){
+			note_queue[i] = note_queue[i+1];
+		}
 
-			if (num_lanes == 0){
-				// Unison mode
-				if (key_playing[0] != msg->note) return 1;
-				if (queue_index > 0){
-					// Start last note which was put in queue
-					umpCVM tempMsg;
-					tempMsg.status = NOTE_ON;
-					tempMsg.note = note_queue[--queue_index].note;
-					tempMsg.value = msg->value;
-					start_note(0,&tempMsg);
-				} else {
-					stop_note(0,msg);
-				}
-				return 1;
+		if (num_lanes == 0){
+			// Unison mode
+			if (key_playing[0] != msg->note) return 1;
+			if (queue_index > 0){
+				// Start last note which was put in queue
+				umpCVM tempMsg;
+				tempMsg.status = NOTE_ON;
+				tempMsg.note = note_queue[--queue_index].note;
+				tempMsg.value = msg->value;
+				start_note(0,&tempMsg);
+			} else {
+				stop_note(0,msg);
 			}
-			// Polyphonic mode
-			// Find the used lane
-			uint8_t tempLane = 0x80;
-			for (uint8_t l = 0; l < num_lanes; l++){
-				if (key_playing[l] == msg->note){
-					tempLane = l;
-					break;
-				}
+			return 1;
+		}
+		// Polyphonic mode
+		// Find the used lane
+		uint8_t tempLane = 0x80;
+		for (uint8_t l = 0; l < num_lanes; l++){
+			if (key_playing[l] == msg->note){
+				tempLane = l;
+				break;
 			}
+		}
 
-			if (tempLane != 0x80){
-				if (queue_index > 0){
-					// Start last note which was put in queue
-					umpCVM tempMsg;
-					tempMsg.status = NOTE_ON;
-					tempMsg.note = note_queue[--queue_index].note;
-					tempMsg.value = msg->value;
-					start_note(tempLane, &tempMsg);
-				} else {
-					// Stop note
-					stop_note(tempLane, msg);
-				}
+		if (tempLane != 0x80){
+			if (queue_index > 0){
+				// Start last note which was put in queue
+				umpCVM tempMsg;
+				tempMsg.status = NOTE_ON;
+				tempMsg.note = note_queue[--queue_index].note;
+				tempMsg.value = msg->value;
+				start_note(tempLane, &tempMsg);
+			} else {
+				// Stop note
+				stop_note(tempLane, msg);
 			}
 		}
 		return 1;
 	} else if (msg->status == PITCH_BEND){
-		if (channel == msg->channel) {
-			// Update currentbend, all outputs will be updated after
-			uint16_t tempBend = Rescale_16bit(msg->value >> 16, min_bend, max_bend);
-			current_bend = tempBend - 0x7fff;
-		} else {
-			// Don't apply bend from other channels
-			return 1;
-		}
+		// Update currentbend, all outputs will be updated after
+		uint16_t tempBend = Rescale_16bit(msg->value >> 16, min_bend, max_bend);
+		current_bend = tempBend - 0x7fff;
 	} else if (msg->status == PITCH_BEND_PERNOTE){
-		if (channel == msg->channel) {
-			int8_t temp_lane = -1;
-			for (uint8_t i = 0; i < num_lanes; i++){
-				if (msg->note == key_playing[i]){
-					temp_lane = i;
-					break;
-				}
+		int8_t temp_lane = -1;
+		for (uint8_t i = 0; i < num_lanes; i++){
+			if (msg->note == key_playing[i]){
+				temp_lane = i;
+				break;
 			}
-			if (temp_lane >= 0){
-				uint16_t tempBend = Rescale_16bit(msg->value >> 16, min_bend, max_bend);
-				bend_per_note[temp_lane] = tempBend - 0x7fff;
-				for (uint8_t i = 0; i < num_outputs[temp_lane]; i++){
-					lanes[temp_lane][i]->handle_cvm(msg);
-				}
+		}
+		if (temp_lane >= 0){
+			uint16_t tempBend = Rescale_16bit(msg->value >> 16, min_bend, max_bend);
+			bend_per_note[temp_lane] = tempBend - 0x7fff;
+			for (uint8_t i = 0; i < num_outputs[temp_lane]; i++){
+				lanes[temp_lane][i]->handle_cvm(msg);
 			}
 		}
 		return 1;
-	} else if (msg->channel != channel) {
-		// Don't apply pressure or from other channels
-		if (msg->status == KEY_PRESSURE){
-			return 1;
-		} else if (msg->status == CHANNEL_PRESSURE) {
-			return 1;
+	} else if (msg->status == KEY_PRESSURE){
+		int8_t temp_lane = -1;
+		for (uint8_t i = 0; i < num_lanes; i++){
+			if (msg->note == key_playing[i]){
+				temp_lane = i;
+				break;
+			}
 		}
+		if (temp_lane >= 0){
+			for (uint8_t i = 0; i < num_outputs[temp_lane]; i++){
+				lanes[temp_lane][i]->handle_cvm(msg);
+			}
+		}
+		return 1;
 	}
 	return 0;
+}
+
+uint8_t key_handler_c::handle_cvm_drum(umpCVM* msg){
+	// Drum channel
+	if (msg->status == NOTE_ON){
+		for (int8_t l = 7; l >= num_lanes; l--){
+			if ( msg->note == drum_note[l] ){
+				key_playing[l] = drum_note[l];
+				for (uint8_t i = 0; i < num_outputs[l]; i++){
+					lanes[l][i]->handle_cvm(msg);
+				}
+				break;
+			}
+		}
+	} else if (msg->status == NOTE_OFF){
+		// Drum channel
+		for (int8_t l = 7; l >= num_lanes; l--){
+			if ( msg->note == drum_note[l] ){
+				key_playing[l] = drum_note[l];
+				for (uint8_t i = 0; i < num_outputs[l]; i++){
+					lanes[l][i]->handle_cvm(msg);
+				}
+				break;
+			}
+		}
+	}
+	// No shared outputs for drum channel
+	return 1;
 }
 
 uint8_t key_handler_c::subscribe_key(generic_output_c* handler){

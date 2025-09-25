@@ -262,6 +262,8 @@ class key_handler_c {
 	void start_note(umpCVM* msg);
 	void stop_note(uint8_t lane, umpCVM* msg);
 	void stop_note(umpCVM* msg);
+	uint8_t handle_cvm_key(umpCVM* msg);
+	uint8_t handle_cvm_drum(umpCVM* msg);
 	uint8_t queue_index;
 	key_note_t note_queue[32];
 	uint8_t next_lane = 0;
@@ -291,6 +293,7 @@ class env_handler_c {
 	void set_stage(uint32_t val, Env_stage_t* stage);
 };
 
+const uint8_t DRUM_CHANNEL = 9; // Channel 10 in MIDI, used for drums
 const uint32_t out_rate = 22100;	// The rate each output is updated
 extern bool needScan;
 extern key_handler_c key_handler;
