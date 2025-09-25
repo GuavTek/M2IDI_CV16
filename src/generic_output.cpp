@@ -578,7 +578,6 @@ void GO_Set_Config(ConfigNVM_t* conf){
 	needScan = true;
 }
 
-
 void generic_output_c::update(){
 	current_handler->update(&state);
 }
@@ -718,7 +717,11 @@ void envelope_output_c::update(GenOut_t* go){
 	switch(go->envelope_stage){
 		case EnvStage_t::attack:
 			// attack
-			remain = (0xFFFF'FFFF << 16) - go->outCount;
+			if (tempEnv->enabled(EnvStage_t::decay)){
+				remain = (0xFFFF'FFFF << 16) - go->outCount;
+			} else {
+				remain = (go->env_sustain << 16) - go->outCount;
+			}
 			if (remain <= go->env_value){
 				if (tempEnv->enabled(EnvStage_t::decay)){
 					tempEnv->set_go(go, EnvStage_t::decay);
@@ -758,7 +761,7 @@ void envelope_output_c::update(GenOut_t* go){
 			break;
 		case EnvStage_t::sustain:
 			// sustain
-			//go->outCount = tempEnv->get(EnvStage_t::sustain) << 16;
+			go->outCount = go->env_value << 16;
 		default:
 			break;
 	}
@@ -1070,7 +1073,6 @@ uint8_t key_handler_c::handle_cvm(umpCVM* msg){
 	}
 	return 0;
 }
-
 
 uint8_t key_handler_c::handle_cvm_key(umpCVM* msg){
 	if (msg->status == NOTE_ON){
