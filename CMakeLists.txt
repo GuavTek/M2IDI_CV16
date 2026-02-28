@@ -39,6 +39,20 @@ add_subdirectory(lib)
 # Add library files
 target_include_directories(M2IDI_CV16 PUBLIC src)
 
+### FIXME: -O3 breaks the build
+set(CMAKE_BUILD_TYPE Release)
+#set(CMAKE_CXX_FLAGS_RELEASE -Og)
+set(CMAKE_CXX_FLAGS_DEBUG -g)
+set(REDUCED_OPT_FILES
+    "${CMAKE_CURRENT_LIST_DIR}/src/memory.cpp"
+    "${CMAKE_CURRENT_LIST_DIR}/lib/mcp2517_driver/MCP2517.cpp"
+)
+foreach(s ${REDUCED_OPT_FILES})
+    if(EXISTS ${s})
+        set_source_files_properties(${s} PROPERTIES COMPILE_FLAGS "-Og")
+    endif()
+endforeach()
+
 target_link_options(M2IDI_CV16 PUBLIC -Xlinker --print-memory-usage)
 target_compile_options(M2IDI_CV16 PRIVATE -Wall -Wextra)
 
