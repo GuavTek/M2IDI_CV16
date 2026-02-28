@@ -5,19 +5,21 @@ const uint32_t MAX_MEM_SLOT = ((RAM_SIZE-0x300-256*sizeof(ctrlSource_t))/sizeof(
 eeprom_cat_c* mem_handler;
 ConfigNVM_t mem_buff;
 uint32_t slot_pc[128];
-static union{
+static volatile union{
 	char head_buff[4];
 	uint32_t head_word;
 };
 int8_t current_slot;
 
 // Pending writes
-int8_t pend_slot;
-bool pend_pc = false;
-bool pend_conf = false;
-bool pend_read = false;
-bool pend_head = false;
-bool is_reading = false;
+volatile int8_t pend_slot;
+volatile bool pend_pc = false;
+volatile bool pend_conf = false;
+volatile bool pend_read = false;
+volatile bool pend_head = false;
+volatile bool is_reading = false;
+volatile bool transaction_complete = false;
+volatile bool transaction_pending = false;
 
 void mem_cb();
 
@@ -116,25 +118,39 @@ void mem_read_config_pc(uint32_t pc_num){
 }
 
 void mem_update(){
+	if (transaction_complete){
+		transaction_complete = false;
+		transaction_pending = false;
+		if (is_reading){
+			is_reading = false;
+			GO_Set_Config(&mem_buff);
+		}
+	} else if (transaction_pending){
+		return;
+	}
 	if (pend_slot >= 0){
 		if (pend_pc){
 			head_word = slot_pc[pend_slot];
 			if (mem_handler->write_data(head_buff, 2, pend_slot)) {
 				pend_pc = false;
+				transaction_pending = true;
 			}
 		} else if (pend_conf){
 			if (mem_handler->write_data((char*) &mem_buff, 3, pend_slot)) {
 				pend_conf = false;
+				transaction_pending = true;
 			}
 		} else if (pend_read){
 			if (mem_handler->read_data((char*) &mem_buff, 3, pend_slot)) {
 				pend_read = false;
 				is_reading = true;
+				transaction_pending = true;
 			}
 		} else if (pend_head) {
 			head_buff[0] = pend_slot;
 			if (mem_handler->write_data(head_buff, 0, 1)) {
 				pend_head = false;
+				transaction_pending = true;
 			}
 		} else {
 			current_slot = pend_slot;
@@ -144,9 +160,5 @@ void mem_update(){
 }
 
 void mem_cb(){
-	if (is_reading){
-		is_reading = false;
-		GO_Set_Config(&mem_buff);
-	}
-	mem_update();
+	transaction_complete = true;
 }
