@@ -717,11 +717,13 @@ void envelope_output_c::update(GenOut_t* go){
 	switch(go->envelope_stage){
 		case EnvStage_t::attack:
 			// attack
+			uint16_t top;
 			if (tempEnv->enabled(EnvStage_t::decay)){
-				remain = (0xFFFF'FFFF << 16) - go->outCount;
+				top = 0xFFFF;
 			} else {
-				remain = (go->env_sustain << 16) - go->outCount;
+				top = go->env_sustain;
 			}
+			remain = (top << 16) - go->outCount;
 			if (remain <= go->env_value){
 				if (tempEnv->enabled(EnvStage_t::decay)){
 					tempEnv->set_go(go, EnvStage_t::decay);
@@ -730,7 +732,7 @@ void envelope_output_c::update(GenOut_t* go){
 				} else {
 					tempEnv->set_go(go, EnvStage_t::release);
 				}
-				go->outCount = 0xFFFF'FFFF << 16;
+				go->outCount = top << 16;
 			} else {
 				go->outCount += go->env_value;
 			}
@@ -761,7 +763,8 @@ void envelope_output_c::update(GenOut_t* go){
 			break;
 		case EnvStage_t::sustain:
 			// sustain
-			go->outCount = go->env_value << 16;
+			go->env_value = go->env_sustain << 16;
+			go->outCount = go->env_value;
 		default:
 			break;
 	}
@@ -885,17 +888,29 @@ void lfo_output_c::handle_cvm(GenOut_t* genout, umpCVM* msg){
 void envelope_output_c::handle_cvm(GenOut_t* genout, umpCVM* msg){
 	if (msg->status == NOTE_ON) {
 		genout->gen_source.sourceNum = msg->note;
-		//genout->outCount = tempOut->min_range << 16;
+		//genout->outCount = 0;
 		genout->env_velocity = msg->value;
-		genout->env_sustain = envelopes[genout->env_num].get(EnvStage_t::sustain, genout->env_velocity);
-		envelopes[genout->env_num].set_go(genout, EnvStage_t::attack);
+		genout->env_sustain = envelopes[genout->env_num].get(EnvStage_t::sustain, genout->env_velocity) >> 16;
+		if (envelopes[genout->env_num].enabled(EnvStage_t::attack)){
+			envelopes[genout->env_num].set_go(genout, EnvStage_t::attack);
+		} else if (envelopes[genout->env_num].enabled(EnvStage_t::decay)){
+			genout->outCount = 0xFFFF << 16;
+			envelopes[genout->env_num].set_go(genout, EnvStage_t::decay);
+		} else if (envelopes[genout->env_num].enabled(EnvStage_t::sustain)){
+			envelopes[genout->env_num].set_go(genout, EnvStage_t::sustain);
+		} else {
+			genout->outCount = genout->env_sustain << 16;
+			envelopes[genout->env_num].set_go(genout, EnvStage_t::release);
+		}
 	} else if (msg->status == NOTE_OFF) {
 		envelopes[genout->env_num].set_go(genout, EnvStage_t::release);
 	} else if (msg->status == CHANNEL_PRESSURE) {
-		genout->env_sustain = envelopes[genout->env_num].get(EnvStage_t::sustain, msg->value);
+		genout->env_velocity = msg->value;
+		genout->env_sustain = envelopes[genout->env_num].get(EnvStage_t::sustain, msg->value) >> 16;
 	} else if (msg->status == KEY_PRESSURE) {
 		// Assume key manager has already checked note/channel
-		genout->env_sustain = envelopes[genout->env_num].get(EnvStage_t::sustain, msg->value);
+		genout->env_velocity = msg->value;
+		genout->env_sustain = envelopes[genout->env_num].get(EnvStage_t::sustain, msg->value) >> 16;
 	}
 }
 
@@ -1295,25 +1310,25 @@ void env_handler_c::handle_cvm(umpCVM* msg){
 	}
 }
 
-uint32_t env_handler_c::get(EnvStage_t stage, uint32_t vel){
+uint32_t env_handler_c::get(EnvStage_t stage, uint16_t vel){
 	if (stage == EnvStage_t::attack){
 		if (env.att.source.sourceType == ctrlType_t::key){
-			return get_stage(vel, &env.att);
+			return get_stage(vel << 16, &env.att);
 		}
 		return env.att.current;
 	} else if (stage == EnvStage_t::decay){
 		if (env.dec.source.sourceType == ctrlType_t::key){
-			return get_stage(vel, &env.dec);
+			return get_stage(vel << 16, &env.dec);
 		}
 		return env.dec.current;
 	} else if (stage == EnvStage_t::sustain){
 		if (env.sus.source.sourceType == ctrlType_t::key){
-			return get_stage(vel, &env.sus);
+			return get_stage(vel << 16, &env.sus);
 		}
 		return env.sus.current;
 	} else if (stage == EnvStage_t::release){
 		if (env.rel.source.sourceType == ctrlType_t::key){
-			return get_stage(vel, &env.rel);
+			return get_stage(vel << 16, &env.rel);
 		}
 		return env.rel.current;
 	}
@@ -1334,29 +1349,25 @@ void env_handler_c::set_go(GenOut_t* go, EnvStage_t stage){
 }
 
 uint32_t env_handler_c::get_stage(uint32_t val, Env_stage_t* stage){
+	uint32_t span;
+	uint32_t min;
 	if (stage->max > stage->min){
-		uint32_t span = stage->max - stage->min;
-		uint32_t span_lo = span & 0xffff;
-		uint32_t span_hi = span >> 16;
-		uint32_t val_lo = val & 0xffff;
-		uint32_t val_hi = val >> 16;
-		uint32_t scaled = span_hi * val_hi;
-		scaled += (span_lo * val_hi) >> 16;
-		scaled += (span_hi * val_lo) >> 16;
-		scaled += scaled >> 16;
-		return stage->min + scaled;
+		span = stage->max - stage->min;
+		min = stage->min;
 	} else {
-		uint32_t span = stage->min - stage->max;
-		uint32_t span_lo = span & 0xffff;
-		uint32_t span_hi = span >> 16;
-		uint32_t val_lo = val & 0xffff;
-		uint32_t val_hi = val >> 16;
-		uint32_t scaled = span_hi * val_hi;
-		scaled += (span_lo * val_hi) >> 16;
-		scaled += (span_hi * val_lo) >> 16;
-		scaled += scaled >> 16;
-		return stage->min - scaled;
+		span = stage->min - stage->max;
+		min = stage->max;
 	}
+	uint32_t span_lo = (span & 0xffff) + 1;
+	uint32_t span_hi = span >> 16;
+	uint32_t val_lo = (val & 0xffff) + 1;
+	uint32_t val_hi = val >> 16;
+	uint32_t scaled = 0;
+	//scaled += (span_lo * val_lo) >> 32;	// << 0 - 32
+	scaled += (span_lo * val_hi) >> 16;	// << 0 - 16
+	scaled += (span_hi * val_lo) >> 16;	// << 16 - 32
+	scaled += span_hi * val_hi;	// << 16 - 16
+	return min + scaled;
 }
 
 void env_handler_c::set_stage(uint32_t val, Env_stage_t* stage){
